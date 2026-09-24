@@ -18,7 +18,6 @@ export const ArpSimulation: React.FC = () => {
   const [activeStep, setActiveStep] = useState<number>(0);
   const [arpCacheHostA, setArpCacheHostA] = useState<ArpEntry[]>([]);
   const [animatingPacket, setAnimatingPacket] = useState<string | null>(null);
-  const [packetType, setPacketType] = useState<'ARP_REQ' | 'ARP_REP' | 'ICMP' | null>(null);
 
   const nodes = [
     { id: 'hostA', name: 'Host A', ip: '192.168.1.10', mac: '00:1A:2B:3C:4D:10', role: 'sender' },
@@ -28,99 +27,127 @@ export const ArpSimulation: React.FC = () => {
     { id: 'router', name: 'Gateway Router', ip: '192.168.1.1', mac: '00:1A:2B:3C:4D:01', role: 'gateway' },
   ];
 
+  // Reactively derive UI step & ARP cache from Runtime event history on every tick/step
+  useEffect(() => {
+    const unsubscribe = globalSimulationRuntime.subscribe((state) => {
+      const history = state.events;
+      let step = 0;
+      let packetState: string | null = null;
+      const newCache: ArpEntry[] = [];
+
+      history.forEach((evt) => {
+        if (evt.type === 'ARP_CACHE_CHECK') {
+          step = 1;
+          packetState = 'Checking Local ARP Cache...';
+        } else if (evt.type === 'ARP_CACHE_HIT') {
+          step = 5;
+          packetState = `Cache Hit! Target MAC: ${evt.payload?.mac}`;
+        } else if (evt.type === 'ARP_CACHE_MISS') {
+          step = 1;
+          packetState = `Cache Miss for ${evt.description}`;
+        } else if (evt.type === 'ARP_REQUEST') {
+          step = 2;
+          packetState = 'ARP Request Broadcast [ff:ff:ff:ff:ff:ff]';
+        } else if (evt.type === 'SWITCH_FRAME_FLOODED') {
+          step = 3;
+          packetState = 'Switch Flooding Frame to All Ports';
+        } else if (evt.type === 'ARP_REPLY') {
+          step = 4;
+          const payload = evt.payload;
+          if (payload) {
+            packetState = `ARP Reply Unicast [${payload.mac} -> Host A]`;
+            if (!newCache.some((e) => e.ip === payload.ip)) {
+              newCache.push({ ip: payload.ip, mac: payload.mac, type: 'dynamic', ttl: 300 });
+            }
+          }
+        } else if (evt.type === 'PACKET_DELIVERED') {
+          step = 5;
+          packetState = 'IP Frame Delivered over Ethernet';
+        }
+      });
+
+      setActiveStep(step);
+      setAnimatingPacket(packetState);
+      if (newCache.length > 0) {
+        setArpCacheHostA(newCache);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const handleReset = () => {
     globalSimulationRuntime.reset();
     setArpCacheHostA([]);
     setActiveStep(0);
     setAnimatingPacket(null);
-    setPacketType(null);
   };
 
   const handleStartArpResolution = () => {
     handleReset();
 
+    const targetNode = nodes.find((n) => n.ip === targetIp);
+    const targetMac = targetNode ? targetNode.mac : '00:1A:2B:3C:4D:99';
+
     // Check if target IP is already in Host A ARP cache
     const existing = arpCacheHostA.find((e) => e.ip === targetIp);
+
     if (existing) {
-      // Direct unicast frame
-      setActiveStep(5);
-      setPacketType('ICMP');
-      setAnimatingPacket('Direct Unicast Frame sent instantly!');
-      globalSimulationRuntime.dispatch({
-        type: 'PACKET_SENT',
-        source: 'hostA',
-        target: targetIp,
+      globalSimulationRuntime.schedule({ at: 0, type: 'ARP_CACHE_CHECK' });
+      globalSimulationRuntime.schedule({
+        at: 100,
+        type: 'ARP_CACHE_HIT',
+        payload: { ip: targetIp, mac: existing.mac },
         description: `Direct ICMP Echo Request to ${targetIp} using cached MAC ${existing.mac}`,
       });
-      return;
-    }
-
-    // Step 1: Cache Miss
-    setActiveStep(1);
-    globalSimulationRuntime.dispatch({
-      type: 'DNS_QUERY',
-      source: '192.168.1.10',
-      description: `ARP Cache Miss for ${targetIp}. Initiating Address Resolution Protocol broadcast.`,
-    });
-
-    // Step 2: Broadcast Request
-    setTimeout(() => {
-      setActiveStep(2);
-      setPacketType('ARP_REQ');
-      setAnimatingPacket('ARP Request Broadcast [ff:ff:ff:ff:ff:ff]');
-      globalSimulationRuntime.dispatch({
-        type: 'PACKET_SENT',
+      globalSimulationRuntime.schedule({
+        at: 200,
+        type: 'PACKET_DELIVERED',
+        source: 'hostA',
+        target: targetIp,
+        description: `Direct Unicast Frame delivered to ${targetIp}`,
+      });
+    } else {
+      globalSimulationRuntime.schedule({ at: 0, type: 'ARP_CACHE_CHECK' });
+      globalSimulationRuntime.schedule({
+        at: 100,
+        type: 'ARP_CACHE_MISS',
+        source: '192.168.1.10',
+        description: targetIp,
+      });
+      globalSimulationRuntime.schedule({
+        at: 300,
+        type: 'ARP_REQUEST',
         source: 'hostA',
         target: 'switch',
         description: `Broadcast ARP Request: Who has ${targetIp}? Tell 192.168.1.10`,
       });
-    }, 1200);
-
-    // Step 3: Switch Flooding
-    setTimeout(() => {
-      setActiveStep(3);
-      globalSimulationRuntime.dispatch({
-        type: 'PACKET_SENT',
+      globalSimulationRuntime.schedule({
+        at: 600,
+        type: 'SWITCH_FRAME_FLOODED',
         source: 'switch',
         target: 'all_ports',
         description: 'Switch floods broadcast ARP Request frame to all active ports',
       });
-    }, 2400);
-
-    // Step 4: ARP Reply
-    setTimeout(() => {
-      setActiveStep(4);
-      setPacketType('ARP_REP');
-      const targetNode = nodes.find((n) => n.ip === targetIp);
-      const targetMac = targetNode ? targetNode.mac : '00:1A:2B:3C:4D:99';
-      setAnimatingPacket(`ARP Reply Unicast [${targetMac} -> 00:1A:2B:3C:4D:10]`);
-
-      globalSimulationRuntime.dispatch({
-        type: 'PACKET_RECEIVED',
+      globalSimulationRuntime.schedule({
+        at: 900,
+        type: 'ARP_REPLY',
         source: targetIp,
         target: 'hostA',
+        payload: { ip: targetIp, mac: targetMac },
         description: `ARP Reply: ${targetIp} is at MAC ${targetMac}`,
       });
-
-      // Update Host A ARP Cache
-      setArpCacheHostA((prev) => [
-        ...prev.filter((e) => e.ip !== targetIp),
-        { ip: targetIp, mac: targetMac, type: 'dynamic', ttl: 300 },
-      ]);
-    }, 3600);
-
-    // Step 5: Unicast Delivery
-    setTimeout(() => {
-      setActiveStep(5);
-      setPacketType('ICMP');
-      setAnimatingPacket('IP Frame Delivered over Ethernet');
-      globalSimulationRuntime.dispatch({
+      globalSimulationRuntime.schedule({
+        at: 1200,
         type: 'PACKET_DELIVERED',
         source: 'hostA',
         target: targetIp,
         description: `Frame successfully transmitted to ${targetIp}`,
       });
-    }, 4800);
+    }
+
+    // Auto start clock progression
+    globalSimulationRuntime.start();
   };
 
   return (
@@ -133,7 +160,7 @@ export const ArpSimulation: React.FC = () => {
             <span>{isAr ? 'بروتوكول تحويل العناوين (ARP)' : 'Address Resolution Protocol (ARP)'}</span>
           </div>
           <h2 className="text-2xl font-bold tracking-tight">
-            {isAr ? 'محاكاة بروتوكول ربط العناوين ARP' : 'Interactive ARP Resolution & Switch Flooding Lab'}
+            {isAr ? 'محاكاة بروتوكول ربط العناوين ARP (Runtime Scheduled)' : 'Interactive ARP Resolution & Switch Flooding Lab'}
           </h2>
           <p className="text-slate-400 text-sm mt-1">
             {isAr

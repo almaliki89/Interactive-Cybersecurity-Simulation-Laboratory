@@ -20,7 +20,7 @@ export const NatSimulation: React.FC = () => {
 
   const [natTable, setNatTable] = useState<NatEntry[]>([
     {
-      id: 'n1',
+      id: 'nat-session-1',
       privateIp: '10.0.0.10',
       privatePort: 49152,
       publicIp: '203.0.113.1',
@@ -34,11 +34,12 @@ export const NatSimulation: React.FC = () => {
   const [selectedHostIp, setSelectedHostIp] = useState<string>('10.0.0.11');
 
   const handleCreateConnection = () => {
-    const newPort = 50000 + natTable.length + 1;
-    const newSrcPort = 49150 + Math.floor(Math.random() * 100);
+    const sessionIndex = natTable.length + 1;
+    const newPort = 50000 + sessionIndex;
+    const newSrcPort = 49150 + sessionIndex;
 
     const entry: NatEntry = {
-      id: `n-${Date.now()}`,
+      id: `nat-session-${sessionIndex}`,
       privateIp: selectedHostIp,
       privatePort: newSrcPort,
       publicIp: '203.0.113.1',
@@ -51,15 +52,21 @@ export const NatSimulation: React.FC = () => {
     setNatTable((prev) => [...prev, entry]);
 
     globalSimulationRuntime.dispatch({
-      type: 'PACKET_SENT',
+      type: 'NAT_TRANSLATION_CREATED',
       source: `${selectedHostIp}:${newSrcPort}`,
       target: `203.0.113.1:${newPort}`,
+      payload: entry,
       description: `NAT Translation created: ${selectedHostIp}:${newSrcPort} -> 203.0.113.1:${newPort}`,
     });
   };
 
   const handleClearNat = () => {
     setNatTable([]);
+    globalSimulationRuntime.dispatch({
+      type: 'NAT_TRANSLATION_REMOVED',
+      source: 'NAT_Gateway',
+      description: 'NAT Session Table flushed',
+    });
   };
 
   return (
@@ -71,7 +78,7 @@ export const NatSimulation: React.FC = () => {
           <span>{isAr ? 'ترجمة عناوين الشبكة (NAT / PAT)' : 'Network Address Translation (NAT / Port Overload)'}</span>
         </div>
         <h2 className="text-2xl font-bold tracking-tight">
-          {isAr ? 'محاكي جدول الجلسات وترجمة العناوين (NAT Table Simulator)' : 'Interactive NAT Gateway & Port Overload (PAT) Engine'}
+          {isAr ? 'محاكي جدول الجلسات وترجمة العناوين (Deterministic PAT)' : 'Interactive NAT Gateway & Port Overload (PAT) Engine'}
         </h2>
         <p className="text-slate-400 text-sm mt-1">
           {isAr

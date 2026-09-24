@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { ArrowRight, Route, Send, Plus, Trash2, Cpu, ShieldAlert, CheckCircle2 } from 'lucide-react';
@@ -26,9 +26,35 @@ export const RoutingLab: React.FC = () => {
   const [lpmMatch, setLpmMatch] = useState<RouteEntry | null>(null);
   const [routingLog, setRoutingLog] = useState<string[]>([]);
 
+  useEffect(() => {
+    const unsubscribe = globalSimulationRuntime.subscribe((state) => {
+      const history = state.events;
+      const logs: string[] = [];
+
+      history.forEach((evt) => {
+        if (evt.type === 'ROUTE_LOOKUP') {
+          logs.push(`[t=${evt.virtualTime}ms] Ingress Packet: Dest=${evt.target}, TTL=${evt.payload?.ttl}`);
+          logs.push(`[t=${evt.virtualTime + 20}ms] Evaluating Router 1 Routing Table via Longest Prefix Match (LPM)...`);
+        } else if (evt.type === 'ROUTE_MATCHED') {
+          logs.push(`[t=${evt.virtualTime}ms] LPM Match Found: Route "${evt.payload?.prefix}" via Next-Hop ${evt.payload?.nextHop} on ${evt.payload?.interface}`);
+          logs.push(`[t=${evt.virtualTime + 50}ms] Decrementing TTL: ${evt.payload?.ttl} -> ${evt.payload?.ttl - 1}`);
+        } else if (evt.type === 'NEXT_HOP_SELECTED') {
+          logs.push(`[t=${evt.virtualTime}ms] Forwarded to Next-Hop ${evt.target}. Destination REACHABLE!`);
+        } else if (evt.type === 'PACKET_DROPPED') {
+          logs.push(`[ERROR] [t=${evt.virtualTime}ms] ${evt.description}`);
+        } else if (evt.type === 'PACKET_DELIVERED') {
+          logs.push(`[t=${evt.virtualTime}ms] Packet successfully delivered to ${evt.target}`);
+        }
+      });
+
+      setRoutingLog(logs);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // Longest Prefix Match Logic
   const evalLpm = (ipStr: string) => {
-    // Sort routes by prefix length descending
     const sorted = [...routes].sort((a, b) => {
       const pA = parseInt(a.destPrefix.split('/')[1] || '0', 10);
       const pB = parseInt(b.destPrefix.split('/')[1] || '0', 10);
@@ -52,56 +78,63 @@ export const RoutingLab: React.FC = () => {
   };
 
   const handleSimulateRoute = () => {
-    setRoutingLog([]);
+    globalSimulationRuntime.reset();
     const match = evalLpm(destIp);
 
-    globalSimulationRuntime.dispatch({
-      type: 'PACKET_SENT',
+    globalSimulationRuntime.schedule({
+      at: 0,
+      type: 'ROUTE_LOOKUP',
       source: 'LAN_A_Host (10.1.0.10)',
       target: destIp,
+      payload: { ttl: initialTtl },
       description: `Ingress Packet to ${destIp} with TTL=${initialTtl}`,
     });
 
-    setRoutingLog((prev) => [
-      ...prev,
-      `[t=0ms] Ingress Packet: Dest=${destIp}, TTL=${initialTtl}`,
-      `[t=20ms] Evaluating Router 1 Routing Table via Longest Prefix Match (LPM)...`,
-    ]);
-
     if (match) {
-      setTimeout(() => {
-        setRoutingLog((prev) => [
-          ...prev,
-          `[t=100ms] LPM Match Found: Route "${match.destPrefix}" via Next-Hop ${match.nextHop} on ${match.interfaceName}`,
-          `[t=200ms] Decrementing TTL: ${initialTtl} -> ${initialTtl - 1}`,
-        ]);
+      globalSimulationRuntime.schedule({
+        at: 100,
+        type: 'ROUTE_MATCHED',
+        source: 'Router_1',
+        target: match.nextHop,
+        payload: { prefix: match.destPrefix, nextHop: match.nextHop, interface: match.interfaceName, ttl: initialTtl },
+        description: `LPM Matched route ${match.destPrefix}`,
+      });
 
-        if (initialTtl - 1 <= 0) {
-          setRoutingLog((prev) => [
-            ...prev,
-            `[ERROR] TTL Exceeded in Transit! Router 1 dropping packet and returning ICMP Type 11 (Time Exceeded).`,
-          ]);
-          globalSimulationRuntime.dispatch({
-            type: 'PACKET_DROPPED',
-            source: 'Router 1',
-            description: `ICMP TTL Exceeded for ${destIp}`,
-          });
-        } else {
-          setRoutingLog((prev) => [
-            ...prev,
-            `[t=300ms] Forwarded to Next-Hop ${match.nextHop}. Destination ${destIp} REACHABLE!`,
-          ]);
-          globalSimulationRuntime.dispatch({
-            type: 'PACKET_DELIVERED',
-            source: 'Router 1',
-            target: destIp,
-            description: `Packet successfully routed to ${destIp} via ${match.nextHop}`,
-          });
-        }
-      }, 500);
+      if (initialTtl - 1 <= 0) {
+        globalSimulationRuntime.schedule({
+          at: 200,
+          type: 'PACKET_DROPPED',
+          source: 'Router_1',
+          target: destIp,
+          description: `ICMP TTL Exceeded in Transit! Router 1 dropped packet for ${destIp}`,
+        });
+      } else {
+        globalSimulationRuntime.schedule({
+          at: 200,
+          type: 'NEXT_HOP_SELECTED',
+          source: 'Router_1',
+          target: match.nextHop,
+          description: `Next hop ${match.nextHop} selected on ${match.interfaceName}`,
+        });
+        globalSimulationRuntime.schedule({
+          at: 300,
+          type: 'PACKET_DELIVERED',
+          source: 'Router_1',
+          target: destIp,
+          description: `Packet successfully routed to ${destIp} via ${match.nextHop}`,
+        });
+      }
     } else {
-      setRoutingLog((prev) => [...prev, `[ERROR] No matching route found! Router dropping packet (ICMP Destination Unreachable).`]);
+      globalSimulationRuntime.schedule({
+        at: 100,
+        type: 'PACKET_DROPPED',
+        source: 'Router_1',
+        target: destIp,
+        description: `No matching route found in FIB! Packet dropped for ${destIp}`,
+      });
     }
+
+    globalSimulationRuntime.start();
   };
 
   const handleAddRoute = () => {
@@ -124,7 +157,7 @@ export const RoutingLab: React.FC = () => {
           <span>{isAr ? 'مختبر توجيه الحزم والجداول' : 'IP Routing Tables & Longest Prefix Match (LPM)'}</span>
         </div>
         <h2 className="text-2xl font-bold tracking-tight">
-          {isAr ? 'محاكي توجيه البيانات وقرارات الموجه (Routers)' : 'Interactive Router Table & LPM Forwarding Engine'}
+          {isAr ? 'محاكي توجيه البيانات وقرارات الموجه (Runtime Scheduled)' : 'Interactive Router Table & LPM Forwarding Engine'}
         </h2>
         <p className="text-slate-400 text-sm mt-1">
           {isAr

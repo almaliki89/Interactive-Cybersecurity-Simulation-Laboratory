@@ -12,31 +12,42 @@ export const UdpSimulation: React.FC = () => {
   const [packetsDelivered, setPacketsDelivered] = useState<number>(0);
   const [packetsDropped, setPacketsDropped] = useState<number>(0);
 
+  // Deterministic PRNG formula based on sequence index
+  const isPacketDropped = (index: number, rate: number) => {
+    if (rate <= 0) return false;
+    if (rate >= 100) return true;
+    const pseudoRand = ((index * 9301 + 49297) % 233280) / 233280;
+    return pseudoRand * 100 < rate;
+  };
+
   const handleSendUdpDatagram = () => {
-    setPacketsSent((prev) => prev + 1);
-    const isDropped = Math.random() * 100 < lossRate;
+    const nextCount = packetsSent + 1;
+    setPacketsSent(nextCount);
+
+    const dropped = isPacketDropped(nextCount, lossRate);
 
     globalSimulationRuntime.dispatch({
-      type: 'PACKET_SENT',
+      type: 'UDP_DATAGRAM_SENT',
       source: 'UDP_Client (10.0.0.5)',
       target: 'DNS_Server (8.8.8.8:53)',
-      description: 'Connectionless UDP Datagram dispatched immediately without handshake',
+      description: `UDP Datagram #${nextCount} dispatched immediately without handshake`,
     });
 
-    if (isDropped) {
+    if (dropped) {
       setPacketsDropped((prev) => prev + 1);
       globalSimulationRuntime.dispatch({
-        type: 'PACKET_DROPPED',
+        type: 'UDP_DATAGRAM_DROPPED',
         source: 'Network_Wire',
-        description: 'UDP Datagram lost in transit. No retransmission initiated!',
+        target: 'DNS_Server',
+        description: `UDP Datagram #${nextCount} lost in transit. No retransmission!`,
       });
     } else {
       setPacketsDelivered((prev) => prev + 1);
       globalSimulationRuntime.dispatch({
-        type: 'PACKET_DELIVERED',
+        type: 'UDP_DATAGRAM_DELIVERED',
         source: 'UDP_Client',
         target: 'DNS_Server',
-        description: 'UDP Datagram delivered successfully',
+        description: `UDP Datagram #${nextCount} delivered successfully`,
       });
     }
   };
@@ -57,7 +68,7 @@ export const UdpSimulation: React.FC = () => {
           <span>{isAr ? 'بروتوكول بيانات المستخدم (UDP)' : 'User Datagram Protocol (UDP) & Connectionless Flow'}</span>
         </div>
         <h2 className="text-2xl font-bold tracking-tight">
-          {isAr ? 'محاكي بروتوكول UDP ومقارنته بـ TCP' : 'Interactive UDP Connectionless Datagram Simulator'}
+          {isAr ? 'محاكي بروتوكول UDP (Deterministic Seeded Loss)' : 'Interactive UDP Connectionless Datagram Simulator'}
         </h2>
         <p className="text-slate-400 text-sm mt-1">
           {isAr

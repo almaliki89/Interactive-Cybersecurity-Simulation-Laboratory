@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Server, Cpu, Send, RotateCcw, CheckCircle2, ShieldAlert } from 'lucide-react';
@@ -14,60 +14,96 @@ export const DhcpSimulation: React.FC = () => {
   const [poolSize, setPoolSize] = useState<number>(10);
   const [activeLeases, setActiveLeases] = useState<number>(2);
 
+  useEffect(() => {
+    const unsubscribe = globalSimulationRuntime.subscribe((state) => {
+      const history = state.events;
+      let step = 0;
+      let ip = '0.0.0.0';
+
+      history.forEach((evt) => {
+        if (evt.type === 'DHCP_DISCOVER') {
+          step = 1;
+        } else if (evt.type === 'DHCP_OFFER') {
+          step = 2;
+        } else if (evt.type === 'DHCP_REQUEST') {
+          step = 3;
+        } else if (evt.type === 'DHCP_ACK' || evt.type === 'LEASE_CREATED') {
+          step = 4;
+          if (evt.payload?.ip) {
+            ip = evt.payload.ip;
+          }
+        }
+      });
+
+      setDoraStep(step);
+      if (ip !== '0.0.0.0') {
+        setAssignedIp(ip);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const handleStartDora = () => {
+    globalSimulationRuntime.reset();
+
     if (activeLeases >= poolSize) {
       globalSimulationRuntime.dispatch({
         type: 'PACKET_BLOCKED',
         source: 'DHCP_Server',
         description: 'DHCP Pool Exhausted! Cannot issue lease.',
       });
-      alert(isAr ? 'نفذت العناوين في نطاق DHCP!' : 'DHCP Pool Exhausted!');
       return;
     }
 
-    setDoraStep(1); // Discover
-    setAssignedIp('0.0.0.0');
+    const offeredIp = `192.168.1.${10 + activeLeases}`;
 
-    globalSimulationRuntime.dispatch({
-      type: 'PACKET_SENT',
+    globalSimulationRuntime.schedule({
+      at: 0,
+      type: 'DHCP_DISCOVER',
       source: 'Client_PC',
       target: '255.255.255.255:67',
       description: 'DHCP Discover Broadcast issued by Client PC',
     });
 
-    setTimeout(() => {
-      setDoraStep(2); // Offer
-      globalSimulationRuntime.dispatch({
-        type: 'PACKET_RECEIVED',
-        source: 'DHCP_Server',
-        target: 'Client_PC',
-        description: `DHCP Offer: Offering IP 192.168.1.${10 + activeLeases}, GW ${gatewayIp}`,
-      });
-    }, 1200);
+    globalSimulationRuntime.schedule({
+      at: 200,
+      type: 'DHCP_OFFER',
+      source: 'DHCP_Server',
+      target: 'Client_PC',
+      payload: { ip: offeredIp, gateway: gatewayIp, dns: dnsIp },
+      description: `DHCP Offer: Offering IP ${offeredIp}, GW ${gatewayIp}`,
+    });
 
-    setTimeout(() => {
-      setDoraStep(3); // Request
-      globalSimulationRuntime.dispatch({
-        type: 'PACKET_SENT',
-        source: 'Client_PC',
-        target: 'DHCP_Server',
-        description: `DHCP Request: Accepting offered IP 192.168.1.${10 + activeLeases}`,
-      });
-    }, 2400);
+    globalSimulationRuntime.schedule({
+      at: 400,
+      type: 'DHCP_REQUEST',
+      source: 'Client_PC',
+      target: 'DHCP_Server',
+      payload: { ip: offeredIp },
+      description: `DHCP Request: Accepting offered IP ${offeredIp}`,
+    });
 
-    setTimeout(() => {
-      setDoraStep(4); // ACK
-      const newIp = `192.168.1.${10 + activeLeases}`;
-      setAssignedIp(newIp);
-      setActiveLeases((prev) => prev + 1);
+    globalSimulationRuntime.schedule({
+      at: 600,
+      type: 'DHCP_ACK',
+      source: 'DHCP_Server',
+      target: 'Client_PC',
+      payload: { ip: offeredIp },
+      description: `DHCP ACK: Lease confirmed for ${offeredIp}`,
+    });
 
-      globalSimulationRuntime.dispatch({
-        type: 'PACKET_DELIVERED',
-        source: 'DHCP_Server',
-        target: 'Client_PC',
-        description: `DHCP ACK: Lease confirmed for ${newIp}`,
-      });
-    }, 3600);
+    globalSimulationRuntime.schedule({
+      at: 601,
+      type: 'LEASE_CREATED',
+      source: 'DHCP_Server',
+      target: 'Client_PC',
+      payload: { ip: offeredIp },
+      description: `IP Lease Created: ${offeredIp}`,
+    });
+
+    setActiveLeases((prev) => prev + 1);
+    globalSimulationRuntime.start();
   };
 
   const handleReset = () => {
@@ -85,7 +121,7 @@ export const DhcpSimulation: React.FC = () => {
           <span>{isAr ? 'بروتوكول التهيأة الديناميكية للمضيفين (DHCP)' : 'Dynamic Host Configuration Protocol (DHCP) DORA'}</span>
         </div>
         <h2 className="text-2xl font-bold tracking-tight">
-          {isAr ? 'محاكي دورة DORA وتأجير العناوين الديناميكية' : 'Interactive DHCP DORA Protocol & Lease Engine'}
+          {isAr ? 'محاكي دورة DORA وتأجير العناوين الديناميكية (Runtime Scheduled)' : 'Interactive DHCP DORA Protocol & Lease Engine'}
         </h2>
         <p className="text-slate-400 text-sm mt-1">
           {isAr

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
-import { Award, ShieldCheck, ShieldAlert, Play, CheckCircle2, RefreshCw, Network, Layers, Lock, Cpu, Server } from 'lucide-react';
+import { Award, ShieldCheck, ShieldAlert, Play, CheckCircle2, Network, Layers, Lock, Cpu, Server } from 'lucide-react';
 
 interface VerificationRule {
   id: string;
@@ -24,7 +24,6 @@ export const NexoraBranchMasterChallenge: React.FC = () => {
   const [sshMgmtOnly, setSshMgmtOnly] = useState<boolean>(true);
   const [httpsServerPermitted, setHttpsServerPermitted] = useState<boolean>(true);
 
-  const [verifying, setVerifying] = useState<boolean>(false);
   const [overallScore, setOverallScore] = useState<number | null>(null);
 
   const [rules, setRules] = useState<VerificationRule[]>([
@@ -63,40 +62,42 @@ export const NexoraBranchMasterChallenge: React.FC = () => {
   ]);
 
   const handleRunVerification = () => {
-    setVerifying(true);
     globalSimulationRuntime.reset();
 
-    setTimeout(() => {
-      let passedCount = 0;
-      const updatedRules = rules.map((rule) => {
-        let isPassed = false;
-        if (rule.id === 'r1') isPassed = guestIsolation;
-        if (rule.id === 'r2') isPassed = sshMgmtOnly;
-        if (rule.id === 'r3') isPassed = httpsServerPermitted;
-        if (rule.id === 'r4') isPassed = financeSubnet !== hrSubnet && financeSubnet !== guestSubnet;
+    let passedCount = 0;
+    const updatedRules = rules.map((rule) => {
+      let isPassed = false;
+      if (rule.id === 'r1') isPassed = guestIsolation;
+      if (rule.id === 'r2') isPassed = sshMgmtOnly;
+      if (rule.id === 'r3') isPassed = httpsServerPermitted;
+      if (rule.id === 'r4') isPassed = financeSubnet !== hrSubnet && financeSubnet !== guestSubnet && hrSubnet !== guestSubnet;
 
-        if (isPassed) passedCount++;
+      if (isPassed) passedCount++;
 
-        return {
-          ...rule,
-          status: isPassed ? ('passed' as const) : ('failed' as const),
-        };
+      return {
+        ...rule,
+        status: isPassed ? ('passed' as const) : ('failed' as const),
+      };
+    });
+
+    setRules(updatedRules);
+    const score = Math.round((passedCount / rules.length) * 100);
+    setOverallScore(score);
+
+    if (score === 100) {
+      completeChallenge('nexora_master');
+      globalSimulationRuntime.dispatch({
+        type: 'ALERT_CREATED',
+        source: 'NEXORA_SECURITY_AUDITOR',
+        description: 'PASSED NEXORA MASTER CHALLENGE! 100% Policy Compliance Achieved.',
       });
-
-      setRules(updatedRules);
-      const score = Math.round((passedCount / rules.length) * 100);
-      setOverallScore(score);
-      setVerifying(false);
-
-      if (score === 100) {
-        completeChallenge('nexora_master_challenge');
-        globalSimulationRuntime.dispatch({
-          type: 'ALERT_CREATED',
-          source: 'NEXORA_SECURITY_AUDITOR',
-          description: 'PASSED NEXORA MASTER CHALLENGE! 100% Policy Compliance Achieved.',
-        });
-      }
-    }, 1500);
+    } else {
+      globalSimulationRuntime.dispatch({
+        type: 'PACKET_BLOCKED',
+        source: 'NEXORA_SECURITY_AUDITOR',
+        description: `AUDIT FAILED: Compliance score ${score}%`,
+      });
+    }
   };
 
   return (
@@ -212,11 +213,10 @@ export const NexoraBranchMasterChallenge: React.FC = () => {
       <div className="flex justify-center">
         <button
           onClick={handleRunVerification}
-          disabled={verifying}
           className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-bold text-base rounded-xl shadow-xl shadow-amber-900/30 transition transform hover:scale-105"
         >
-          {verifying ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-current" />}
-          <span>{verifying ? (isAr ? 'جاري فحص المحاكاة الحية...' : 'Running Live Traffic Inspection...') : (isAr ? 'تشغيل فحص المحاكاة الحية' : 'Run Automated Policy Verification')}</span>
+          <Play className="w-5 h-5 fill-current" />
+          <span>{isAr ? 'تشغيل فحص الامتثال المباشر' : 'Run Automated Policy Verification'}</span>
         </button>
       </div>
 
