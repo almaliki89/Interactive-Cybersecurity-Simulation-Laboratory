@@ -10,6 +10,7 @@ import {
 import { Language } from '../i18n/translations';
 import { MacroDomainId, CyberRangeLayer, CyberTimelineEvent } from '../types/universe';
 import { globalEventBus } from '../engine/eventBus';
+import { globalSimulationRuntime } from '../engine/runtime/SimulationRuntime';
 
 export type SimulationId =
   | 'landing'
@@ -125,70 +126,107 @@ interface SimulationStoreState {
   setActiveChallengeId: (challengeId: string | null) => void;
 }
 
-export const useSimulationStore = create<SimulationStoreState>((set, get) => ({
-  language: (localStorage.getItem('omega_language') as Language) || 'ar',
-  activeSimulationId: 'landing',
-  selectedMacroDomainId: null,
-  selectedWorldId: null,
-  mode: 'guided',
-  clockStatus: 'running',
-  clockSpeed: 1.0,
-  virtualTime: 0,
-
-  isSearchOpen: false,
-  searchQuery: '',
-
-  nodes: [],
-  connections: [],
-  packets: [],
-  logs: [],
-  events: [],
-
-  cyberRangeLayer: 'soc',
-  cyberTimelineEvents: [],
-
-  followedPacketId: null,
-  tracedEventId: null,
-  activeWorkspaceLayer: 'network',
-  explanationState: null,
-  whatChanged: null,
-  inspectorActiveTab: 'overview',
-  onboardingStep: 0,
-
-  selectedEntity: null,
-  completedChallenges: JSON.parse(localStorage.getItem('omega_completed_challenges') || '[]'),
-  activeChallengeId: null,
-
-  setLanguage: (lang) => {
-    localStorage.setItem('omega_language', lang);
-    if (typeof document !== 'undefined') {
-      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-      document.documentElement.lang = lang;
-    }
-    set({ language: lang });
-  },
-
-  setActiveSimulation: (id) => {
+export const useSimulationStore = create<SimulationStoreState>((set, get) => {
+  // Subscribe Zustand to globalSimulationRuntime
+  globalSimulationRuntime.subscribe((runtimeState) => {
     set({
-      activeSimulationId: id,
-      packets: [],
-      selectedEntity: null,
-      virtualTime: 0,
-      clockStatus: 'running',
-      followedPacketId: null,
-      tracedEventId: null,
-      explanationState: null,
-      whatChanged: null,
+      virtualTime: runtimeState.virtualTime,
+      clockStatus: runtimeState.clockStatus,
+      clockSpeed: runtimeState.speed,
+      packets: runtimeState.packets,
+      logs: runtimeState.logs,
+      events: runtimeState.events,
+      nodes: runtimeState.nodes.length > 0 ? runtimeState.nodes : get().nodes,
+      connections: runtimeState.connections.length > 0 ? runtimeState.connections : get().connections,
     });
-  },
+  });
 
-  setSelectedMacroDomainId: (id) => set({ selectedMacroDomainId: id }),
-  setSelectedWorldId: (id) => set({ selectedWorldId: id }),
+  return {
+    language: (localStorage.getItem('omega_language') as Language) || 'ar',
+    activeSimulationId: 'landing',
+    selectedMacroDomainId: null,
+    selectedWorldId: null,
+    mode: 'guided',
+    clockStatus: 'running',
+    clockSpeed: 1.0,
+    virtualTime: 0,
 
-  setMode: (mode) => set({ mode }),
-  setClockStatus: (clockStatus) => set({ clockStatus }),
-  setClockSpeed: (clockSpeed) => set({ clockSpeed }),
-  setVirtualTime: (virtualTime) => set({ virtualTime }),
+    isSearchOpen: false,
+    searchQuery: '',
+
+    nodes: [],
+    connections: [],
+    packets: [],
+    logs: [],
+    events: [],
+
+    cyberRangeLayer: 'soc',
+    cyberTimelineEvents: [],
+
+    followedPacketId: null,
+    tracedEventId: null,
+    activeWorkspaceLayer: 'network',
+    explanationState: null,
+    whatChanged: null,
+    inspectorActiveTab: 'overview',
+    onboardingStep: 0,
+
+    selectedEntity: null,
+    completedChallenges: JSON.parse(localStorage.getItem('omega_completed_challenges') || '[]'),
+    activeChallengeId: null,
+
+    setLanguage: (lang) => {
+      localStorage.setItem('omega_language', lang);
+      if (typeof document !== 'undefined') {
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        document.documentElement.lang = lang;
+      }
+      set({ language: lang });
+    },
+
+    setActiveSimulation: (id) => {
+      globalSimulationRuntime.reset();
+      set({
+        activeSimulationId: id,
+        packets: [],
+        selectedEntity: null,
+        virtualTime: 0,
+        clockStatus: 'running',
+        followedPacketId: null,
+        tracedEventId: null,
+        explanationState: null,
+        whatChanged: null,
+      });
+      globalSimulationRuntime.start();
+    },
+
+    setSelectedMacroDomainId: (id) => set({ selectedMacroDomainId: id }),
+    setSelectedWorldId: (id) => set({ selectedWorldId: id }),
+
+    setMode: (mode) => set({ mode }),
+
+    setClockStatus: (clockStatus) => {
+      if (clockStatus === 'running') {
+        globalSimulationRuntime.resume();
+      } else if (clockStatus === 'paused') {
+        globalSimulationRuntime.pause();
+      } else if (clockStatus === 'idle') {
+        globalSimulationRuntime.reset();
+      } else {
+        globalSimulationRuntime.pause();
+      }
+      set({ clockStatus });
+    },
+
+    setClockSpeed: (speed) => {
+      globalSimulationRuntime.setSpeed(speed);
+      set({ clockSpeed: speed });
+    },
+
+    setVirtualTime: (virtualTime) => {
+      globalSimulationRuntime.clock.seek(virtualTime);
+      set({ virtualTime });
+    },
 
   setFollowedPacketId: (followedPacketId) => set({ followedPacketId }),
   setTracedEventId: (tracedEventId) => set({ tracedEventId }),
@@ -280,4 +318,5 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => ({
     }
   },
   setActiveChallengeId: (activeChallengeId) => set({ activeChallengeId }),
-}));
+};
+});

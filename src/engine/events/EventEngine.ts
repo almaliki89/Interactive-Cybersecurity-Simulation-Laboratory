@@ -36,6 +36,7 @@ export interface SimulationEvent {
   id: string;
   type: SimulationEventType;
   virtualTime: number;
+  timestamp: number;
   source?: string;
   target?: string;
   severity?: 'info' | 'warn' | 'threat' | 'success';
@@ -78,9 +79,10 @@ export class EventEngine {
     this.queue.sort((a, b) => a.at - b.at);
   }
 
-  public dispatch(event: Omit<SimulationEvent, 'id'> & { id?: string }): SimulationEvent {
+  public dispatch(event: Omit<SimulationEvent, 'id' | 'timestamp'> & { id?: string; timestamp?: number }): SimulationEvent {
     const fullEvent: SimulationEvent = {
       id: event.id || `evt-${this.eventIdCounter++}-${Date.now()}`,
+      timestamp: event.timestamp || Date.now(),
       ...event,
     };
 

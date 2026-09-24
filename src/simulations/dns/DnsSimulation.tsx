@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Workspace } from '../../components/simulation/Workspace';
 import { StageCanvas } from '../../components/simulation/StageCanvas';
 import {
   SimulationNode,
-  Packet,
   ConnectionLink,
   Challenge,
 } from '../../types/simulation';
 import { useSimulationStore } from '../../stores/simulationStore';
+import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
+import { ScenarioDefinition } from '../../engine/scenario/ScenarioEngine';
 import { translations } from '../../i18n/translations';
 import {
   Globe,
@@ -25,10 +26,9 @@ export const DnsSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const t = translations[language];
 
-  const clockStatus = useSimulationStore((s) => s.clockStatus);
-  const clockSpeed = useSimulationStore((s) => s.clockSpeed);
-  const addLog = useSimulationStore((s) => s.addLog);
-  const addEvent = useSimulationStore((s) => s.addEvent);
+  const virtualTime = useSimulationStore((s) => s.virtualTime);
+  const packets = useSimulationStore((s) => s.packets);
+  const selectEntity = useSimulationStore((s) => s.selectEntity);
 
   // User input & options
   const [domain, setDomain] = useState('example.com');
@@ -41,12 +41,17 @@ export const DnsSimulation: React.FC = () => {
   const [osCache, setOsCache] = useState<Record<string, { ip: string; ttl: number }>>({});
 
   // Active lookup tracking
-  const [isResolving, setIsResolving] = useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
   const [resolvedIp, setResolvedIp] = useState<string | null>(null);
   const [lookupType, setLookupType] = useState<'COLD' | 'BROWSER_CACHE_HIT' | 'OS_CACHE_HIT'>('COLD');
 
-  const [packets, setPackets] = useState<Packet[]>([]);
+  // React to runtime resolution events
+  useEffect(() => {
+    const history = globalSimulationRuntime.events.getHistory();
+    const finalRespEvt = history.find((e) => e.type === 'DNS_RESPONSE' && e.payload?.ip);
+    if (finalRespEvt && finalRespEvt.payload) {
+      setResolvedIp(finalRespEvt.payload.ip);
+    }
+  }, [virtualTime]);
 
   // Nodes for DNS Hierarchy
   const nodes: SimulationNode[] = [
@@ -144,168 +149,267 @@ export const DnsSimulation: React.FC = () => {
     hints: [t.dns.hint1, t.dns.hint2],
   };
 
-  // Clear caches
   const handleClearCache = () => {
     setBrowserCache({});
     setOsCache({});
     setResolvedIp(null);
-    setPackets([]);
-    addLog({
+    globalSimulationRuntime.reset();
+    globalSimulationRuntime.logs.log({
       level: 'INFO',
       source: 'DNS_CLIENT',
-      message: 'Flushed browser cache and system OS resolver cache (dscacheutil / ipconfig /flushdns).',
+      message: 'Flushed browser cache and system OS resolver cache (ipconfig /flushdns).',
       category: 'SYSTEM',
     });
   };
 
-  // Perform resolution
+  // Perform resolution via Runtime scheduled event sequence
   const startResolution = () => {
-    setPackets([]);
     setResolvedIp(null);
-    setIsResolving(true);
+    globalSimulationRuntime.reset();
 
-    addLog({
-      level: 'INFO',
-      source: 'BROWSER',
-      message: `Initiating DNS resolution for host: '${domain}'`,
-      category: 'NETWORK',
+    const scenario: ScenarioDefinition = {
+      id: `dns-scenario-${Date.now()}`,
+      titleAr: 'حل أسماء النطاقات',
+      titleEn: 'DNS Resolution',
+      nodes,
+      connections,
+      scheduledEvents: [],
+      challenge: dnsChallenge,
+    };
+
+    globalSimulationRuntime.loadScenario(scenario);
+
+    // 1. Browser Cache Check
+    globalSimulationRuntime.schedule({
+      at: 0,
+      type: 'BROWSER_CACHE_CHECK',
+      source: 'browser',
+      description: `Checking local browser memory cache for domain '${domain}'`,
     });
 
-    // 1. Check Browser Cache
     if (browserCacheEnabled && browserCache[domain]) {
       setLookupType('BROWSER_CACHE_HIT');
-      setResolvedIp(browserCache[domain].ip);
-      setIsResolving(false);
-      addLog({
-        level: 'INFO',
-        source: 'BROWSER_CACHE',
-        message: `CACHE HIT: '${domain}' found in browser memory cache. IP: ${browserCache[domain].ip} (TTL: ${browserCache[domain].ttl}s)`,
-        category: 'NETWORK',
-      });
-      addEvent({
+      const hitIp = browserCache[domain].ip;
+
+      globalSimulationRuntime.schedule({
+        at: 100,
         type: 'CACHE_HIT',
-        description: `Browser cache hit for ${domain}`,
+        source: 'browser',
+        description: `BROWSER CACHE HIT: ${domain} -> ${hitIp}`,
       });
+
+      globalSimulationRuntime.schedule({
+        at: 200,
+        type: 'DNS_RESPONSE',
+        source: 'browser',
+        description: `Resolved ${domain} to ${hitIp} (0ms cache hit)`,
+        payload: { ip: hitIp },
+      });
+
+      globalSimulationRuntime.start();
       return;
     }
 
-    // 2. Check OS Cache
+    // 2. OS Cache Check
+    globalSimulationRuntime.schedule({
+      at: 100,
+      type: 'OS_CACHE_CHECK',
+      source: 'os_resolver',
+      description: `Checking OS stub resolver cache for domain '${domain}'`,
+    });
+
     if (osCacheEnabled && osCache[domain]) {
       setLookupType('OS_CACHE_HIT');
-      setResolvedIp(osCache[domain].ip);
-      setIsResolving(false);
-      addLog({
-        level: 'INFO',
-        source: 'OS_RESOLVER',
-        message: `CACHE HIT: '${domain}' found in OS DNS cache. IP: ${osCache[domain].ip}`,
-        category: 'NETWORK',
-      });
-      addEvent({
+      const hitIp = osCache[domain].ip;
+
+      globalSimulationRuntime.schedule({
+        at: 200,
         type: 'CACHE_HIT',
-        description: `OS DNS cache hit for ${domain}`,
+        source: 'os_resolver',
+        description: `OS CACHE HIT: ${domain} -> ${hitIp}`,
       });
-      // Store in browser cache
+
+      globalSimulationRuntime.schedule({
+        at: 300,
+        type: 'DNS_RESPONSE',
+        source: 'os_resolver',
+        description: `Resolved ${domain} to ${hitIp} (OS cache hit)`,
+        payload: { ip: hitIp },
+      });
+
       if (browserCacheEnabled) {
-        setBrowserCache((prev) => ({ ...prev, [domain]: { ip: osCache[domain].ip, ttl } }));
+        setBrowserCache((prev) => ({ ...prev, [domain]: { ip: hitIp, ttl } }));
       }
+
+      globalSimulationRuntime.start();
       return;
     }
 
-    // 3. Cold Recursive Resolution: Steps
+    // 3. Cold Hierarchy Resolution
     setLookupType('COLD');
-    executeHierarchicalResolution();
-  };
+    const finalIp = '93.184.216.34';
 
-  const executeHierarchicalResolution = () => {
-    const steps = [
-      { src: 'browser', dst: 'os_resolver', label: 'Query OS', delay: 100 },
-      { src: 'os_resolver', dst: 'recursive_dns', label: 'Forward to 8.8.8.8', delay: 800 },
-      { src: 'recursive_dns', dst: 'root_dns', label: 'Query Root (.)', delay: 1600 },
-      { src: 'root_dns', dst: 'recursive_dns', label: 'Referral .com', delay: 2400 },
-      { src: 'recursive_dns', dst: 'tld_dns', label: 'Query .com TLD', delay: 3200 },
-      { src: 'tld_dns', dst: 'recursive_dns', label: 'Referral ns1.example.com', delay: 4000 },
-      { src: 'recursive_dns', dst: 'authoritative_dns', label: 'Query Authoritative', delay: 4800 },
-      { src: 'authoritative_dns', dst: 'recursive_dns', label: 'A Record: 93.184.216.34', delay: 5600 },
-      { src: 'recursive_dns', dst: 'os_resolver', label: 'Answer to OS', delay: 6400 },
-      { src: 'os_resolver', dst: 'browser', label: 'Answer to Browser', delay: 7200 },
-    ];
-
-    steps.forEach((step, index) => {
-      setTimeout(() => {
-        setCurrentStepIndex(index);
-        const pkt: Packet = {
-          id: `dns-${Date.now()}-${index}`,
-          source: step.src,
-          destination: step.dst,
-          protocol: 'DNS',
-          sourcePort: 53,
-          destinationPort: 53,
-          label: step.label,
-          state: 'moving',
-          progress: 0,
-          timestamp: Date.now(),
-        };
-
-        setPackets([pkt]);
-
-        addLog({
-          level: 'INFO',
-          source: step.src.toUpperCase(),
-          message: `DNS Flow: ${step.label} (${step.src} → ${step.dst})`,
-          category: 'NETWORK',
-        });
-
-        // Final arrival
-        if (index === steps.length - 1) {
-          const finalIp = '93.184.216.34';
-          setResolvedIp(finalIp);
-          setIsResolving(false);
-          if (browserCacheEnabled) {
-            setBrowserCache((prev) => ({ ...prev, [domain]: { ip: finalIp, ttl } }));
-          }
-          if (osCacheEnabled) {
-            setOsCache((prev) => ({ ...prev, [domain]: { ip: finalIp, ttl } }));
-          }
-          addEvent({
-            type: 'PACKET_RECEIVED',
-            description: `DNS A record resolved: ${domain} -> ${finalIp}`,
-          });
-        }
-      }, step.delay / clockSpeed);
+    // Query OS (0 -> 400ms)
+    globalSimulationRuntime.schedule({
+      at: 200,
+      type: 'RECURSIVE_QUERY',
+      source: 'browser',
+      target: 'os_resolver',
+      description: `Browser forwarding query '${domain}' to OS stub resolver`,
     });
-  };
+    globalSimulationRuntime.packets.createPacket({
+      source: 'browser',
+      destination: 'os_resolver',
+      protocol: 'DNS',
+      sourcePort: 53,
+      destinationPort: 53,
+      startVirtualTime: 200,
+      durationMs: 400,
+    });
 
-  // Animate single packet progress
-  useEffect(() => {
-    if (packets.length === 0) return;
-    const interval = setInterval(() => {
-      setPackets((prev) =>
-        prev.map((p) => {
-          if (p.progress >= 1.0) return { ...p, state: 'delivered' };
-          return { ...p, progress: p.progress + 0.08 * clockSpeed };
-        })
-      );
-    }, 30);
-    return () => clearInterval(interval);
-  }, [packets, clockSpeed]);
+    // Query Recursive Resolver (600 -> 1000ms)
+    globalSimulationRuntime.schedule({
+      at: 600,
+      type: 'RECURSIVE_QUERY',
+      source: 'os_resolver',
+      target: 'recursive_dns',
+      description: `OS Resolver sending recursive query to 8.8.8.8:53`,
+    });
+    globalSimulationRuntime.packets.createPacket({
+      source: 'os_resolver',
+      destination: 'recursive_dns',
+      protocol: 'DNS',
+      sourcePort: 53,
+      destinationPort: 53,
+      startVirtualTime: 600,
+      durationMs: 400,
+    });
 
-  const validateChallenge = () => {
-    if (resolvedIp && lookupType === 'COLD') {
-      return {
-        success: true,
-        message: t.dns.valSuccess,
-      };
+    // Query Root Server (1000 -> 1400ms)
+    globalSimulationRuntime.schedule({
+      at: 1000,
+      type: 'ROOT_QUERY',
+      source: 'recursive_dns',
+      target: 'root_dns',
+      description: `Recursive resolver querying Root (.) for .com NS`,
+    });
+    globalSimulationRuntime.packets.createPacket({
+      source: 'recursive_dns',
+      destination: 'root_dns',
+      protocol: 'DNS',
+      sourcePort: 53,
+      destinationPort: 53,
+      startVirtualTime: 1000,
+      durationMs: 400,
+    });
+
+    // Root Referral (1400 -> 1800ms)
+    globalSimulationRuntime.schedule({
+      at: 1400,
+      type: 'ROOT_REFERRAL',
+      source: 'root_dns',
+      target: 'recursive_dns',
+      description: `Root Server (.) referred to .com TLD (192.5.6.30)`,
+    });
+    globalSimulationRuntime.packets.createPacket({
+      source: 'root_dns',
+      destination: 'recursive_dns',
+      protocol: 'DNS',
+      sourcePort: 53,
+      destinationPort: 53,
+      startVirtualTime: 1400,
+      durationMs: 400,
+    });
+
+    // Query TLD Server (1800 -> 2200ms)
+    globalSimulationRuntime.schedule({
+      at: 1800,
+      type: 'TLD_QUERY',
+      source: 'recursive_dns',
+      target: 'tld_dns',
+      description: `Recursive resolver querying .com TLD for example.com NS`,
+    });
+    globalSimulationRuntime.packets.createPacket({
+      source: 'recursive_dns',
+      destination: 'tld_dns',
+      protocol: 'DNS',
+      sourcePort: 53,
+      destinationPort: 53,
+      startVirtualTime: 1800,
+      durationMs: 400,
+    });
+
+    // TLD Referral (2200 -> 2600ms)
+    globalSimulationRuntime.schedule({
+      at: 2200,
+      type: 'TLD_REFERRAL',
+      source: 'tld_dns',
+      target: 'recursive_dns',
+      description: `TLD Server referred to Authoritative NS (93.184.216.34)`,
+    });
+    globalSimulationRuntime.packets.createPacket({
+      source: 'tld_dns',
+      destination: 'recursive_dns',
+      protocol: 'DNS',
+      sourcePort: 53,
+      destinationPort: 53,
+      startVirtualTime: 2200,
+      durationMs: 400,
+    });
+
+    // Query Authoritative Server (2600 -> 3000ms)
+    globalSimulationRuntime.schedule({
+      at: 2600,
+      type: 'AUTHORITATIVE_QUERY',
+      source: 'recursive_dns',
+      target: 'authoritative_dns',
+      description: `Querying Authoritative NS for 'example.com IN A'`,
+    });
+    globalSimulationRuntime.packets.createPacket({
+      source: 'recursive_dns',
+      destination: 'authoritative_dns',
+      protocol: 'DNS',
+      sourcePort: 53,
+      destinationPort: 53,
+      startVirtualTime: 2600,
+      durationMs: 400,
+    });
+
+    // Authoritative Response (3000 -> 3400ms)
+    globalSimulationRuntime.schedule({
+      at: 3000,
+      type: 'DNS_RESPONSE',
+      source: 'authoritative_dns',
+      target: 'recursive_dns',
+      description: `Authoritative NS returned A Record: ${domain} -> ${finalIp}`,
+      payload: { ip: finalIp },
+    });
+    globalSimulationRuntime.packets.createPacket({
+      source: 'authoritative_dns',
+      destination: 'recursive_dns',
+      protocol: 'DNS',
+      sourcePort: 53,
+      destinationPort: 53,
+      startVirtualTime: 3000,
+      durationMs: 400,
+    });
+
+    // Cache Write
+    globalSimulationRuntime.schedule({
+      at: 3400,
+      type: 'CACHE_WRITE',
+      source: 'recursive_dns',
+      description: `Writing A record ${domain} -> ${finalIp} into local caches (TTL: ${ttl}s)`,
+    });
+
+    if (browserCacheEnabled) {
+      setBrowserCache((prev) => ({ ...prev, [domain]: { ip: finalIp, ttl } }));
     }
-    if (resolvedIp && lookupType !== 'COLD') {
-      return {
-        success: true,
-        message: t.dns.valSuccess,
-      };
+    if (osCacheEnabled) {
+      setOsCache((prev) => ({ ...prev, [domain]: { ip: finalIp, ttl } }));
     }
-    return {
-      success: false,
-      message: t.dns.valColdNeeded,
-    };
+
+    globalSimulationRuntime.start();
   };
 
   return (
@@ -313,8 +417,17 @@ export const DnsSimulation: React.FC = () => {
       title={t.dns.title}
       subtitle={t.dns.subtitle}
       challenge={dnsChallenge}
-      onValidateChallenge={validateChallenge}
+      onValidateChallenge={() => {
+        const isSuccess = resolvedIp !== null;
+        return {
+          success: isSuccess,
+          message: isSuccess
+            ? t.dns.valSuccess
+            : t.dns.valColdNeeded,
+        };
+      }}
       onRestart={handleClearCache}
+      onStep={() => globalSimulationRuntime.step(150)}
       controlDeck={
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Domain Input Form */}
@@ -330,8 +443,7 @@ export const DnsSimulation: React.FC = () => {
             </div>
             <button
               onClick={startResolution}
-              disabled={isResolving}
-              className="py-1.5 px-3.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              className="py-1.5 px-3.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <Search className="w-3.5 h-3.5" />
               <span>{t.dns.resolveBtn}</span>
@@ -402,6 +514,8 @@ export const DnsSimulation: React.FC = () => {
         nodes={nodes}
         connections={connections}
         packets={packets}
+        onNodeClick={(node) => selectEntity('node', node.id, node)}
+        onPacketClick={(pkt) => selectEntity('packet', pkt.id, pkt)}
       />
     </Workspace>
   );

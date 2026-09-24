@@ -1,31 +1,75 @@
 import React from 'react';
 import { SimulationId } from '../stores/simulationStore';
 
-// Main Views
-import { InteractiveEnterpriseHero } from '../components/landing/InteractiveEnterpriseHero';
-import { UniverseExplorer } from '../components/universe/UniverseExplorer';
-import { GlobalKnowledgeGraph } from '../components/universe/GlobalKnowledgeGraph';
-import { CyberRange } from '../components/range/CyberRange';
-import { GlossaryView } from '../components/glossary/GlossaryView';
-import { LearningPathsView } from '../components/paths/LearningPathsView';
+// Main Views (Lazy Loaded)
+const InteractiveEnterpriseHero = React.lazy(() =>
+  import('../components/landing/InteractiveEnterpriseHero').then((m) => ({ default: m.InteractiveEnterpriseHero }))
+);
+const UniverseExplorer = React.lazy(() =>
+  import('../components/universe/UniverseExplorer').then((m) => ({ default: m.UniverseExplorer }))
+);
+const GlobalKnowledgeGraph = React.lazy(() =>
+  import('../components/universe/GlobalKnowledgeGraph').then((m) => ({ default: m.GlobalKnowledgeGraph }))
+);
+const CyberRange = React.lazy(() =>
+  import('../components/range/CyberRange').then((m) => ({ default: m.CyberRange }))
+);
+const GlossaryView = React.lazy(() =>
+  import('../components/glossary/GlossaryView').then((m) => ({ default: m.GlossaryView }))
+);
+const LearningPathsView = React.lazy(() =>
+  import('../components/paths/LearningPathsView').then((m) => ({ default: m.LearningPathsView }))
+);
 
-// Interactive Simulation Labs
-import { CiaTriadSimulation } from './foundations/CiaTriadSimulation';
-import { SystemInternalsSimulation } from './internals/SystemInternalsSimulation';
-import { SubnetRoutingSimulation } from './networking/SubnetRoutingSimulation';
-import { ActiveDirectorySimulation } from './identity/ActiveDirectorySimulation';
-import { AppSecApiSimulation } from './appsec/AppSecApiSimulation';
-import { CloudContainerSimulation } from './cloud/CloudContainerSimulation';
-import { ThreatHuntingSimulation } from './threat/ThreatHuntingSimulation';
-import { ZeroTrustSimulation } from './architecture/ZeroTrustSimulation';
-import { TcpSimulation } from './tcp/TcpSimulation';
-import { DnsSimulation } from './dns/DnsSimulation';
-import { FirewallSimulation } from './firewall/FirewallSimulation';
-import { HttpSimulation } from './http/HttpSimulation';
-import { TlsSimulation } from './tls/TlsSimulation';
-import { LinuxSimulation } from './linux/LinuxSimulation';
-import { CryptoSimulation } from './crypto/CryptoSimulation';
-import { SiemSimulation } from './siem/SiemSimulation';
+// Interactive Simulation Labs (Lazy Loaded)
+const CiaTriadSimulation = React.lazy(() =>
+  import('./foundations/CiaTriadSimulation').then((m) => ({ default: m.CiaTriadSimulation }))
+);
+const SystemInternalsSimulation = React.lazy(() =>
+  import('./internals/SystemInternalsSimulation').then((m) => ({ default: m.SystemInternalsSimulation }))
+);
+const SubnetRoutingSimulation = React.lazy(() =>
+  import('./networking/SubnetRoutingSimulation').then((m) => ({ default: m.SubnetRoutingSimulation }))
+);
+const ActiveDirectorySimulation = React.lazy(() =>
+  import('./identity/ActiveDirectorySimulation').then((m) => ({ default: m.ActiveDirectorySimulation }))
+);
+const AppSecApiSimulation = React.lazy(() =>
+  import('./appsec/AppSecApiSimulation').then((m) => ({ default: m.AppSecApiSimulation }))
+);
+const CloudContainerSimulation = React.lazy(() =>
+  import('./cloud/CloudContainerSimulation').then((m) => ({ default: m.CloudContainerSimulation }))
+);
+const ThreatHuntingSimulation = React.lazy(() =>
+  import('./threat/ThreatHuntingSimulation').then((m) => ({ default: m.ThreatHuntingSimulation }))
+);
+const ZeroTrustSimulation = React.lazy(() =>
+  import('./architecture/ZeroTrustSimulation').then((m) => ({ default: m.ZeroTrustSimulation }))
+);
+const TcpSimulation = React.lazy(() =>
+  import('./tcp/TcpSimulation').then((m) => ({ default: m.TcpSimulation }))
+);
+const DnsSimulation = React.lazy(() =>
+  import('./dns/DnsSimulation').then((m) => ({ default: m.DnsSimulation }))
+);
+const FirewallSimulation = React.lazy(() =>
+  import('./firewall/FirewallSimulation').then((m) => ({ default: m.FirewallSimulation }))
+);
+const HttpSimulation = React.lazy(() =>
+  import('./http/HttpSimulation').then((m) => ({ default: m.HttpSimulation }))
+);
+const TlsSimulation = React.lazy(() =>
+  import('./tls/TlsSimulation').then((m) => ({ default: m.TlsSimulation }))
+);
+const LinuxSimulation = React.lazy(() =>
+  import('./linux/LinuxSimulation').then((m) => ({ default: m.LinuxSimulation }))
+);
+const CryptoSimulation = React.lazy(() =>
+  import('./crypto/CryptoSimulation').then((m) => ({ default: m.CryptoSimulation }))
+);
+const SiemSimulation = React.lazy(() =>
+  import('./siem/SiemSimulation').then((m) => ({ default: m.SiemSimulation }))
+);
 
 export interface SimulationRegistration {
   id: SimulationId;

@@ -3,6 +3,7 @@ import { Header } from './components/ui/Header';
 import { useSimulationStore } from './stores/simulationStore';
 import { GlobalSearchModal } from './components/search/GlobalSearchModal';
 import { getRegisteredSimulation, simulationRegistry } from './simulations/registry';
+import { globalSimulationRuntime } from './engine/runtime/SimulationRuntime';
 import { AlertTriangle, RotateCcw, Compass } from 'lucide-react';
 
 interface ErrorBoundaryProps {
@@ -86,7 +87,7 @@ export default function App() {
     document.documentElement.lang = language;
   }, [language]);
 
-  // Global hotkeys (Space to pause/play, R to reset, / for search)
+  // Global hotkeys (Space to pause/play, R to reset, ArrowRight to step, / for search)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in input or editable elements
@@ -95,10 +96,17 @@ export default function App() {
       }
       if (e.code === 'Space') {
         e.preventDefault();
-        setClockStatus(clockStatus === 'running' ? 'paused' : 'running');
+        if (clockStatus === 'running') {
+          globalSimulationRuntime.pause();
+        } else {
+          globalSimulationRuntime.resume();
+        }
       } else if (e.key === 'r' || e.key === 'R') {
-        // Reset virtual time
-        useSimulationStore.getState().setVirtualTime(0);
+        e.preventDefault();
+        globalSimulationRuntime.reset();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        globalSimulationRuntime.step(150);
       } else if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         useSimulationStore.getState().setIsSearchOpen(true);
@@ -106,7 +114,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clockStatus, setClockStatus]);
+  }, [clockStatus]);
 
   // Deep linking via hash
   useEffect(() => {

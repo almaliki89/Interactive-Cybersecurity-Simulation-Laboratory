@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
+import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { translations } from '../../i18n/translations';
 import {
   Play,
@@ -22,12 +23,11 @@ export const Timeline: React.FC<TimelineProps> = ({ onRestart, onStep }) => {
   const t = translations[language];
 
   const clockStatus = useSimulationStore((s) => s.clockStatus);
-  const setClockStatus = useSimulationStore((s) => s.setClockStatus);
   const clockSpeed = useSimulationStore((s) => s.clockSpeed);
-  const setClockSpeed = useSimulationStore((s) => s.setClockSpeed);
   const virtualTime = useSimulationStore((s) => s.virtualTime);
   const events = useSimulationStore((s) => s.events);
   const selectEntity = useSimulationStore((s) => s.selectEntity);
+  const setTracedEventId = useSimulationStore((s) => s.setTracedEventId);
 
   const speedOptions = [0.25, 0.5, 1.0, 2.0, 4.0];
 
@@ -40,9 +40,36 @@ export const Timeline: React.FC<TimelineProps> = ({ onRestart, onStep }) => {
 
   const handlePlayPause = () => {
     if (clockStatus === 'running') {
-      setClockStatus('paused');
+      globalSimulationRuntime.pause();
     } else {
-      setClockStatus('running');
+      globalSimulationRuntime.resume();
+    }
+  };
+
+  const handleRestart = () => {
+    if (onRestart) {
+      onRestart();
+    } else {
+      globalSimulationRuntime.reset();
+    }
+  };
+
+  const handleStep = () => {
+    if (onStep) {
+      onStep();
+    } else {
+      globalSimulationRuntime.step(150);
+    }
+  };
+
+  const handleSelectEvent = (evt: any) => {
+    globalSimulationRuntime.pause();
+    if (evt.virtualTime !== undefined) {
+      globalSimulationRuntime.clock.seek(evt.virtualTime);
+    }
+    selectEntity('event', evt.id, evt);
+    if (evt.causedByEventId || evt.id) {
+      setTracedEventId(evt.id);
     }
   };
 
@@ -54,9 +81,7 @@ export const Timeline: React.FC<TimelineProps> = ({ onRestart, onStep }) => {
       <div className="flex items-center gap-2">
         {/* Restart Button */}
         <button
-          onClick={() => {
-            onRestart?.();
-          }}
+          onClick={handleRestart}
           className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:border-slate-700 transition-colors"
           title={t.timeline.restart}
           aria-label={t.timeline.restart}
@@ -89,9 +114,7 @@ export const Timeline: React.FC<TimelineProps> = ({ onRestart, onStep }) => {
 
         {/* Step Forward Button */}
         <button
-          onClick={() => {
-            onStep?.();
-          }}
+          onClick={handleStep}
           className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-white hover:border-slate-700 transition-colors flex items-center gap-1 text-xs"
           title={t.timeline.step}
           aria-label={t.timeline.step}
@@ -111,7 +134,7 @@ export const Timeline: React.FC<TimelineProps> = ({ onRestart, onStep }) => {
           {speedOptions.map((speed) => (
             <button
               key={speed}
-              onClick={() => setClockSpeed(speed)}
+              onClick={() => globalSimulationRuntime.setSpeed(speed)}
               className={`px-1.5 py-0.5 text-[11px] font-mono rounded transition-colors ${
                 clockSpeed === speed
                   ? 'bg-slate-700 text-cyan-300 font-bold'
@@ -134,7 +157,7 @@ export const Timeline: React.FC<TimelineProps> = ({ onRestart, onStep }) => {
             recentEvents.map((evt) => (
               <button
                 key={evt.id}
-                onClick={() => selectEntity('event', evt.id, evt)}
+                onClick={() => handleSelectEvent(evt)}
                 className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 hover:border-cyan-500/50 hover:text-cyan-300 text-slate-400 whitespace-nowrap transition-colors"
               >
                 {evt.type.replace(/_/g, ' ')}
@@ -162,3 +185,4 @@ export const Timeline: React.FC<TimelineProps> = ({ onRestart, onStep }) => {
     </div>
   );
 };
+

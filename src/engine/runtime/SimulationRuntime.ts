@@ -158,7 +158,7 @@ export class SimulationRuntime {
     this.notifyState();
   }
 
-  public dispatch(event: Omit<SimulationEvent, 'id' | 'virtualTime'> & { id?: string }): SimulationEvent {
+  public dispatch(event: Omit<SimulationEvent, 'id' | 'virtualTime' | 'timestamp'> & { id?: string; timestamp?: number }): SimulationEvent {
     return this.events.dispatch({
       ...event,
       virtualTime: this.clock.getVirtualTime(),

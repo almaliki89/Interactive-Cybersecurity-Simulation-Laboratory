@@ -107,38 +107,25 @@ export interface ConnectionLink {
   label?: string;
 }
 
-export type EventType =
-  | 'PACKET_CREATED'
-  | 'PACKET_SENT'
-  | 'PACKET_RECEIVED'
-  | 'PACKET_DROPPED'
-  | 'PACKET_BLOCKED'
-  | 'CONNECTION_OPENED'
-  | 'CONNECTION_CLOSED'
-  | 'LOGIN_ATTEMPT'
-  | 'LOGIN_SUCCESS'
-  | 'LOGIN_FAILURE'
-  | 'RULE_MATCHED'
-  | 'FIREWALL_BLOCKED'
-  | 'LOG_CREATED'
-  | 'ALERT_CREATED'
-  | 'THREAT_DETECTED'
-  | 'SERVICE_STARTED'
-  | 'SERVICE_STOPPED'
-  | 'HANDSHAKE_STAGE_COMPLETE'
-  | 'CACHE_HIT'
-  | 'CACHE_MISS';
+export type EventType = string;
 
 export interface SimulationEvent {
   id: string;
   timestamp: number;
-  type: EventType;
+  virtualTime?: number;
+  type: string;
+  source?: string;
+  target?: string;
   sourceNodeId?: string;
   targetNodeId?: string;
   packetId?: string;
-  description: string;
-  severity?: 'info' | 'notice' | 'warning' | 'critical';
+  description?: string;
+  severity?: any;
+  category?: string;
+  causedByEventId?: string;
+  relatedEntities?: string[];
   details?: Record<string, any>;
+  payload?: any;
 }
 
 export interface LogEntry {
