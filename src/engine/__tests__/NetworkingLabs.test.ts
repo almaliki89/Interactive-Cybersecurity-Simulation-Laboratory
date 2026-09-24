@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SimulationRuntime } from '../runtime/SimulationRuntime';
 import { findBestRoute, RouteEntry } from '../../simulations/networking/logic/routing';
-import { calculateSubnet, splitSubnet } from '../../simulations/networking/logic/subnetting';
+import { calculateSubnet, splitSubnet, cidrsOverlap } from '../../simulations/networking/logic/subnetting';
 import { canCommunicateAcrossVlans, VlanDevice } from '../../simulations/networking/logic/vlan';
 import { learnMac, forwardFrame, CamEntry } from '../../simulations/networking/logic/switching';
 import { createNatTranslation, NatSession } from '../../simulations/networking/logic/nat';
@@ -87,6 +87,26 @@ describe('Networking Universe Production Logic Modules', () => {
       expect(chunks[1].networkIp).toBe('192.168.1.64');
       expect(chunks[2].networkIp).toBe('192.168.1.128');
       expect(chunks[3].networkIp).toBe('192.168.1.192');
+    });
+
+    describe('CIDR Overlap Detection', () => {
+      it('detects identical networks as overlapping', () => {
+        expect(cidrsOverlap('10.50.10.0/24', '10.50.10.0/24')).toBe(true);
+      });
+
+      it('detects partially overlapping / contained subnets', () => {
+        expect(cidrsOverlap('10.50.10.0/24', '10.50.10.128/25')).toBe(true);
+        expect(cidrsOverlap('10.0.0.0/8', '10.50.0.0/16')).toBe(true);
+      });
+
+      it('correctly identifies adjacent non-overlapping subnets as non-overlapping', () => {
+        expect(cidrsOverlap('10.50.10.0/25', '10.50.10.128/25')).toBe(false);
+        expect(cidrsOverlap('10.50.10.0/24', '10.50.20.0/24')).toBe(false);
+      });
+
+      it('correctly identifies completely separate networks as non-overlapping', () => {
+        expect(cidrsOverlap('192.168.1.0/24', '10.0.0.0/8')).toBe(false);
+      });
     });
   });
 
@@ -303,6 +323,23 @@ describe('Networking Universe Production Logic Modules', () => {
       expect(res.failedChecks.length).toBeGreaterThan(0);
       expect(res.failedChecks).toContain('Guest Network Isolation Enforcement');
       expect(res.failedChecks).toContain('Subnet Boundary Integrity');
+    });
+
+    it('detects overlap when CIDR strings differ but ranges overlap', () => {
+      const overlappingConfig = {
+        financeSubnet: '10.50.10.0/24',
+        hrSubnet: '10.50.10.128/25', // Contained inside /24!
+        guestSubnet: '10.50.30.0/24',
+        guestIsolation: true,
+        sshMgmtOnly: true,
+        httpsServerPermitted: true,
+      };
+
+      const res = validateNexoraBranchConfiguration(overlappingConfig);
+      expect(res.success).toBe(false);
+      expect(res.failedChecks).toContain('Subnet Boundary Integrity');
+      const check4 = res.checkDetails.find((c) => c.id === 'r4');
+      expect(check4?.detailsEn).toContain('Subnet overlap detected');
     });
   });
 });

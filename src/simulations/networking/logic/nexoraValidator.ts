@@ -1,3 +1,5 @@
+import { cidrsOverlap, parseCidrRange } from './subnetting';
+
 export interface NexoraConfig {
   financeSubnet: string;
   hrSubnet: string;
@@ -48,15 +50,46 @@ export function validateNexoraBranchConfiguration(config: NexoraConfig): NexoraV
   if (c3Passed) passedChecks.push(c3Name); else failedChecks.push(c3Name);
 
   // Check 4: Subnet Boundary Integrity
-  const nonOverlapping =
-    config.financeSubnet !== config.hrSubnet &&
-    config.financeSubnet !== config.guestSubnet &&
-    config.hrSubnet !== config.guestSubnet;
-  const c4Passed = Boolean(nonOverlapping && config.financeSubnet && config.hrSubnet && config.guestSubnet);
+  const conflictsEn: string[] = [];
+  const conflictsAr: string[] = [];
+
+  if (config.financeSubnet && config.hrSubnet && cidrsOverlap(config.financeSubnet, config.hrSubnet)) {
+    conflictsEn.push(`Finance (${config.financeSubnet}) overlaps with HR (${config.hrSubnet})`);
+    conflictsAr.push(`شبكة المالية (${config.financeSubnet}) تتداخل مع شبكة الموارد البشرية (${config.hrSubnet})`);
+  }
+  if (config.financeSubnet && config.guestSubnet && cidrsOverlap(config.financeSubnet, config.guestSubnet)) {
+    conflictsEn.push(`Finance (${config.financeSubnet}) overlaps with Guest (${config.guestSubnet})`);
+    conflictsAr.push(`شبكة المالية (${config.financeSubnet}) تتداخل مع شبكة الضيوف (${config.guestSubnet})`);
+  }
+  if (config.hrSubnet && config.guestSubnet && cidrsOverlap(config.hrSubnet, config.guestSubnet)) {
+    conflictsEn.push(`HR (${config.hrSubnet}) overlaps with Guest (${config.guestSubnet})`);
+    conflictsAr.push(`شبكة الموارد البشرية (${config.hrSubnet}) تتداخل مع شبكة الضيوف (${config.guestSubnet})`);
+  }
+
+  const subnetsValid = Boolean(
+    config.financeSubnet &&
+    config.hrSubnet &&
+    config.guestSubnet &&
+    parseCidrRange(config.financeSubnet).valid &&
+    parseCidrRange(config.hrSubnet).valid &&
+    parseCidrRange(config.guestSubnet).valid
+  );
+
+  const c4Passed = subnetsValid && conflictsEn.length === 0;
   const c4Name = 'Subnet Boundary Integrity';
   const c4NameAr = 'تقسيم وصحة العناوين الفرعية (Valid CIDR Subnetting)';
-  const c4Desc = 'Non-overlapping CIDR boundaries assigned to Finance, HR, and Guest VLANs.';
-  const c4DescAr = 'تخصيص شبكات فرعية غير متداخلة لكل من الموظفين والإدارة والسيرفرات.';
+
+  let c4Desc = 'Non-overlapping CIDR boundaries assigned to Finance, HR, and Guest VLANs.';
+  let c4DescAr = 'تخصيص شبكات فرعية غير متداخلة لكل من الموظفين والإدارة والسيرفرات.';
+
+  if (conflictsEn.length > 0) {
+    c4Desc = `Subnet overlap detected: ${conflictsEn.join('; ')}`;
+    c4DescAr = `تم اكتشاف تداخل بين الشبكات الفرعية: ${conflictsAr.join('؛ ')}`;
+  } else if (!subnetsValid) {
+    c4Desc = 'One or more required subnets are missing or invalid CIDR addresses.';
+    c4DescAr = 'إحدى الشبكات الفرعية غير محددة أو تحتوي على صيغة CIDR غير صحيحة.';
+  }
+
   checkDetails.push({ id: 'r4', nameEn: c4Name, nameAr: c4NameAr, passed: c4Passed, detailsEn: c4Desc, detailsAr: c4DescAr });
   if (c4Passed) passedChecks.push(c4Name); else failedChecks.push(c4Name);
 

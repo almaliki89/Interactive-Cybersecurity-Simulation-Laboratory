@@ -68,3 +68,41 @@ export function splitSubnet(baseIp: string, parentCidr: number, targetCidr: numb
 
   return chunks;
 }
+
+export function parseCidrRange(cidrStr: string): { start: number; end: number; valid: boolean } {
+  if (!cidrStr || typeof cidrStr !== 'string') {
+    return { start: 0, end: 0, valid: false };
+  }
+  const parts = cidrStr.trim().split('/');
+  const ipStr = parts[0];
+  const prefixStr = parts[1];
+
+  if (!ipStr) {
+    return { start: 0, end: 0, valid: false };
+  }
+
+  let prefix = prefixStr !== undefined ? parseInt(prefixStr, 10) : 32;
+  if (isNaN(prefix) || prefix < 0 || prefix > 32) {
+    return { start: 0, end: 0, valid: false };
+  }
+
+  try {
+    const ipInt = ipToInt(ipStr);
+    const maskInt = prefixToMask(prefix);
+    const start = (ipInt & maskInt) >>> 0;
+    const count = prefix === 0 ? 0x100000000 : Math.pow(2, 32 - prefix);
+    const end = (start + count - 1) >>> 0;
+    return { start, end, valid: true };
+  } catch {
+    return { start: 0, end: 0, valid: false };
+  }
+}
+
+export function cidrsOverlap(cidrA: string, cidrB: string): boolean {
+  const rangeA = parseCidrRange(cidrA);
+  const rangeB = parseCidrRange(cidrB);
+  if (!rangeA.valid || !rangeB.valid) {
+    return false;
+  }
+  return rangeA.start <= rangeB.end && rangeB.start <= rangeA.end;
+}
