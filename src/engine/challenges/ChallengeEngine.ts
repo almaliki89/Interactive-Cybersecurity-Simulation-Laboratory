@@ -70,6 +70,14 @@ export class ChallengeEngine {
     };
   }
 
+  public restoreState(challenge: Challenge | null): void {
+    if (!challenge) {
+      this.activeChallenge = null;
+      return;
+    }
+    this.activeChallenge = JSON.parse(JSON.stringify(challenge));
+  }
+
   public isObjectiveCompleted(objectiveId: string): boolean {
     if (!this.activeChallenge) return false;
     const obj = this.activeChallenge.objectives.find((o) => o.id === objectiveId);

@@ -33,7 +33,7 @@ export class PacketEngine {
     durationMs?: number;
   }): EnginePacket {
     const duration = params.durationMs ?? 1000;
-    const id = `pkt-${this.packetIdCounter++}-${Date.now()}`;
+    const id = `pkt-${this.packetIdCounter++}-${params.startVirtualTime}`;
     const route = params.route && params.route.length >= 2 ? params.route : [params.source, params.destination];
 
     const pkt: EnginePacket = {
@@ -47,7 +47,7 @@ export class PacketEngine {
       payload: params.payload ?? null,
       state: 'queued',
       progress: 0,
-      timestamp: Date.now(),
+      timestamp: params.startVirtualTime,
       route,
       currentHopIndex: 0,
       startVirtualTime: params.startVirtualTime,
@@ -56,6 +56,13 @@ export class PacketEngine {
 
     this.packets.set(id, pkt);
     return pkt;
+  }
+
+  public restoreState(packets: EnginePacket[]): void {
+    this.packets.clear();
+    packets.forEach((p) => {
+      this.packets.set(p.id, JSON.parse(JSON.stringify(p)));
+    });
   }
 
   public addPacket(packet: EnginePacket): void {

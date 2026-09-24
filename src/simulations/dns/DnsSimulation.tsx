@@ -168,7 +168,7 @@ export const DnsSimulation: React.FC = () => {
     globalSimulationRuntime.reset();
 
     const scenario: ScenarioDefinition = {
-      id: `dns-scenario-${Date.now()}`,
+      id: 'dns-scenario-resolution',
       titleAr: 'حل أسماء النطاقات',
       titleEn: 'DNS Resolution',
       nodes,

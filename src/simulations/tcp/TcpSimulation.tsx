@@ -168,7 +168,7 @@ export const TcpSimulation: React.FC = () => {
     setStepPhase(1);
 
     const scenario: ScenarioDefinition = {
-      id: `tcp-scenario-${Date.now()}`,
+      id: 'tcp-scenario-handshake',
       titleAr: 'مصافحة TCP',
       titleEn: 'TCP Handshake',
       nodes,

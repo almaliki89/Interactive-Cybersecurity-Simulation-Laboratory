@@ -81,8 +81,8 @@ export class EventEngine {
 
   public dispatch(event: Omit<SimulationEvent, 'id' | 'timestamp'> & { id?: string; timestamp?: number }): SimulationEvent {
     const fullEvent: SimulationEvent = {
-      id: event.id || `evt-${this.eventIdCounter++}-${Date.now()}`,
-      timestamp: event.timestamp || Date.now(),
+      id: event.id || `evt-${this.eventIdCounter++}-${event.virtualTime ?? 0}`,
+      timestamp: event.timestamp ?? event.virtualTime ?? 0,
       ...event,
     };
 
@@ -169,6 +169,11 @@ export class EventEngine {
     }
 
     return chain;
+  }
+
+  public restoreState(history: SimulationEvent[], queue: ScheduledEvent[] = []): void {
+    this.eventHistory = JSON.parse(JSON.stringify(history));
+    this.queue = JSON.parse(JSON.stringify(queue));
   }
 
   public clear(): void {

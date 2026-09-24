@@ -103,6 +103,19 @@ export class RuleEngine<TContext = any> {
     };
   }
 
+  public restoreState(restoredRules: Rule<TContext>[]): void {
+    if (!restoredRules) return;
+    restoredRules.forEach((restored) => {
+      const existing = this.rules.find((r) => r.id === restored.id);
+      if (existing) {
+        existing.enabled = restored.enabled;
+        existing.hitCount = restored.hitCount;
+        existing.order = restored.order;
+      }
+    });
+    this.rules.sort((a, b) => a.order - b.order);
+  }
+
   public resetHitCounts(): void {
     this.rules.forEach((r) => {
       r.hitCount = 0;

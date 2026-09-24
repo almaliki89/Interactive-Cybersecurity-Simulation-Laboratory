@@ -182,7 +182,7 @@ export const FirewallSimulation: React.FC = () => {
       source: 'internet',
       destination: 'app_server',
       protocol: 'TCP',
-      sourcePort: Math.floor(Math.random() * 20000) + 40000,
+      sourcePort: 40000 + ((port * 37) % 20000),
       destinationPort: port,
       flags: ['SYN'],
       route: ['internet', 'firewall', 'app_server'],
@@ -285,7 +285,7 @@ export const FirewallSimulation: React.FC = () => {
 
   const handleAddCustomRule = () => {
     const newRule: Rule = {
-      id: `rule-${Date.now()}`,
+      id: `rule-custom-${rules.length + 1}`,
       order: rules.length + 1,
       enabled: true,
       name: language === 'ar' ? 'قاعدة مخصصة جديدة' : 'New Custom Rule',

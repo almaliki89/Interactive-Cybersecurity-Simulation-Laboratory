@@ -25,8 +25,8 @@ export class LogEngine {
     timestamp?: number;
   }): EngineLogEntry {
     const fullLog: EngineLogEntry = {
-      id: `log-${this.logIdCounter++}-${Date.now()}`,
-      timestamp: entry.timestamp ?? Date.now(),
+      id: `log-${this.logIdCounter++}-${entry.virtualTime ?? 0}`,
+      timestamp: entry.timestamp ?? entry.virtualTime ?? 0,
       level: entry.level,
       source: entry.source,
       message: entry.message,
@@ -57,6 +57,10 @@ export class LogEngine {
         l.relatedEventId === entityId ||
         (l.relatedEntityIds && l.relatedEntityIds.includes(entityId))
     );
+  }
+
+  public restoreState(logs: EngineLogEntry[]): void {
+    this.logs = JSON.parse(JSON.stringify(logs));
   }
 
   public clear(): void {

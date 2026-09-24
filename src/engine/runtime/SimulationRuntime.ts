@@ -62,25 +62,7 @@ export class SimulationRuntime {
 
     // 2. Automatically generate logs for significant events
     newEvents.forEach((evt) => {
-      if (evt.type === 'PACKET_BLOCKED' || evt.type === 'PACKET_DROPPED') {
-        this.logs.log({
-          level: 'WARN',
-          source: evt.source || 'FIREWALL',
-          message: evt.description || `Packet blocked on wire`,
-          category: 'SECURITY',
-          relatedEventId: evt.id,
-          virtualTime,
-        });
-      } else if (evt.type === 'ALERT_CREATED') {
-        this.logs.log({
-          level: 'ALERT',
-          source: evt.source || 'SIEM',
-          message: evt.description || 'Critical security alert triggered',
-          category: 'SECURITY',
-          relatedEventId: evt.id,
-          virtualTime,
-        });
-      }
+      this.handleEventLog(evt);
     });
 
     // 3. Update packet progress and states
@@ -93,6 +75,28 @@ export class SimulationRuntime {
 
     // 5. Notify state change listeners
     this.notifyState();
+  }
+
+  private handleEventLog(evt: SimulationEvent) {
+    if (evt.type === 'PACKET_BLOCKED' || evt.type === 'PACKET_DROPPED' || evt.type === 'FIREWALL_RULE_MATCHED') {
+      this.logs.log({
+        level: 'WARN',
+        source: evt.source || 'FIREWALL',
+        message: evt.description || `Packet evaluated on wire`,
+        category: 'FIREWALL',
+        relatedEventId: evt.id,
+        virtualTime: evt.virtualTime,
+      });
+    } else if (evt.type === 'ALERT_CREATED' || evt.type === 'THREAT_DETECTED') {
+      this.logs.log({
+        level: 'ALERT',
+        source: evt.source || 'SIEM',
+        message: evt.description || 'Critical security alert triggered',
+        category: 'SECURITY',
+        relatedEventId: evt.id,
+        virtualTime: evt.virtualTime,
+      });
+    }
   }
 
   public subscribe(listener: (state: RuntimeState) => void): () => void {
@@ -159,10 +163,13 @@ export class SimulationRuntime {
   }
 
   public dispatch(event: Omit<SimulationEvent, 'id' | 'virtualTime' | 'timestamp'> & { id?: string; timestamp?: number }): SimulationEvent {
-    return this.events.dispatch({
+    const dispatched = this.events.dispatch({
       ...event,
       virtualTime: this.clock.getVirtualTime(),
     });
+    this.handleEventLog(dispatched);
+    this.replay.recordSnapshot(this.clock.getVirtualTime(), this.getState(), dispatched.id);
+    return dispatched;
   }
 
   public schedule(event: ScheduledEvent): void {
@@ -200,8 +207,23 @@ export class SimulationRuntime {
     const snapshot = this.replay.getSnapshotClosestTo(virtualTime);
     if (snapshot) {
       this.clock.seek(snapshot.virtualTime);
-      this.nodes = snapshot.state.nodes;
-      this.connections = snapshot.state.connections;
+      this.nodes = JSON.parse(JSON.stringify(snapshot.state.nodes));
+      this.connections = JSON.parse(JSON.stringify(snapshot.state.connections));
+      this.packets.restoreState(snapshot.state.packets);
+      this.events.restoreState(snapshot.state.events);
+      this.logs.restoreState(snapshot.state.logs);
+      this.rules.restoreState(snapshot.state.rules);
+      if (snapshot.state.activeScenarioId) {
+        this.scenarios.setActiveScenario(snapshot.state.activeScenarioId);
+      }
+      if (snapshot.state.activeChallenge) {
+        this.challenges.restoreState(snapshot.state.activeChallenge);
+      }
+      this.packets.updateAtVirtualTime(snapshot.virtualTime);
+      this.notifyState();
+    } else {
+      this.clock.seek(virtualTime);
+      this.packets.updateAtVirtualTime(virtualTime);
       this.notifyState();
     }
   }

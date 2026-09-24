@@ -47,10 +47,13 @@ export class SimulationClock {
   }
 
   public pause() {
-    if (this.status !== 'running') return;
     this.status = 'paused';
     if (this.animFrameId !== null) {
-      cancelAnimationFrame(this.animFrameId);
+      if (typeof cancelAnimationFrame !== 'undefined') {
+        cancelAnimationFrame(this.animFrameId);
+      } else {
+        clearTimeout(this.animFrameId);
+      }
       this.animFrameId = null;
     }
   }
@@ -70,6 +73,10 @@ export class SimulationClock {
     this.notify(0, this.virtualTimeMs);
   }
 
+  /**
+   * Advances clock by exact virtual time stepMs regardless of current playback speed.
+   * Playback speed multiplier (speed) affects continuous clock progression loops only.
+   */
   public stepForward(stepMs: number = 100) {
     if (this.status === 'running') {
       this.pause();
@@ -99,7 +106,11 @@ export class SimulationClock {
 
     this.notify(virtualDelta, this.virtualTimeMs);
 
-    this.animFrameId = requestAnimationFrame(this.loop);
+    if (typeof requestAnimationFrame !== 'undefined') {
+      this.animFrameId = requestAnimationFrame(this.loop);
+    } else {
+      this.animFrameId = setTimeout(this.loop, 16) as unknown as number;
+    }
   };
 
   private notify(delta: number, vTime: number) {
