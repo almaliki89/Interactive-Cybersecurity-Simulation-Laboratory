@@ -1,192 +1,308 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SimulationRuntime } from '../runtime/SimulationRuntime';
-import { Rule } from '../rules/RuleEngine';
+import { findBestRoute, RouteEntry } from '../../simulations/networking/logic/routing';
+import { calculateSubnet, splitSubnet } from '../../simulations/networking/logic/subnetting';
+import { canCommunicateAcrossVlans, VlanDevice } from '../../simulations/networking/logic/vlan';
+import { learnMac, forwardFrame, CamEntry } from '../../simulations/networking/logic/switching';
+import { createNatTranslation, NatSession } from '../../simulations/networking/logic/nat';
+import { shouldDropDatagram } from '../../simulations/networking/logic/udp';
+import { allocateLease } from '../../simulations/networking/logic/dhcp';
+import { checkArpCache, updateArpCache, flushArpCache, ArpEntry } from '../../simulations/networking/logic/arp';
+import { evaluatePortAccess, ServiceDaemon } from '../../simulations/networking/logic/ports';
+import { validateNexoraBranchConfiguration } from '../../simulations/networking/logic/nexoraValidator';
 
-describe('Networking Universe Runtime Compliance & Lab Mechanics', () => {
+describe('Networking Universe Production Logic Modules', () => {
   let runtime: SimulationRuntime;
 
   beforeEach(() => {
     runtime = new SimulationRuntime();
   });
 
-  // 1. ARP Test
-  it('ARP: Cache miss -> broadcast -> reply -> cache update -> frame delivered', () => {
-    const targetIp = '192.168.1.20';
-    const targetMac = '00:1A:2B:3C:4D:20';
+  // 1. Routing Engine Test
+  describe('Routing Engine (LPM & IPv4 Bitmask)', () => {
+    const routingTable: RouteEntry[] = [
+      { id: 'default', destPrefix: '0.0.0.0/0', nextHop: '192.168.1.1', interfaceName: 'wan0', metric: 100 },
+      { id: 'net8', destPrefix: '10.0.0.0/8', nextHop: '10.0.0.1', interfaceName: 'eth0', metric: 20 },
+      { id: 'net16', destPrefix: '10.2.0.0/16', nextHop: '10.2.0.1', interfaceName: 'eth1', metric: 10 },
+      { id: 'net24', destPrefix: '10.2.3.0/24', nextHop: '10.2.3.1', interfaceName: 'eth2', metric: 5 },
+      { id: 'disabled28', destPrefix: '10.2.3.0/28', nextHop: '10.2.3.254', interfaceName: 'eth3', metric: 1, disabled: true },
+    ];
 
-    runtime.schedule({ at: 0, type: 'ARP_CACHE_CHECK' });
-    runtime.schedule({ at: 100, type: 'ARP_CACHE_MISS', description: targetIp });
-    runtime.schedule({ at: 300, type: 'ARP_REQUEST', source: 'hostA', target: 'switch' });
-    runtime.schedule({ at: 600, type: 'SWITCH_FRAME_FLOODED', source: 'switch', target: 'all_ports' });
-    runtime.schedule({ at: 900, type: 'ARP_REPLY', source: targetIp, target: 'hostA', payload: { ip: targetIp, mac: targetMac } });
-    runtime.schedule({ at: 1200, type: 'PACKET_DELIVERED', source: 'hostA', target: targetIp });
+    it('/24 beats /16 when both match 10.2.3.45', () => {
+      const match = findBestRoute('10.2.3.45', routingTable);
+      expect(match?.id).toBe('net24');
+    });
 
-    runtime.step(1500);
+    it('/16 beats /8 when matching 10.2.99.5', () => {
+      const match = findBestRoute('10.2.99.5', routingTable);
+      expect(match?.id).toBe('net16');
+    });
 
-    const history = runtime.events.getHistory();
-    const eventTypes = history.map((e) => e.type);
+    it('/8 beats default route when matching 10.5.5.5', () => {
+      const match = findBestRoute('10.5.5.5', routingTable);
+      expect(match?.id).toBe('net8');
+    });
 
-    expect(eventTypes).toEqual([
-      'ARP_CACHE_CHECK',
-      'ARP_CACHE_MISS',
-      'ARP_REQUEST',
-      'SWITCH_FRAME_FLOODED',
-      'ARP_REPLY',
-      'PACKET_DELIVERED',
-    ]);
+    it('default route used when nothing else matches (e.g. 8.8.8.8)', () => {
+      const match = findBestRoute('8.8.8.8', routingTable);
+      expect(match?.id).toBe('default');
+    });
 
-    const replyEvt = history.find((e) => e.type === 'ARP_REPLY');
-    expect(replyEvt?.payload).toEqual({ ip: targetIp, mac: targetMac });
+    it('disabled route is ignored even if it has longer prefix', () => {
+      const match = findBestRoute('10.2.3.5', routingTable);
+      expect(match?.id).toBe('net24'); // net24 (/24) selected because disabled28 (/28) is disabled
+    });
   });
 
-  // 2. DHCP Test
-  it('DHCP: Discover -> Offer -> Request -> ACK -> Lease Created', () => {
-    const leasedIp = '192.168.1.12';
+  // 2. Subnetting Logic Test
+  describe('Subnetting Logic', () => {
+    it('calculates standard /24 subnet correctly', () => {
+      const sub = calculateSubnet('192.168.10.45', 24);
+      expect(sub.networkIp).toBe('192.168.10.0');
+      expect(sub.broadcastIp).toBe('192.168.10.255');
+      expect(sub.firstHostIp).toBe('192.168.10.1');
+      expect(sub.lastHostIp).toBe('192.168.10.254');
+      expect(sub.totalAddresses).toBe(256);
+      expect(sub.usableHosts).toBe(254);
+    });
 
-    runtime.schedule({ at: 0, type: 'DHCP_DISCOVER', source: 'Client_PC', target: '255.255.255.255:67' });
-    runtime.schedule({ at: 200, type: 'DHCP_OFFER', source: 'DHCP_Server', target: 'Client_PC', payload: { ip: leasedIp } });
-    runtime.schedule({ at: 400, type: 'DHCP_REQUEST', source: 'Client_PC', target: 'DHCP_Server', payload: { ip: leasedIp } });
-    runtime.schedule({ at: 600, type: 'DHCP_ACK', source: 'DHCP_Server', target: 'Client_PC', payload: { ip: leasedIp } });
-    runtime.schedule({ at: 601, type: 'LEASE_CREATED', source: 'DHCP_Server', target: 'Client_PC', payload: { ip: leasedIp } });
+    it('handles /31 point-to-point edge case (2 usable hosts)', () => {
+      const sub = calculateSubnet('10.0.0.0', 31);
+      expect(sub.usableHosts).toBe(2);
+      expect(sub.firstHostIp).toBe('10.0.0.0');
+      expect(sub.lastHostIp).toBe('10.0.0.1');
+    });
 
-    runtime.step(700);
+    it('handles /32 host route edge case (1 usable host)', () => {
+      const sub = calculateSubnet('10.0.0.5', 32);
+      expect(sub.usableHosts).toBe(1);
+      expect(sub.firstHostIp).toBe('10.0.0.5');
+      expect(sub.lastHostIp).toBe('10.0.0.5');
+    });
 
-    const history = runtime.events.getHistory();
-    const types = history.map((e) => e.type);
-
-    expect(types).toEqual([
-      'DHCP_DISCOVER',
-      'DHCP_OFFER',
-      'DHCP_REQUEST',
-      'DHCP_ACK',
-      'LEASE_CREATED',
-    ]);
+    it('splits /24 into 4 x /26 subnets correctly', () => {
+      const chunks = splitSubnet('192.168.1.0', 24, 26);
+      expect(chunks).toHaveLength(4);
+      expect(chunks[0].networkIp).toBe('192.168.1.0');
+      expect(chunks[1].networkIp).toBe('192.168.1.64');
+      expect(chunks[2].networkIp).toBe('192.168.1.128');
+      expect(chunks[3].networkIp).toBe('192.168.1.192');
+    });
   });
 
-  it('DHCP: Pool exhaustion blocks lease issuance deterministically', () => {
-    const activeLeases = 10;
-    const poolSize = 10;
+  // 3. VLAN Policy Logic Test
+  describe('VLAN Policy Logic', () => {
+    const dev1: VlanDevice = { id: 'd1', name: 'Finance 1', ip: '10.10.0.10', vlanId: 10 };
+    const dev2: VlanDevice = { id: 'd2', name: 'Finance 2', ip: '10.10.0.11', vlanId: 10 };
+    const dev3: VlanDevice = { id: 'd3', name: 'HR 1', ip: '10.20.0.10', vlanId: 20 };
+    const guest: VlanDevice = { id: 'd4', name: 'Guest 1', ip: '10.30.0.10', vlanId: 30, isGuest: true };
 
-    if (activeLeases >= poolSize) {
-      runtime.dispatch({
-        type: 'PACKET_BLOCKED',
-        source: 'DHCP_Server',
-        description: 'DHCP Pool Exhausted! Cannot issue lease.',
+    it('same VLAN allows L2 communication', () => {
+      const res = canCommunicateAcrossVlans(dev1, dev2, { interVlanRoutingEnabled: false });
+      expect(res.allowed).toBe(true);
+      expect(res.mode).toBe('L2_SAME_VLAN');
+    });
+
+    it('different VLAN + no routing is blocked', () => {
+      const res = canCommunicateAcrossVlans(dev1, dev3, { interVlanRoutingEnabled: false });
+      expect(res.allowed).toBe(false);
+      expect(res.mode).toBe('BLOCKED');
+    });
+
+    it('different VLAN + routing enabled is allowed', () => {
+      const res = canCommunicateAcrossVlans(dev1, dev3, { interVlanRoutingEnabled: true });
+      expect(res.allowed).toBe(true);
+      expect(res.mode).toBe('L3_INTER_VLAN');
+    });
+
+    it('guest isolation overrides generic inter-VLAN routing', () => {
+      const res = canCommunicateAcrossVlans(guest, dev1, {
+        interVlanRoutingEnabled: true,
+        guestIsolationEnabled: true,
+        guestVlanId: 30,
       });
-    }
-
-    const history = runtime.events.getHistory();
-    expect(history[0].type).toBe('PACKET_BLOCKED');
-    expect(history[0].description).toContain('Pool Exhausted');
+      expect(res.allowed).toBe(false);
+      expect(res.mode).toBe('BLOCKED');
+    });
   });
 
-  // 3. Routing Test
-  it('Routing: Longest Prefix Match selects best route and decrements TTL', () => {
-    const routes = [
-      { id: 'r1', prefix: '10.2.0.0/24', nextHop: '172.16.12.2', prefixLen: 24 },
-      { id: 'r2', prefix: '10.0.0.0/8', nextHop: '172.16.13.3', prefixLen: 8 },
-      { id: 'r3', prefix: '0.0.0.0/0', nextHop: '192.168.1.1', prefixLen: 0 },
+  // 4. Switching Logic Test
+  describe('Switching Logic', () => {
+    let camTable: CamEntry[] = [];
+
+    beforeEach(() => {
+      camTable = [
+        { port: 1, mac: '00:11:22:33:44:A1', vlan: 1, type: 'dynamic' },
+        { port: 2, mac: '00:11:22:33:44:B2', vlan: 1, type: 'dynamic' },
+      ];
+    });
+
+    it('unknown unicast destination triggers flood', () => {
+      const res = forwardFrame(camTable, '00:11:22:33:44:FF');
+      expect(res.action).toBe('FLOOD');
+      expect(res.targetPort).toBeNull();
+    });
+
+    it('known destination forwards unicast to specific port', () => {
+      const res = forwardFrame(camTable, '00:11:22:33:44:B2');
+      expect(res.action).toBe('UNICAST');
+      expect(res.targetPort).toBe(2);
+    });
+
+    it('broadcast MAC triggers flood', () => {
+      const res = forwardFrame(camTable, 'FF:FF:FF:FF:FF:FF');
+      expect(res.action).toBe('FLOOD');
+    });
+
+    it('learns new source MAC on ingress port', () => {
+      const updated = learnMac(camTable, 3, '00:11:22:33:44:C3');
+      expect(updated).toHaveLength(3);
+      expect(updated.find((e) => e.port === 3)?.mac).toBe('00:11:22:33:44:C3');
+    });
+
+    it('updates port when MAC moves to a new port', () => {
+      const updated = learnMac(camTable, 4, '00:11:22:33:44:A1');
+      expect(updated).toHaveLength(2); // Same count, MAC moved
+      expect(updated.find((e) => e.mac === '00:11:22:33:44:A1')?.port).toBe(4);
+    });
+  });
+
+  // 5. NAT Engine Test
+  describe('NAT Engine', () => {
+    it('creates deterministic session IDs and public PAT ports', () => {
+      let sessions: NatSession[] = [];
+      const res1 = createNatTranslation(sessions, '10.0.0.10', 49151);
+      sessions = res1.updatedSessions;
+
+      expect(res1.session.id).toBe('nat-session-1');
+      expect(res1.session.publicPort).toBe(50001);
+
+      const res2 = createNatTranslation(sessions, '10.0.0.11', 49152);
+      sessions = res2.updatedSessions;
+
+      expect(res2.session.id).toBe('nat-session-2');
+      expect(res2.session.publicPort).toBe(50002);
+    });
+
+    it('reuses existing mapping for identical internal flow', () => {
+      let sessions: NatSession[] = [];
+      const res1 = createNatTranslation(sessions, '10.0.0.10', 49151, '93.184.216.34', 443);
+      sessions = res1.updatedSessions;
+
+      const res2 = createNatTranslation(sessions, '10.0.0.10', 49151, '93.184.216.34', 443);
+      expect(res2.updatedSessions).toHaveLength(1);
+      expect(res2.session.id).toBe('nat-session-1');
+    });
+  });
+
+  // 6. UDP Deterministic Loss Test
+  describe('UDP Deterministic Loss', () => {
+    it('same seed + same sequence produces identical drop decision', () => {
+      const run1 = [1, 2, 3, 4, 5].map((s) => shouldDropDatagram({ seed: 42, sequence: s, lossRate: 30 }));
+      const run2 = [1, 2, 3, 4, 5].map((s) => shouldDropDatagram({ seed: 42, sequence: s, lossRate: 30 }));
+      expect(run1).toEqual(run2);
+    });
+
+    it('0% loss rate never drops', () => {
+      const dropped = shouldDropDatagram({ seed: 42, sequence: 1, lossRate: 0 });
+      expect(dropped).toBe(false);
+    });
+
+    it('100% loss rate always drops', () => {
+      const dropped = shouldDropDatagram({ seed: 42, sequence: 1, lossRate: 100 });
+      expect(dropped).toBe(true);
+    });
+  });
+
+  // 7. DHCP Engine Test
+  describe('DHCP Engine', () => {
+    it('allocates first available IP address in pool', () => {
+      const alloc = allocateLease(0, 10, '192.168.1.1', '192.168.1.2', '192.168.1.10');
+      expect(alloc.success).toBe(true);
+      expect(alloc.assignedIp).toBe('192.168.1.10');
+      expect(alloc.activeLeases).toBe(1);
+    });
+
+    it('returns error when pool is exhausted', () => {
+      const alloc = allocateLease(10, 10);
+      expect(alloc.success).toBe(false);
+      expect(alloc.errorEn).toContain('Exhausted');
+    });
+  });
+
+  // 8. ARP Cache Test
+  describe('ARP Cache Logic', () => {
+    it('checkArpCache finds existing entry or returns undefined', () => {
+      const cache: ArpEntry[] = [{ ip: '192.168.1.10', mac: '00:1A:2B:3C:4D:10', type: 'dynamic', ttl: 300 }];
+      expect(checkArpCache(cache, '192.168.1.10')?.mac).toBe('00:1A:2B:3C:4D:10');
+      expect(checkArpCache(cache, '192.168.1.99')).toBeUndefined();
+    });
+
+    it('updateArpCache replaces existing entry for same IP', () => {
+      let cache: ArpEntry[] = [{ ip: '192.168.1.10', mac: '00:1A:2B:3C:4D:10', type: 'dynamic', ttl: 300 }];
+      cache = updateArpCache(cache, '192.168.1.10', '00:1A:2B:3C:4D:FF');
+      expect(cache).toHaveLength(1);
+      expect(cache[0].mac).toBe('00:1A:2B:3C:4D:FF');
+    });
+
+    it('flushArpCache returns empty array', () => {
+      expect(flushArpCache()).toEqual([]);
+    });
+  });
+
+  // 9. Ports & Services Test
+  describe('Ports & Services Logic', () => {
+    const services: ServiceDaemon[] = [
+      { id: 'ssh', name: 'SSH', port: 22, protocol: 'TCP', running: true, descAr: '', descEn: '' },
+      { id: 'http', name: 'HTTP', port: 80, protocol: 'TCP', running: false, descAr: '', descEn: '' },
     ];
 
-    const destIp = '10.2.0.50';
-    const sorted = [...routes].sort((a, b) => b.prefixLen - a.prefixLen);
-    const bestMatch = sorted.find((r) => r.prefix === '0.0.0.0/0' || destIp.startsWith('10.2.0'));
+    it('running service accepts connection (OPEN)', () => {
+      const res = evaluatePortAccess(services, 22, 'TCP');
+      expect(res.status).toBe('OPEN');
+    });
 
-    expect(bestMatch?.id).toBe('r1');
-    expect(bestMatch?.nextHop).toBe('172.16.12.2');
+    it('stopped service rejects connection with TCP RST (CLOSED)', () => {
+      const res = evaluatePortAccess(services, 80, 'TCP');
+      expect(res.status).toBe('CLOSED');
+    });
   });
 
-  // 4. Switching Test
-  it('Switching: Unknown destination floods frame, known destination unicasts frame', () => {
-    const camTable = [
-      { port: 1, mac: '00:11:22:33:44:A1' },
-      { port: 2, mac: '00:11:22:33:44:B2' },
-    ];
+  // 10. Master Challenge Validator Test
+  describe('Master Challenge Validator', () => {
+    it('valid configuration passes with structured success result', () => {
+      const validConfig = {
+        financeSubnet: '10.50.10.0/24',
+        hrSubnet: '10.50.20.0/24',
+        guestSubnet: '10.50.30.0/24',
+        guestIsolation: true,
+        sshMgmtOnly: true,
+        httpsServerPermitted: true,
+      };
 
-    // Unknown destination
-    const unknownMac = '00:11:22:33:44:FF';
-    const matchUnknown = camTable.find((e) => e.mac === unknownMac);
-    expect(matchUnknown).toBeUndefined();
+      const res = validateNexoraBranchConfiguration(validConfig);
+      expect(res.success).toBe(true);
+      expect(res.score).toBe(100);
+      expect(res.failedChecks).toHaveLength(0);
+      expect(res.passedChecks).toHaveLength(4);
+    });
 
-    // Known destination
-    const knownMac = '00:11:22:33:44:B2';
-    const matchKnown = camTable.find((e) => e.mac === knownMac);
-    expect(matchKnown).toBeDefined();
-    expect(matchKnown?.port).toBe(2);
-  });
+    it('insecure configuration fails with detailed failedChecks list', () => {
+      const invalidConfig = {
+        financeSubnet: '10.50.10.0/24',
+        hrSubnet: '10.50.10.0/24', // Overlapping subnet error!
+        guestSubnet: '10.50.30.0/24',
+        guestIsolation: false, // Guest isolation disabled!
+        sshMgmtOnly: false,
+        httpsServerPermitted: true,
+      };
 
-  // 5. VLAN Test
-  it('VLAN: Same VLAN allowed, different VLAN blocked unless inter-VLAN routing is active', () => {
-    const dev1 = { name: 'PC1', vlan: 10 };
-    const dev2 = { name: 'PC2', vlan: 10 };
-    const dev3 = { name: 'PC3', vlan: 20 };
-
-    // Intra-VLAN 10
-    expect(dev1.vlan === dev2.vlan).toBe(true);
-
-    // Inter-VLAN without L3 router
-    let interVlanRouting = false;
-    let allowed = dev1.vlan === dev3.vlan || interVlanRouting;
-    expect(allowed).toBe(false);
-
-    // Inter-VLAN with L3 router
-    interVlanRouting = true;
-    allowed = dev1.vlan === dev3.vlan || interVlanRouting;
-    expect(allowed).toBe(true);
-  });
-
-  // 6. NAT Test
-  it('NAT: Private socket translates deterministically to public PAT socket', () => {
-    const sessions = [
-      { index: 1, privateIp: '10.0.0.10', privatePort: 49151, publicPort: 50001 },
-      { index: 2, privateIp: '10.0.0.11', privatePort: 49152, publicPort: 50002 },
-    ];
-
-    expect(sessions[0].publicPort).toBe(50001);
-    expect(sessions[1].publicPort).toBe(50002);
-  });
-
-  // 7. UDP Determinism Test
-  it('UDP: Seeded loss pattern is 100% reproducible', () => {
-    const isDropped = (index: number, rate: number) => {
-      const pseudoRand = ((index * 9301 + 49297) % 233280) / 233280;
-      return pseudoRand * 100 < rate;
-    };
-
-    const run1 = [1, 2, 3, 4, 5].map((i) => isDropped(i, 30));
-    const run2 = [1, 2, 3, 4, 5].map((i) => isDropped(i, 30));
-
-    expect(run1).toEqual(run2);
-  });
-
-  // 8. Ports & Services Test
-  it('Ports: Open service accepts connection, closed service rejects with RST', () => {
-    const services = [
-      { port: 22, running: true },
-      { port: 80, running: false },
-    ];
-
-    const ssh = services.find((s) => s.port === 22);
-    const http = services.find((s) => s.port === 80);
-
-    expect(ssh?.running).toBe(true);
-    expect(http?.running).toBe(false);
-  });
-
-  // 9. Master Challenge Test
-  it('Master Challenge: Valid configuration passes all policy conditions', () => {
-    const config = {
-      guestIsolation: true,
-      sshMgmtOnly: true,
-      httpsServerPermitted: true,
-      financeSubnet: '10.50.10.0/24',
-      hrSubnet: '10.50.20.0/24',
-      guestSubnet: '10.50.30.0/24',
-    };
-
-    const isSubnetValid = config.financeSubnet !== config.hrSubnet && config.financeSubnet !== config.guestSubnet;
-    const isPassed = config.guestIsolation && config.sshMgmtOnly && config.httpsServerPermitted && isSubnetValid;
-
-    expect(isPassed).toBe(true);
+      const res = validateNexoraBranchConfiguration(invalidConfig);
+      expect(res.success).toBe(false);
+      expect(res.score).toBeLessThan(100);
+      expect(res.failedChecks.length).toBeGreaterThan(0);
+      expect(res.failedChecks).toContain('Guest Network Isolation Enforcement');
+      expect(res.failedChecks).toContain('Subnet Boundary Integrity');
+    });
   });
 });

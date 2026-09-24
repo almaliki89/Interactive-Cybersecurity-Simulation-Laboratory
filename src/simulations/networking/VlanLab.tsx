@@ -2,13 +2,7 @@ import React, { useState } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Layers, ShieldCheck, ShieldAlert, Cpu, ToggleLeft, ToggleRight, Send } from 'lucide-react';
-
-interface DeviceNode {
-  id: string;
-  name: string;
-  ip: string;
-  vlanId: number;
-}
+import { canCommunicateAcrossVlans, VlanDevice } from './logic/vlan';
 
 export const VlanLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -19,11 +13,11 @@ export const VlanLab: React.FC = () => {
   const [dstDeviceId, setDstDeviceId] = useState<string>('d3');
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  const [devices, setDevices] = useState<DeviceNode[]>([
+  const [devices, setDevices] = useState<VlanDevice[]>([
     { id: 'd1', name: 'Finance PC 1', ip: '10.10.0.10', vlanId: 10 },
     { id: 'd2', name: 'Finance PC 2', ip: '10.10.0.11', vlanId: 10 },
     { id: 'd3', name: 'HR PC 1', ip: '10.20.0.10', vlanId: 20 },
-    { id: 'd4', name: 'Guest Laptop', ip: '10.30.0.10', vlanId: 30 },
+    { id: 'd4', name: 'Guest Laptop', ip: '10.30.0.10', vlanId: 30, isGuest: true },
   ]);
 
   const handleVlanChange = (id: string, newVlan: number) => {
@@ -36,32 +30,28 @@ export const VlanLab: React.FC = () => {
     const src = devices.find((d) => d.id === srcDeviceId)!;
     const dst = devices.find((d) => d.id === dstDeviceId)!;
 
-    if (src.vlanId === dst.vlanId) {
-      setTestResult(`SUCCESS: ${src.name} and ${dst.name} are on the SAME VLAN (${src.vlanId}). L2 communication ALLOWED!`);
+    const evalRes = canCommunicateAcrossVlans(src, dst, {
+      interVlanRoutingEnabled,
+      guestIsolationEnabled: true,
+      guestVlanId: 30,
+    });
+
+    if (evalRes.allowed) {
+      setTestResult(`SUCCESS: ${isAr ? evalRes.reasonAr : evalRes.reasonEn}`);
       globalSimulationRuntime.dispatch({
-        type: 'PACKET_DELIVERED',
+        type: 'VLAN_FRAME_ALLOWED',
         source: src.name,
         target: dst.name,
-        description: `Intra-VLAN ${src.vlanId} L2 Frame transmitted successfully`,
+        description: evalRes.reasonEn,
       });
     } else {
-      if (interVlanRoutingEnabled) {
-        setTestResult(`SUCCESS: ${src.name} (VLAN ${src.vlanId}) communicated with ${dst.name} (VLAN ${dst.vlanId}) via L3 Inter-VLAN Router-on-a-Stick!`);
-        globalSimulationRuntime.dispatch({
-          type: 'PACKET_DELIVERED',
-          source: src.name,
-          target: dst.name,
-          description: `Inter-VLAN L3 Routed packet delivered from VLAN ${src.vlanId} to VLAN ${dst.vlanId}`,
-        });
-      } else {
-        setTestResult(`BLOCKED: ${src.name} (VLAN ${src.vlanId}) cannot reach ${dst.name} (VLAN ${dst.vlanId}). Inter-VLAN Routing is DISABLED!`);
-        globalSimulationRuntime.dispatch({
-          type: 'PACKET_BLOCKED',
-          source: src.name,
-          target: dst.name,
-          description: `Inter-VLAN Frame dropped due to L2 Isolation boundary`,
-        });
-      }
+      setTestResult(`BLOCKED: ${isAr ? evalRes.reasonAr : evalRes.reasonEn}`);
+      globalSimulationRuntime.dispatch({
+        type: 'VLAN_FRAME_BLOCKED',
+        source: src.name,
+        target: dst.name,
+        description: evalRes.reasonEn,
+      });
     }
   };
 

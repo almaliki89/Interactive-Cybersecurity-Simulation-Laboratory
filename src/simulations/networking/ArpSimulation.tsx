@@ -2,13 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Play, Pause, RotateCcw, Send, Trash2, CheckCircle2, ShieldAlert, Cpu, Network, ArrowRight } from 'lucide-react';
-
-interface ArpEntry {
-  ip: string;
-  mac: string;
-  type: 'dynamic' | 'static';
-  ttl: number;
-}
+import { checkArpCache, updateArpCache, ArpEntry } from './logic/arp';
 
 export const ArpSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);

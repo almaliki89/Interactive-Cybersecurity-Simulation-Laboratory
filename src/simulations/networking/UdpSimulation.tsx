@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Zap, Send, ShieldAlert, CheckCircle2, RotateCcw } from 'lucide-react';
+import { shouldDropDatagram } from './logic/udp';
 
 export const UdpSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -12,19 +13,11 @@ export const UdpSimulation: React.FC = () => {
   const [packetsDelivered, setPacketsDelivered] = useState<number>(0);
   const [packetsDropped, setPacketsDropped] = useState<number>(0);
 
-  // Deterministic PRNG formula based on sequence index
-  const isPacketDropped = (index: number, rate: number) => {
-    if (rate <= 0) return false;
-    if (rate >= 100) return true;
-    const pseudoRand = ((index * 9301 + 49297) % 233280) / 233280;
-    return pseudoRand * 100 < rate;
-  };
-
   const handleSendUdpDatagram = () => {
     const nextCount = packetsSent + 1;
     setPacketsSent(nextCount);
 
-    const dropped = isPacketDropped(nextCount, lossRate);
+    const dropped = shouldDropDatagram({ seed: 42, sequence: nextCount, lossRate });
 
     globalSimulationRuntime.dispatch({
       type: 'UDP_DATAGRAM_SENT',

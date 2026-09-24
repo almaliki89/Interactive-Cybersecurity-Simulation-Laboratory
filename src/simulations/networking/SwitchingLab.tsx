@@ -2,13 +2,7 @@ import React, { useState } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Network, Cpu, Trash2, Send, CheckCircle2, ArrowRight } from 'lucide-react';
-
-interface CamEntry {
-  port: number;
-  mac: string;
-  vlan: number;
-  type: 'dynamic' | 'static';
-}
+import { learnMac, forwardFrame, CamEntry } from './logic/switching';
 
 export const SwitchingLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -34,27 +28,25 @@ export const SwitchingLab: React.FC = () => {
     const srcNode = hosts.find((h) => h.id === srcHost)!;
     const dstNode = hosts.find((h) => h.id === dstHost)!;
 
-    // 1. Learn source MAC on ingress port
-    setCamTable((prev) => {
-      const filtered = prev.filter((entry) => entry.port !== srcNode.port);
-      return [...filtered, { port: srcNode.port, mac: srcNode.mac, vlan: 1, type: 'dynamic' }];
-    });
+    // 1. Learn source MAC
+    const updatedCam = learnMac(camTable, srcNode.port, srcNode.mac, 1, 'dynamic');
+    setCamTable(updatedCam);
 
-    // 2. Lookup destination MAC in CAM Table
-    const dstInCam = camTable.find((e) => e.mac === dstNode.mac);
+    // 2. Forward frame
+    const res = forwardFrame(updatedCam, dstNode.mac, srcNode.port);
 
-    if (dstInCam) {
-      setLastAction(`UNICAST FORWARDING: Target MAC ${dstNode.mac} found on Port ${dstInCam.port}. Frame forwarded directly!`);
+    if (res.action === 'UNICAST' && res.targetPort !== null) {
+      setLastAction(`UNICAST FORWARDING: Target MAC ${dstNode.mac} found on Port ${res.targetPort}. Frame forwarded directly!`);
       globalSimulationRuntime.dispatch({
-        type: 'PACKET_DELIVERED',
+        type: 'SWITCH_FRAME_FORWARDED',
         source: srcNode.name,
         target: dstNode.name,
-        description: `Unicast L2 Frame forwarded on Port ${dstInCam.port}`,
+        description: `Unicast L2 Frame forwarded on Port ${res.targetPort}`,
       });
     } else {
       setLastAction(`UNKNOWN UNICAST FLOODING: Target MAC ${dstNode.mac} missing from CAM Table. Frame flooded to all ports except Port ${srcNode.port}!`);
       globalSimulationRuntime.dispatch({
-        type: 'PACKET_SENT',
+        type: 'SWITCH_FRAME_FLOODED',
         source: srcNode.name,
         target: 'all_ports',
         description: `Unknown Unicast Flooded to all ports except Port ${srcNode.port}`,

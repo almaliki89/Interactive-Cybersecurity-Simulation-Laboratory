@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Award, ShieldCheck, ShieldAlert, Play, CheckCircle2, Network, Layers, Lock, Cpu, Server } from 'lucide-react';
+import { validateNexoraBranchConfiguration } from './logic/nexoraValidator';
 
 interface VerificationRule {
   id: string;
@@ -64,27 +65,27 @@ export const NexoraBranchMasterChallenge: React.FC = () => {
   const handleRunVerification = () => {
     globalSimulationRuntime.reset();
 
-    let passedCount = 0;
-    const updatedRules = rules.map((rule) => {
-      let isPassed = false;
-      if (rule.id === 'r1') isPassed = guestIsolation;
-      if (rule.id === 'r2') isPassed = sshMgmtOnly;
-      if (rule.id === 'r3') isPassed = httpsServerPermitted;
-      if (rule.id === 'r4') isPassed = financeSubnet !== hrSubnet && financeSubnet !== guestSubnet && hrSubnet !== guestSubnet;
+    const valResult = validateNexoraBranchConfiguration({
+      financeSubnet,
+      hrSubnet,
+      guestSubnet,
+      guestIsolation,
+      sshMgmtOnly,
+      httpsServerPermitted,
+    });
 
-      if (isPassed) passedCount++;
-
+    const updatedRules = rules.map((r) => {
+      const match = valResult.checkDetails.find((c) => c.id === r.id);
       return {
-        ...rule,
-        status: isPassed ? ('passed' as const) : ('failed' as const),
+        ...r,
+        status: match?.passed ? ('passed' as const) : ('failed' as const),
       };
     });
 
     setRules(updatedRules);
-    const score = Math.round((passedCount / rules.length) * 100);
-    setOverallScore(score);
+    setOverallScore(valResult.score);
 
-    if (score === 100) {
+    if (valResult.success) {
       completeChallenge('nexora_master');
       globalSimulationRuntime.dispatch({
         type: 'ALERT_CREATED',
@@ -95,7 +96,7 @@ export const NexoraBranchMasterChallenge: React.FC = () => {
       globalSimulationRuntime.dispatch({
         type: 'PACKET_BLOCKED',
         source: 'NEXORA_SECURITY_AUDITOR',
-        description: `AUDIT FAILED: Compliance score ${score}%`,
+        description: `AUDIT FAILED: Failed checks: ${valResult.failedChecks.join(', ')}`,
       });
     }
   };

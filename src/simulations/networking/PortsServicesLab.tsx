@@ -2,16 +2,7 @@ import React, { useState } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Server, ShieldCheck, ShieldAlert, Cpu, ToggleLeft, ToggleRight, Send } from 'lucide-react';
-
-interface ServiceDaemon {
-  id: string;
-  name: string;
-  port: number;
-  protocol: 'TCP' | 'UDP';
-  running: boolean;
-  descAr: string;
-  descEn: string;
-}
+import { evaluatePortAccess, ServiceDaemon } from './logic/ports';
 
 export const PortsServicesLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -35,22 +26,23 @@ export const PortsServicesLab: React.FC = () => {
   };
 
   const handleTestPortConnection = () => {
-    const daemon = services.find((s) => s.port === targetPort);
+    const proto = targetPort === 53 ? 'UDP' : 'TCP';
+    const evalRes = evaluatePortAccess(services, targetPort, proto);
 
-    if (daemon && daemon.running) {
-      setTestResult(`PORT ${targetPort} OPEN: Connected to ${daemon.name} (${daemon.protocol}). Socket established successfully!`);
+    if (evalRes.status === 'OPEN') {
+      setTestResult(isAr ? evalRes.messageAr : evalRes.messageEn);
       globalSimulationRuntime.dispatch({
         type: 'CONNECTION_OPENED',
         source: 'Client_PC (10.0.0.5:49200)',
         target: `Server (10.0.0.100:${targetPort})`,
-        description: `Socket established on open port ${targetPort} (${daemon.name})`,
+        description: evalRes.messageEn,
       });
     } else {
-      setTestResult(`PORT ${targetPort} CLOSED: Server rejected connection with TCP RST frame (Connection Refused).`);
+      setTestResult(isAr ? evalRes.messageAr : evalRes.messageEn);
       globalSimulationRuntime.dispatch({
         type: 'PACKET_BLOCKED',
         source: `Server (10.0.0.100:${targetPort})`,
-        description: `TCP RST returned on closed port ${targetPort}`,
+        description: evalRes.messageEn,
       });
     }
   };

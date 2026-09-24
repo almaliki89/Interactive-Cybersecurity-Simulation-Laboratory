@@ -2,23 +2,13 @@ import React, { useState } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Network, Globe, Cpu, ArrowRight, Trash2, Send } from 'lucide-react';
-
-interface NatEntry {
-  id: string;
-  privateIp: string;
-  privatePort: number;
-  publicIp: string;
-  publicPort: number;
-  destIp: string;
-  destPort: number;
-  protocol: 'TCP' | 'UDP';
-}
+import { createNatTranslation, NatSession } from './logic/nat';
 
 export const NatSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
 
-  const [natTable, setNatTable] = useState<NatEntry[]>([
+  const [natTable, setNatTable] = useState<NatSession[]>([
     {
       id: 'nat-session-1',
       privateIp: '10.0.0.10',
@@ -34,29 +24,25 @@ export const NatSimulation: React.FC = () => {
   const [selectedHostIp, setSelectedHostIp] = useState<string>('10.0.0.11');
 
   const handleCreateConnection = () => {
-    const sessionIndex = natTable.length + 1;
-    const newPort = 50000 + sessionIndex;
-    const newSrcPort = 49150 + sessionIndex;
+    const nextPrivatePort = 49150 + natTable.length + 1;
+    const { updatedSessions, session } = createNatTranslation(
+      natTable,
+      selectedHostIp,
+      nextPrivatePort,
+      '93.184.216.34',
+      443,
+      'TCP',
+      '203.0.113.1'
+    );
 
-    const entry: NatEntry = {
-      id: `nat-session-${sessionIndex}`,
-      privateIp: selectedHostIp,
-      privatePort: newSrcPort,
-      publicIp: '203.0.113.1',
-      publicPort: newPort,
-      destIp: '93.184.216.34',
-      destPort: 443,
-      protocol: 'TCP',
-    };
-
-    setNatTable((prev) => [...prev, entry]);
+    setNatTable(updatedSessions);
 
     globalSimulationRuntime.dispatch({
       type: 'NAT_TRANSLATION_CREATED',
-      source: `${selectedHostIp}:${newSrcPort}`,
-      target: `203.0.113.1:${newPort}`,
-      payload: entry,
-      description: `NAT Translation created: ${selectedHostIp}:${newSrcPort} -> 203.0.113.1:${newPort}`,
+      source: `${session.privateIp}:${session.privatePort}`,
+      target: `${session.publicIp}:${session.publicPort}`,
+      payload: session,
+      description: `NAT Translation created: ${session.privateIp}:${session.privatePort} -> ${session.publicIp}:${session.publicPort}`,
     });
   };
 

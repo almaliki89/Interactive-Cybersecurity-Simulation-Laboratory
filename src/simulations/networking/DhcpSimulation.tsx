@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Server, Cpu, Send, RotateCcw, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { allocateLease } from './logic/dhcp';
 
 export const DhcpSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -47,16 +48,18 @@ export const DhcpSimulation: React.FC = () => {
   const handleStartDora = () => {
     globalSimulationRuntime.reset();
 
-    if (activeLeases >= poolSize) {
+    const alloc = allocateLease(activeLeases, poolSize, gatewayIp, dnsIp, '192.168.1.10');
+
+    if (!alloc.success || !alloc.assignedIp) {
       globalSimulationRuntime.dispatch({
         type: 'PACKET_BLOCKED',
         source: 'DHCP_Server',
-        description: 'DHCP Pool Exhausted! Cannot issue lease.',
+        description: alloc.errorEn || 'DHCP Pool Exhausted!',
       });
       return;
     }
 
-    const offeredIp = `192.168.1.${10 + activeLeases}`;
+    const offeredIp = alloc.assignedIp;
 
     globalSimulationRuntime.schedule({
       at: 0,
@@ -102,7 +105,7 @@ export const DhcpSimulation: React.FC = () => {
       description: `IP Lease Created: ${offeredIp}`,
     });
 
-    setActiveLeases((prev) => prev + 1);
+    setActiveLeases(alloc.activeLeases);
     globalSimulationRuntime.start();
   };
 

@@ -1,16 +1,7 @@
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { Network, Split, Cpu, Layers, CheckCircle, AlertTriangle } from 'lucide-react';
-
-interface SubnetChunk {
-  subnetIndex: number;
-  networkIp: string;
-  firstHostIp: string;
-  lastHostIp: string;
-  broadcastIp: string;
-  usableHosts: number;
-  mask: string;
-}
+import { splitSubnet } from './logic/subnetting';
 
 export const SubnettingLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -20,63 +11,7 @@ export const SubnettingLab: React.FC = () => {
   const [basePrefix, setBasePrefix] = useState<number>(24);
   const [targetPrefix, setTargetPrefix] = useState<number>(26);
 
-  // Parse IP to integer
-  const ipToInt = (ipStr: string): number => {
-    return ipStr
-      .split('.')
-      .reduce((acc, octet) => ((acc << 8) + parseInt(octet, 10)) >>> 0, 0);
-  };
-
-  // Convert integer to IP string
-  const intToIp = (ipInt: number): string => {
-    return [
-      (ipInt >>> 24) & 255,
-      (ipInt >>> 16) & 255,
-      (ipInt >>> 8) & 255,
-      ipInt & 255,
-    ].join('.');
-  };
-
-  const getMaskStr = (prefix: number): string => {
-    const maskBin = '1'.repeat(prefix) + '0'.repeat(32 - prefix);
-    return [
-      parseInt(maskBin.slice(0, 8), 2),
-      parseInt(maskBin.slice(8, 16), 2),
-      parseInt(maskBin.slice(16, 24), 2),
-      parseInt(maskBin.slice(24, 32), 2),
-    ].join('.');
-  };
-
-  // Calculate Subnet Chunks
-  const calculateSubnets = (): SubnetChunk[] => {
-    const effectiveTargetPrefix = Math.max(basePrefix, Math.min(30, targetPrefix));
-    const numSubnets = Math.pow(2, effectiveTargetPrefix - basePrefix);
-    const chunkSize = Math.pow(2, 32 - effectiveTargetPrefix);
-
-    const baseInt = ipToInt(baseIp);
-    const chunks: SubnetChunk[] = [];
-
-    for (let i = 0; i < numSubnets; i++) {
-      const netInt = baseInt + i * chunkSize;
-      const bcastInt = netInt + chunkSize - 1;
-      const firstInt = netInt + 1;
-      const lastInt = bcastInt - 1;
-
-      chunks.push({
-        subnetIndex: i + 1,
-        networkIp: intToIp(netInt),
-        firstHostIp: chunkSize > 2 ? intToIp(firstInt) : intToIp(netInt),
-        lastHostIp: chunkSize > 2 ? intToIp(lastInt) : intToIp(bcastInt),
-        broadcastIp: intToIp(bcastInt),
-        usableHosts: chunkSize > 2 ? chunkSize - 2 : chunkSize,
-        mask: getMaskStr(effectiveTargetPrefix),
-      });
-    }
-
-    return chunks;
-  };
-
-  const subnets = calculateSubnets();
+  const subnets = splitSubnet(baseIp, basePrefix, targetPrefix);
   const numSubnets = subnets.length;
 
   return (

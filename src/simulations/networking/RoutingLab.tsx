@@ -2,14 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { ArrowRight, Route, Send, Plus, Trash2, Cpu, ShieldAlert, CheckCircle2 } from 'lucide-react';
-
-interface RouteEntry {
-  id: string;
-  destPrefix: string;
-  nextHop: string;
-  interfaceName: string;
-  metric: number;
-}
+import { findBestRoute, RouteEntry } from './logic/routing';
 
 export const RoutingLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -53,33 +46,10 @@ export const RoutingLab: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Longest Prefix Match Logic
-  const evalLpm = (ipStr: string) => {
-    const sorted = [...routes].sort((a, b) => {
-      const pA = parseInt(a.destPrefix.split('/')[1] || '0', 10);
-      const pB = parseInt(b.destPrefix.split('/')[1] || '0', 10);
-      return pB - pA;
-    });
-
-    let matched: RouteEntry | null = null;
-    for (const r of sorted) {
-      if (r.destPrefix === '0.0.0.0/0') {
-        if (!matched) matched = r;
-        continue;
-      }
-      if (ipStr.startsWith(r.destPrefix.split('.')[0])) {
-        matched = r;
-        break;
-      }
-    }
-
-    setLpmMatch(matched);
-    return matched;
-  };
-
   const handleSimulateRoute = () => {
     globalSimulationRuntime.reset();
-    const match = evalLpm(destIp);
+    const match = findBestRoute(destIp, routes);
+    setLpmMatch(match);
 
     globalSimulationRuntime.schedule({
       at: 0,
