@@ -71,6 +71,43 @@ const SiemSimulation = React.lazy(() =>
   import('./siem/SiemSimulation').then((m) => ({ default: m.SiemSimulation }))
 );
 
+const NetworkingWorldMap = React.lazy(() =>
+  import('./networking/NetworkingWorldMap').then((m) => ({ default: m.NetworkingWorldMap }))
+);
+const ArpSimulation = React.lazy(() =>
+  import('./networking/ArpSimulation').then((m) => ({ default: m.ArpSimulation }))
+);
+const Ipv4Visualizer = React.lazy(() =>
+  import('./networking/Ipv4Visualizer').then((m) => ({ default: m.Ipv4Visualizer }))
+);
+const SubnettingLab = React.lazy(() =>
+  import('./networking/SubnettingLab').then((m) => ({ default: m.SubnettingLab }))
+);
+const RoutingLab = React.lazy(() =>
+  import('./networking/RoutingLab').then((m) => ({ default: m.RoutingLab }))
+);
+const SwitchingLab = React.lazy(() =>
+  import('./networking/SwitchingLab').then((m) => ({ default: m.SwitchingLab }))
+);
+const VlanLab = React.lazy(() =>
+  import('./networking/VlanLab').then((m) => ({ default: m.VlanLab }))
+);
+const DhcpSimulation = React.lazy(() =>
+  import('./networking/DhcpSimulation').then((m) => ({ default: m.DhcpSimulation }))
+);
+const NatSimulation = React.lazy(() =>
+  import('./networking/NatSimulation').then((m) => ({ default: m.NatSimulation }))
+);
+const UdpSimulation = React.lazy(() =>
+  import('./networking/UdpSimulation').then((m) => ({ default: m.UdpSimulation }))
+);
+const PortsServicesLab = React.lazy(() =>
+  import('./networking/PortsServicesLab').then((m) => ({ default: m.PortsServicesLab }))
+);
+const NexoraBranchMasterChallenge = React.lazy(() =>
+  import('./networking/NexoraBranchMasterChallenge').then((m) => ({ default: m.NexoraBranchMasterChallenge }))
+);
+
 export interface SimulationRegistration {
   id: SimulationId;
   nameAr: string;
@@ -275,6 +312,116 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
     domain: 'engineering',
     component: ZeroTrustSimulation,
     worldId: 38,
+    category: 'lab',
+  },
+
+  // Networking Universe Expansions
+  networking_map: {
+    id: 'networking_map',
+    nameAr: 'خريطة عالم الشبكات الشاملة (World 3)',
+    nameEn: 'Networking Universe Map Hub',
+    domain: 'infrastructure',
+    component: NetworkingWorldMap,
+    worldId: 3,
+    category: 'lab',
+  },
+  arp: {
+    id: 'arp',
+    nameAr: 'بروتوكول ربط العناوين ARP',
+    nameEn: 'ARP Resolution & Cache Lab',
+    domain: 'infrastructure',
+    component: ArpSimulation,
+    worldId: 3,
+    category: 'lab',
+  },
+  ipv4: {
+    id: 'ipv4',
+    nameAr: 'المصور التفاعلي لـ IPv4',
+    nameEn: 'IPv4 Binary & Subnet Inspector',
+    domain: 'infrastructure',
+    component: Ipv4Visualizer,
+    worldId: 3,
+    category: 'lab',
+  },
+  subnetting: {
+    id: 'subnetting',
+    nameAr: 'مختبر تقسيم الشبكات Subnetting',
+    nameEn: 'Subnetting & VLSM Lab',
+    domain: 'infrastructure',
+    component: SubnettingLab,
+    worldId: 3,
+    category: 'lab',
+  },
+  routing: {
+    id: 'routing',
+    nameAr: 'مختبر توجيه الحزم والجداول',
+    nameEn: 'Routing Tables & LPM Lab',
+    domain: 'infrastructure',
+    component: RoutingLab,
+    worldId: 3,
+    category: 'lab',
+  },
+  switching: {
+    id: 'switching',
+    nameAr: 'مختبر المبدلات وجدول CAM',
+    nameEn: 'Layer 2 Switch CAM Table Lab',
+    domain: 'infrastructure',
+    component: SwitchingLab,
+    worldId: 3,
+    category: 'lab',
+  },
+  vlan: {
+    id: 'vlan',
+    nameAr: 'مختبر عزل شبكات VLAN',
+    nameEn: 'VLAN Segmentation & Trunking Lab',
+    domain: 'infrastructure',
+    component: VlanLab,
+    worldId: 3,
+    category: 'lab',
+  },
+  dhcp: {
+    id: 'dhcp',
+    nameAr: 'مختبر بروتوكول DHCP DORA',
+    nameEn: 'DHCP DORA Lease Engine',
+    domain: 'infrastructure',
+    component: DhcpSimulation,
+    worldId: 3,
+    category: 'lab',
+  },
+  nat: {
+    id: 'nat',
+    nameAr: 'محاكي ترجمة العناوين NAT',
+    nameEn: 'NAT Gateway & PAT Engine',
+    domain: 'infrastructure',
+    component: NatSimulation,
+    worldId: 3,
+    category: 'lab',
+  },
+  udp: {
+    id: 'udp',
+    nameAr: 'محاكي بروتوكول UDP',
+    nameEn: 'UDP Connectionless Datagram Lab',
+    domain: 'infrastructure',
+    component: UdpSimulation,
+    worldId: 3,
+    category: 'lab',
+  },
+  ports_services: {
+    id: 'ports_services',
+    nameAr: 'مختبر المنافذ والخدمات',
+    nameEn: 'Ports & Socket Binding Lab',
+    domain: 'infrastructure',
+    component: PortsServicesLab,
+    worldId: 3,
+    category: 'lab',
+  },
+  nexora_master: {
+    id: 'nexora_master',
+    nameAr: 'التحدي الرئيسي: شبكة NEXORA Branch',
+    nameEn: 'NEXORA Branch Master Challenge',
+    domain: 'infrastructure',
+    component: NexoraBranchMasterChallenge,
+    worldId: 3,
     category: 'lab',
   },
 };

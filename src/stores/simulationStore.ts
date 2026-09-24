@@ -34,7 +34,19 @@ export type SimulationId =
   | 'appsec_api'
   | 'cloud_containers'
   | 'threat_hunting'
-  | 'zero_trust';
+  | 'zero_trust'
+  | 'networking_map'
+  | 'arp'
+  | 'ipv4'
+  | 'subnetting'
+  | 'routing'
+  | 'switching'
+  | 'vlan'
+  | 'dhcp'
+  | 'nat'
+  | 'udp'
+  | 'ports_services'
+  | 'nexora_master';
 
 export interface SelectedEntity {
   type: 'node' | 'packet' | 'rule' | 'log' | 'event' | 'connection' | 'world' | 'concept';

@@ -239,7 +239,7 @@ export const WORLDS_REGISTRY: Record<number, WorldDefinition> = {
     descriptionAr: 'صمم شبكات فرعية، وتتبع مسار الحزم عبر الموجهات (Routers)، وشاهد ترجمة العناوين (NAT) في الوقت الفعلي.',
     descriptionEn: 'Interactive subnet designer, dynamic multi-hop packet routing, and NAT translation visualizer.',
     difficulty: 'Beginner',
-    simulationType: 'subnet_routing',
+    simulationType: 'networking_map',
     iconName: 'Network',
     prerequisites: [1],
     relatedWorlds: [4, 8, 18, 38],
