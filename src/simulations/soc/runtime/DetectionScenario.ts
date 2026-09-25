@@ -117,6 +117,18 @@ export function loadSocDetectionScenario(
       payload: { eventId: '4688', user, host, process: 'cmd.exe', parentProcess: 'svchost.exe', suspicious: true },
     },
 
+    // 5. Linux Service / Process Anomaly
+    {
+      at: startTime + 820,
+      type: 'LINUX_PROCESS_SPAWNED',
+      source: 'LINUX-SRV-01',
+      target: 'LINUX-SRV-01',
+      category: 'LINUX',
+      severity: 'warn',
+      description: `Anomalous Linux process '/usr/bin/python3 -m http.server' spawned on 'LINUX-SRV-01' by 'root'`,
+      payload: { user: 'root', host: 'LINUX-SRV-01', process: '/usr/bin/python3', parentProcess: 'bash', suspicious: true },
+    },
+
     // 5. Network Port Scan / Denied Probe
     {
       at: startTime + 900,

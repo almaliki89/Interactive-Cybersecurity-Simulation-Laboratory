@@ -423,6 +423,7 @@ describe('SOC, SIEM & Detection Engineering Logic Test Suite', () => {
         'evt-net-probe-1',
         'evt-sensitive-share-access',
         'evt-app-bola-violation',
+        'evt-log-tamper',
       ];
       state.selectedContainmentActions = [
         'REVOKE_ACTIVE_SESSIONS',
@@ -451,6 +452,63 @@ describe('SOC, SIEM & Detection Engineering Logic Test Suite', () => {
       expect(res.businessContinuityPassed).toBe(true);
     });
 
+    // Timeline Validation Tests (Requirement 6)
+    describe('Incident Timeline Validation Checks', () => {
+      it('fails when five random uncoordinated events are selected', () => {
+        const state = getHardenedState();
+        state.attachedTimelineEventIds = [
+          'random-evt-1',
+          'random-evt-2',
+          'random-evt-3',
+          'random-evt-4',
+          'random-evt-5',
+        ];
+        const res = validateSocInvestigationState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-incident-timeline-reconstruction');
+      });
+
+      it('fails when correct events are attached in wrong chronological order', () => {
+        const state = getHardenedState();
+        state.attachedTimelineEventIds = [
+          'evt-log-tamper', // Log tamper before auth fail!
+          'evt-auth-fail-1',
+          'evt-auth-success',
+          'evt-priv-group-mod',
+          'evt-process-spawn',
+          'evt-net-probe-1',
+          'evt-sensitive-share-access',
+          'evt-app-bola-violation',
+        ];
+        const res = validateSocInvestigationState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-incident-timeline-reconstruction');
+      });
+
+      it('fails when one critical stage (e.g. log tamper) is missing', () => {
+        const state = getHardenedState();
+        state.attachedTimelineEventIds = [
+          'evt-auth-fail-1',
+          'evt-auth-success',
+          'evt-priv-group-mod',
+          'evt-process-spawn',
+          'evt-net-probe-1',
+          'evt-sensitive-share-access',
+          'evt-app-bola-violation',
+          // missing log tamper!
+        ];
+        const res = validateSocInvestigationState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-incident-timeline-reconstruction');
+      });
+
+      it('passes when full correct chronology is present in exact order', () => {
+        const state = getHardenedState();
+        const res = validateSocInvestigationState(state);
+        expect(res.passedChecks).toContain('chk-incident-timeline-reconstruction');
+      });
+    });
+
     // Single-Defect Failures
     it('missing auth brute detection → fail', () => {
       const state = getHardenedState();
@@ -477,6 +535,15 @@ describe('SOC, SIEM & Detection Engineering Logic Test Suite', () => {
     });
 
     // Anti-Cheat Verifications
+    it('anti-cheat: suppressAllAlerts → fail', () => {
+      const state = getHardenedState();
+      state.suppressAllAlerts = true;
+      const res = validateSocInvestigationState(state);
+      expect(res.success).toBe(false);
+      expect(res.businessContinuityPassed).toBe(false);
+      expect(res.failedChecks).toContain('chk-alert-suppression');
+    });
+
     it('anti-cheat: shutdownEntireCoreServer → fail', () => {
       const state = getHardenedState();
       state.shutdownEntireCoreServer = true;

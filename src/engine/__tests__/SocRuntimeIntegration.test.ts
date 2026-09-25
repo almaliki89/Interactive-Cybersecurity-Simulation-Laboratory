@@ -32,9 +32,10 @@ describe('SOC & SIEM SimulationRuntime Integration Tests', () => {
 
       // Verify all five worlds represented
       const distinctWorlds = new Set(telemetry.map((t) => t.sourceWorld));
+      expect(distinctWorlds.has('NETWORK')).toBe(true);
+      expect(distinctWorlds.has('LINUX')).toBe(true);
       expect(distinctWorlds.has('WINDOWS')).toBe(true);
       expect(distinctWorlds.has('IDENTITY')).toBe(true);
-      expect(distinctWorlds.has('NETWORK')).toBe(true);
       expect(distinctWorlds.has('APPSEC')).toBe(true);
 
       // Evaluate detection rules against runtime-streamed telemetry
@@ -45,6 +46,32 @@ describe('SOC & SIEM SimulationRuntime Integration Tests', () => {
       const groups = correlateAlerts(alerts, telemetry);
       expect(groups.length).toBeGreaterThanOrEqual(1);
       expect(groups[0].entities.primaryUser).toBe('sara');
+    });
+
+    it('cross-world normalization: normalizes Linux event through SocEventBridge -> normalizeRuntimeEvent -> normalizeLinuxEvent -> enrichTelemetryEvent', () => {
+      runtime.events.scheduleBatch([
+        {
+          at: 10,
+          type: 'LINUX_PROCESS_SPAWNED',
+          source: 'LINUX-SRV-01',
+          target: 'LINUX-SRV-01',
+          category: 'LINUX',
+          severity: 'warn',
+          description: 'Linux process spawned',
+          payload: { user: 'root', host: 'LINUX-SRV-01', process: '/usr/bin/ncat' },
+        },
+      ]);
+
+      runtime.step(20);
+
+      const telemetry = bridge.getTelemetry();
+      const linuxEvt = telemetry.find((t) => t.sourceWorld === 'LINUX');
+      expect(linuxEvt).toBeDefined();
+      expect(linuxEvt?.sourceWorld).toBe('LINUX');
+      expect(linuxEvt?.user).toBe('root');
+      expect(linuxEvt?.host).toBe('LINUX-SRV-01');
+      expect(linuxEvt?.process).toBe('/usr/bin/ncat');
+      expect(linuxEvt?.category).toBe('PROCESS_EXECUTION');
     });
   });
 

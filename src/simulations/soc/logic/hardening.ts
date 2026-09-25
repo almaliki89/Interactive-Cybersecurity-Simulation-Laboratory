@@ -7,6 +7,118 @@
 import { SecurityAlert } from './detection';
 import { SecurityIncident } from './incidents';
 import { ContainmentActionType } from './containment';
+import { calculateDetectionMetrics, EventClassification } from './metrics';
+
+export interface TimelineValidationDetails {
+  passed: boolean;
+  missingStages: string[];
+  outOfOrderStages: string[];
+  reasonEn: string;
+  reasonAr: string;
+}
+
+export function validateTimelineOrderAndEvidence(attachedTimelineEventIds: string[]): TimelineValidationDetails {
+  const CORE_STAGES = [
+    'AUTH_FAILURE',
+    'AUTH_SUCCESS',
+    'PRIVILEGED_GROUP_CHANGE',
+    'ENDPOINT_PROCESS_ANOMALY',
+    'NETWORK_PROBE',
+    'SENSITIVE_RESOURCE_ACCESS',
+    'APPSEC_ANOMALY',
+    'LOG_TAMPER',
+  ] as const;
+
+  type CoreStage = typeof CORE_STAGES[number];
+
+  const mapItemToStage = (idOrType: string): CoreStage | null => {
+    const s = idOrType.toUpperCase().replace(/-/g, '_');
+    if (s.includes('LOG_CLEARED') || s.includes('WIN_LOG_CLEARED') || s.includes('1102') || s.includes('LOG_TAMPER') || s.includes('TAMPER')) {
+      return 'LOG_TAMPER';
+    }
+    if (s.includes('APPSEC') || s.includes('BOLA') || s.includes('APP_ACCESS_DENIED') || s.includes('403') || s.includes('IDOR')) {
+      return 'APPSEC_ANOMALY';
+    }
+    if (s.includes('SENSITIVE') || s.includes('RESOURCE_ACCESS') || s.includes('FINANCE') || s.includes('SHARE')) {
+      return 'SENSITIVE_RESOURCE_ACCESS';
+    }
+    if (s.includes('PACKET_BLOCKED') || s.includes('NETWORK') || s.includes('SCAN') || s.includes('PROBE') || s.includes('FIREWALL')) {
+      return 'NETWORK_PROBE';
+    }
+    if (s.includes('PROCESS') || s.includes('4688') || s.includes('SPAWN') || s.includes('CMD') || s.includes('ENDPOINT')) {
+      return 'ENDPOINT_PROCESS_ANOMALY';
+    }
+    if (s.includes('PRIVILEGED_GROUP') || s.includes('PRIV_GROUP') || s.includes('GROUP_CHANGE') || s.includes('GROUP_MOD') || s.includes('4728') || s.includes('DOMAIN_ADMIN')) {
+      return 'PRIVILEGED_GROUP_CHANGE';
+    }
+    if (s.includes('AUTH_SUCCESS') || s.includes('LOGON_SUCCESS') || s.includes('KERBEROS_AUTH_SUCCESS') || s.includes('4624')) {
+      return 'AUTH_SUCCESS';
+    }
+    if (s.includes('AUTH_FAIL') || s.includes('LOGIN_FAILED') || s.includes('4625') || s.includes('BRUTE')) {
+      return 'AUTH_FAILURE';
+    }
+    return null;
+  };
+
+  const stageIndicesInInput: Record<CoreStage, number[]> = {
+    AUTH_FAILURE: [],
+    AUTH_SUCCESS: [],
+    PRIVILEGED_GROUP_CHANGE: [],
+    ENDPOINT_PROCESS_ANOMALY: [],
+    NETWORK_PROBE: [],
+    SENSITIVE_RESOURCE_ACCESS: [],
+    APPSEC_ANOMALY: [],
+    LOG_TAMPER: [],
+  };
+
+  attachedTimelineEventIds.forEach((item, index) => {
+    const stage = mapItemToStage(item);
+    if (stage) {
+      stageIndicesInInput[stage].push(index);
+    }
+  });
+
+  const missingStages: string[] = [];
+  CORE_STAGES.forEach((stage) => {
+    if (stageIndicesInInput[stage].length === 0) {
+      missingStages.push(stage);
+    }
+  });
+
+  const outOfOrderStages: string[] = [];
+  if (missingStages.length === 0) {
+    let lastIndex = -1;
+    CORE_STAGES.forEach((stage) => {
+      const firstIdx = stageIndicesInInput[stage][0];
+      if (firstIdx < lastIndex) {
+        outOfOrderStages.push(stage);
+      } else {
+        lastIndex = firstIdx;
+      }
+    });
+  }
+
+  const passed = missingStages.length === 0 && outOfOrderStages.length === 0;
+
+  let reasonEn = 'PASS: Timeline contains all 8 core attack evidence stages in exact chronological order.';
+  let reasonAr = 'نجاح: يحتوي الخط الزمني على كافة المراحل الثمانية للأدلة الجوهرية بتسلسل زمني دقيق.';
+
+  if (missingStages.length > 0) {
+    reasonEn = `FAIL: Timeline missing critical core evidence stage(s): ${missingStages.join(', ')}.`;
+    reasonAr = `فشل: الخط الزمني يفتقر لمراحل أساسية: ${missingStages.join(', ')}.`;
+  } else if (outOfOrderStages.length > 0) {
+    reasonEn = `FAIL: Timeline sequence incorrectly ordered. Stage(s) out of order: ${outOfOrderStages.join(', ')}. Expected order: AUTH_FAILURE < AUTH_SUCCESS < PRIVILEGED_GROUP_CHANGE < ENDPOINT_PROCESS_ANOMALY < NETWORK_PROBE < SENSITIVE_RESOURCE_ACCESS < APPSEC_ANOMALY < LOG_TAMPER.`;
+    reasonAr = `فشل: التسلسل الزمني غير صحيح للمراحل: ${outOfOrderStages.join(', ')}.`;
+  }
+
+  return {
+    passed,
+    missingStages,
+    outOfOrderStages,
+    reasonEn,
+    reasonAr,
+  };
+}
 
 export interface SocChallengeState {
   // 1. Detection Rule Configuration
@@ -93,6 +205,30 @@ export function getInitialSocChallengeState(): SocChallengeState {
  */
 export function validateSocInvestigationState(state: SocChallengeState): SocMasterValidationResult {
   // Anti-Cheat Checks
+  if (state.suppressAllAlerts) {
+    return {
+      success: false,
+      score: 0,
+      passedChecks: [],
+      failedChecks: ['chk-alert-suppression'],
+      checkDetails: [{
+        id: 'chk-alert-suppression',
+        category: 'Detection Engineering',
+        nameEn: 'Alert Visibility & Suppression Anti-Cheat',
+        nameAr: 'حظر حجب التنبيهات والرؤية الأمنية',
+        passed: false,
+        score: 0,
+        weight: 100,
+        severity: 'CRITICAL',
+        feedbackEn: 'FAIL: Suppressing all alerts destroys SOC visibility and is not valid tuning.',
+        feedbackAr: 'فشل: إخفاء وتعطيل التنبيهات بالكامل يعمي مركز العمليات الأمنية ويخالف أصول الضبط.',
+      }],
+      businessContinuityPassed: false,
+      summaryEn: 'Anti-cheat trigger: Global alert suppression destroys SIEM visibility.',
+      summaryAr: 'إحباط محاولة تحايل: حجب جميع التنبيهات يعطل عمل نظام SIEM.',
+    };
+  }
+
   if (state.shutdownEntireCoreServer) {
     return {
       success: false,
@@ -348,23 +484,19 @@ export function validateSocInvestigationState(state: SocChallengeState): SocMast
       : 'فشل: تحديد الكيانات غير مكتمل أو غير دقيق.',
   });
 
-  // Check 9: Incident Timeline Chronology
-  const timelinePassed = state.attachedTimelineEventIds.length >= 5;
+  // Check 9: Incident Timeline Chronology & Evidence Verification
+  const timelineValidation = validateTimelineOrderAndEvidence(state.attachedTimelineEventIds);
   checks.push({
     id: 'chk-incident-timeline-reconstruction',
     category: 'Incident Timeline',
     nameEn: 'Multi-Stage Chronological Incident Timeline Built',
     nameAr: 'بناء خط زمني متسلسل لجميع مراحل الحادثة الأمنية',
-    passed: timelinePassed,
-    score: timelinePassed ? 8 : 0,
+    passed: timelineValidation.passed,
+    score: timelineValidation.passed ? 8 : 0,
     weight: 8,
     severity: 'HIGH',
-    feedbackEn: timelinePassed
-      ? `PASS: Incident timeline reconstructed with ${state.attachedTimelineEventIds.length} chronological evidence anchors.`
-      : 'FAIL: Incident timeline is incomplete; must attach all key evidence steps.',
-    feedbackAr: timelinePassed
-      ? `نجاح: تم بناء الخط الزمني للحادثة مدعوماً بـ ${state.attachedTimelineEventIds.length} دليلاً جنائياً.`
-      : 'فشل: الخط الزمني غير مكتمل ويفتقر للأدلة الجوهرية.',
+    feedbackEn: timelineValidation.reasonEn,
+    feedbackAr: timelineValidation.reasonAr,
   });
 
   // Check 10: Proportional Containment Actions Executed
@@ -411,9 +543,32 @@ export function validateSocInvestigationState(state: SocChallengeState): SocMast
   });
 
   // Check 12: Detection Rule Tuning & False Positive Suppression
+  const authBruteThreshold = state.tunedRuleThresholds['rule-auth-bruteforce'] ?? 10;
+  
+  // Synthetic ground truth evaluation
+  const syntheticGroundTruth: EventClassification[] = [
+    { eventId: 'attack-bf-burst', isMaliciousGroundTruth: true },
+    { eventId: 'benign-user-mistake-1', isMaliciousGroundTruth: false },
+    { eventId: 'benign-user-mistake-2', isMaliciousGroundTruth: false },
+  ];
+
+  const alertedIds: string[] = [];
+  if (state.enabledRuleIds.includes('rule-auth-bruteforce')) {
+    if (authBruteThreshold <= 3) {
+      alertedIds.push('attack-bf-burst', 'benign-user-mistake-2'); // FP = 1
+    } else if (authBruteThreshold <= 5) {
+      alertedIds.push('attack-bf-burst'); // TP = 1, FP = 0, FN = 0
+    }
+  }
+
+  const detectionMetrics = calculateDetectionMetrics(syntheticGroundTruth, alertedIds);
   const detectionTuningPassed =
-    (state.tunedRuleThresholds['rule-auth-bruteforce'] || 5) === 5 &&
+    detectionMetrics.precision === 100 &&
+    detectionMetrics.recall === 100 &&
+    detectionMetrics.falsePositives === 0 &&
+    detectionMetrics.falseNegatives === 0 &&
     state.enabledRuleIds.length >= 6;
+
   checks.push({
     id: 'chk-detection-engineering-tuning',
     category: 'Detection Engineering',
@@ -424,11 +579,11 @@ export function validateSocInvestigationState(state: SocChallengeState): SocMast
     weight: 7,
     severity: 'HIGH',
     feedbackEn: detectionTuningPassed
-      ? 'PASS: Multi-world detection rule set comprehensively tuned with optimal signal-to-noise ratio.'
-      : 'FAIL: Detection catalog is under-configured or un-tuned for multi-tier attack visibility.',
+      ? 'PASS: Multi-world detection rule set comprehensively tuned with optimal signal-to-noise ratio (Precision: 100%, Recall: 100%).'
+      : `FAIL: Detection catalog tuning error: ${detectionMetrics.summaryEn}`,
     feedbackAr: detectionTuningPassed
-      ? 'نجاح: منظومة قواعد الكشف متكاملة ومضبوطة بأعلى درجات الدقة دون ضوضاء.'
-      : 'فشل: قواعد الكشف غير مكتملة لتغطية كافة طبقات الهجوم.',
+      ? 'نجاح: منظومة قواعد الكشف متكاملة ومضبوطة بأعلى درجات الدقة دون ضوضاء (100% دقة واستدعاء).'
+      : `فشل: خطأ في ضبط قواعد الكشف: ${detectionMetrics.summaryAr}`,
   });
 
   // Check 13: Core Business Continuity Requirement
@@ -436,7 +591,8 @@ export function validateSocInvestigationState(state: SocChallengeState): SocMast
     !state.shutdownEntireCoreServer &&
     !state.disableAllFinanceUsers &&
     !state.blockAllInboundTraffic &&
-    !state.markAllEventsAsMalicious;
+    !state.markAllEventsAsMalicious &&
+    !state.suppressAllAlerts;
   checks.push({
     id: 'chk-business-continuity-preserved',
     category: 'Business Continuity',

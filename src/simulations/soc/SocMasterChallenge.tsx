@@ -314,6 +314,7 @@ export const SocMasterChallenge: React.FC<SocMasterChallengeProps> = ({
               { id: 'evt-net-probe-1', label: 'T+900: Firewall Dropped Port Scan Packets (Network Probe)' },
               { id: 'evt-sensitive-share-access', label: 'T+1150: Unauthorized Read of Confidential Finance Share' },
               { id: 'evt-app-bola-violation', label: 'T+1350: AppSec 403 BOLA Access Denial (API Probe)' },
+              { id: 'evt-log-tamper', label: 'T+1550: Event Log 1102 Cleared (Security Audit Logging Tamper)' },
             ].map((anchor) => {
               const isAttached = state.attachedTimelineEventIds.includes(anchor.id);
               return (
