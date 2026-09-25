@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
-import { validateForensicInvestigationState, ForensicsMasterState } from './logic/hardening';
-import { createDefaultForensicsCase, ForensicEvidence } from './logic/evidence';
-import { SYNTHETIC_MASTER_TIMELINE } from './logic/timeline';
-import { Award, ShieldCheck, AlertTriangle, CheckCircle2, XCircle, RotateCcw, Cpu } from 'lucide-react';
+import {
+  validateForensicInvestigationState,
+  ForensicsMasterState,
+  getInitialForensicsChallengeState,
+  getSolvedForensicsMasterState,
+} from './logic/hardening';
+import { createDefaultForensicsCase } from './logic/evidence';
+import { Award, ShieldCheck, AlertTriangle, CheckCircle2, XCircle, RotateCcw, Cpu, FileCheck2, Play } from 'lucide-react';
 
 export const ForensicsMasterChallenge: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -11,215 +15,7 @@ export const ForensicsMasterChallenge: React.FC = () => {
 
   const defaultCase = createDefaultForensicsCase(0);
 
-  const [state, setState] = useState<ForensicsMasterState>({
-    caseOpened: true,
-    selectedScopeHosts: ['FIN-WS-01', 'DC-01', 'LINUX-SRV-01', 'APP-SRV-01', 'FIN-SRV'],
-    preservedVolatileMemoryFirst: true,
-    acquiredEvidence: [
-      {
-        id: 'EVD-MEM-FIN-WS01',
-        type: 'MEMORY_IMAGE',
-        sourceHost: 'FIN-WS-01',
-        sourceUser: 'sara',
-        acquiredAtVirtualTime: 10,
-        originalHash: 'sha256:11112222333344445555666677778888',
-        currentHash: 'sha256:11112222333344445555666677778888',
-        preserved: true,
-        integrityStatus: 'VERIFIED',
-        metadata: { ramDump: 'FIN-WS-01.raw' },
-      },
-      {
-        id: 'EVD-DISK-FIN-WS01',
-        type: 'DISK_IMAGE',
-        sourceHost: 'FIN-WS-01',
-        sourceUser: 'sara',
-        acquiredAtVirtualTime: 20,
-        originalHash: 'sha256:88887777666655554444333322221111',
-        currentHash: 'sha256:88887777666655554444333322221111',
-        preserved: true,
-        integrityStatus: 'VERIFIED',
-        metadata: { diskImage: 'FIN-WS-01.E01' },
-      },
-      {
-        id: 'EVD-LOG-WIN-SEC',
-        type: 'LOG_EXPORT',
-        sourceHost: 'FIN-WS-01',
-        sourceUser: 'sara',
-        acquiredAtVirtualTime: 30,
-        originalHash: 'sha256:99998888777766665555444433332222',
-        currentHash: 'sha256:99998888777766665555444433332222',
-        preserved: true,
-        integrityStatus: 'VERIFIED',
-        metadata: { logExport: 'Security.evtx' },
-      },
-      {
-        id: 'EVD-LOG-LINUX-AUTH',
-        type: 'LOG_EXPORT',
-        sourceHost: 'LINUX-SRV-01',
-        sourceUser: 'root',
-        acquiredAtVirtualTime: 40,
-        originalHash: 'sha256:ababababcdcdcdcd1212121234343434',
-        currentHash: 'sha256:ababababcdcdcdcd1212121234343434',
-        preserved: true,
-        integrityStatus: 'VERIFIED',
-        metadata: { logFile: '/var/log/auth.log' },
-      },
-      {
-        id: 'EVD-NET-PCAP-01',
-        type: 'NETWORK_CAPTURE',
-        sourceHost: 'FW-CORE-01',
-        sourceUser: 'sara',
-        acquiredAtVirtualTime: 50,
-        originalHash: 'sha256:00001111222233334444555566667777',
-        currentHash: 'sha256:00001111222233334444555566667777',
-        preserved: true,
-        integrityStatus: 'VERIFIED',
-        metadata: { pcap: 'fw_capture.pcap' },
-      },
-      {
-        id: 'EVD-BROWSER-HIST',
-        type: 'BROWSER_ARTIFACT',
-        sourceHost: 'FIN-WS-01',
-        sourceUser: 'sara',
-        acquiredAtVirtualTime: 60,
-        originalHash: 'sha256:55554444333322221111000099998888',
-        currentHash: 'sha256:55554444333322221111000099998888',
-        preserved: true,
-        integrityStatus: 'VERIFIED',
-        metadata: { history: 'History.db' },
-      },
-    ],
-    custodyRecords: [
-      {
-        id: 'CUST-001',
-        evidenceId: 'EVD-MEM-FIN-WS01',
-        virtualTime: 10,
-        action: 'COLLECTED',
-        actor: 'Lead Investigator',
-        notes: 'RAM Dump acquired',
-      },
-      {
-        id: 'CUST-002',
-        evidenceId: 'EVD-MEM-FIN-WS01',
-        virtualTime: 15,
-        action: 'VERIFIED',
-        actor: 'Evidence Officer',
-        notes: 'Hash verified',
-      },
-      {
-        id: 'CUST-003',
-        evidenceId: 'EVD-DISK-FIN-WS01',
-        virtualTime: 20,
-        action: 'COLLECTED',
-        actor: 'Lead Investigator',
-        notes: 'Disk Image acquired',
-      },
-      {
-        id: 'CUST-004',
-        evidenceId: 'EVD-DISK-FIN-WS01',
-        virtualTime: 25,
-        action: 'VERIFIED',
-        actor: 'Evidence Officer',
-        notes: 'Hash verified',
-      },
-      {
-        id: 'CUST-005',
-        evidenceId: 'EVD-LOG-WIN-SEC',
-        virtualTime: 30,
-        action: 'COLLECTED',
-        actor: 'Lead Investigator',
-        notes: 'Security.evtx exported',
-      },
-      {
-        id: 'CUST-006',
-        evidenceId: 'EVD-LOG-WIN-SEC',
-        virtualTime: 35,
-        action: 'VERIFIED',
-        actor: 'Evidence Officer',
-        notes: 'Hash verified',
-      },
-      {
-        id: 'CUST-007',
-        evidenceId: 'EVD-LOG-LINUX-AUTH',
-        virtualTime: 40,
-        action: 'COLLECTED',
-        actor: 'Lead Investigator',
-        notes: 'auth.log exported',
-      },
-      {
-        id: 'CUST-008',
-        evidenceId: 'EVD-LOG-LINUX-AUTH',
-        virtualTime: 45,
-        action: 'VERIFIED',
-        actor: 'Evidence Officer',
-        notes: 'Hash verified',
-      },
-      {
-        id: 'CUST-009',
-        evidenceId: 'EVD-NET-PCAP-01',
-        virtualTime: 50,
-        action: 'COLLECTED',
-        actor: 'Lead Investigator',
-        notes: 'pcap exported',
-      },
-      {
-        id: 'CUST-010',
-        evidenceId: 'EVD-NET-PCAP-01',
-        virtualTime: 55,
-        action: 'VERIFIED',
-        actor: 'Evidence Officer',
-        notes: 'Hash verified',
-      },
-      {
-        id: 'CUST-011',
-        evidenceId: 'EVD-BROWSER-HIST',
-        virtualTime: 60,
-        action: 'COLLECTED',
-        actor: 'Lead Investigator',
-        notes: 'History.db exported',
-      },
-      {
-        id: 'CUST-012',
-        evidenceId: 'EVD-BROWSER-HIST',
-        virtualTime: 65,
-        action: 'VERIFIED',
-        actor: 'Evidence Officer',
-        notes: 'Hash verified',
-      },
-    ],
-    verifiedEvidenceHashes: ['EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01', 'EVD-LOG-WIN-SEC', 'EVD-LOG-LINUX-AUTH', 'EVD-NET-PCAP-01', 'EVD-BROWSER-HIST'],
-    reconstructedTimeline: SYNTHETIC_MASTER_TIMELINE,
-    identifiedLogTampering: true,
-    rootCauseFinding: {
-      initialAccessVector: 'Brute-force password spray targeting user sara, Kerberos AS-REQ pre-auth bypass',
-      affectedIdentity: 'sara',
-      affectedHost: 'FIN-WS-01',
-      privilegeChange: 'Domain Admins',
-      impactedResources: ['\\\\FIN-SRV\\FinanceShare\\Q3_Report.xlsx'],
-      evidenceIds: ['EVD-LOG-WIN-SEC', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'],
-    },
-    selectedContainmentActionIds: ['ACT-ISOLATE-NETWORK', 'ACT-REVOKE-SARA-SESSIONS', 'ACT-REVERT-PRIVILEGE'],
-    systemRecoveryState: {
-      compromisedAccountReset: true,
-      unauthorizedPrivilegesReverted: true,
-      suspiciousProcessesTerminated: true,
-      maliciousFilesEradicated: true,
-      auditLoggingEnabled: true,
-      networkSecurityPoliciesApplied: true,
-      businessApplicationTested: true,
-      lingeringSuspiciousState: false,
-    },
-    lessonsDocumented: true,
-
-    // Anti-cheat flags
-    deletedOriginalEvidence: false,
-    poweredOffBeforeMemoryAcquisition: false,
-    markedAllFilesMalicious: false,
-    reinstalledWithoutInvestigation: false,
-    blockedEntireCompanyNetwork: false,
-    disabledAllFinanceUsers: false,
-    closedCaseWithoutRootCause: false,
-  });
+  const [state, setState] = useState<ForensicsMasterState>(getInitialForensicsChallengeState());
 
   const valResult = validateForensicInvestigationState(state);
 
@@ -227,9 +23,17 @@ export const ForensicsMasterChallenge: React.FC = () => {
     setState((prev) => ({ ...prev, [flagKey]: !prev[flagKey] }));
   };
 
+  const loadSolvedState = () => {
+    setState(getSolvedForensicsMasterState());
+  };
+
+  const resetState = () => {
+    setState(getInitialForensicsChallengeState());
+  };
+
   return (
     <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto">
-      <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
+      <div className="border-b border-slate-800 pb-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
             <Award className="w-4 h-4" />
@@ -240,13 +44,31 @@ export const ForensicsMasterChallenge: React.FC = () => {
           </h1>
         </div>
 
-        <div className={`px-4 py-2 rounded-2xl border text-sm font-black flex items-center gap-2 ${
-          valResult.success
-            ? 'bg-emerald-950 border-emerald-700 text-emerald-300 shadow-xl shadow-emerald-950/60'
-            : 'bg-rose-950 border-rose-800 text-rose-300 shadow-xl shadow-rose-950/60'
-        }`}>
-          {valResult.success ? <ShieldCheck className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-          <span>{valResult.score}/100 POINTS — {valResult.success ? (isAr ? 'اجتياز معتمد' : 'MASTER PASSED') : (isAr ? 'غير مكتمل' : 'FAILED')}</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadSolvedState}
+            className="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
+          >
+            <Play className="w-4 h-4" />
+            <span>{isAr ? 'تحميل التحقيق المكتمل' : 'Load Solved Investigation'}</span>
+          </button>
+
+          <button
+            onClick={resetState}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-700"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>{isAr ? 'إعادة ضبط الحالة' : 'Reset Challenge State'}</span>
+          </button>
+
+          <div className={`px-4 py-2 rounded-2xl border text-sm font-black flex items-center gap-2 ${
+            valResult.success
+              ? 'bg-emerald-950 border-emerald-700 text-emerald-300 shadow-xl shadow-emerald-950/60'
+              : 'bg-rose-950 border-rose-800 text-rose-300 shadow-xl shadow-rose-950/60'
+          }`}>
+            {valResult.success ? <ShieldCheck className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+            <span>{valResult.score}/100 POINTS — {valResult.success ? (isAr ? 'اجتياز معتمد' : 'MASTER PASSED') : (isAr ? 'غير مكتمل' : 'UNSOLVED / FAILED')}</span>
+          </div>
         </div>
       </div>
 

@@ -6,9 +6,10 @@
 
 import { ForensicEvidence } from './evidence';
 import { CustodyRecord, validateCustodyChain } from './custody';
-import { ForensicTimelineEvent, sortTimeline } from './timeline';
+import { ForensicTimelineEvent, sortTimeline, validateForensicTimelineEvidence } from './timeline';
 import { RootCauseFinding, evaluateRootCauseFinding } from './rootCause';
 import { SystemRecoveryState, validateRecoveryState } from './recovery';
+import { SYNTHETIC_MASTER_TIMELINE } from './timeline';
 
 export interface ForensicCheckDetail {
   id: string;
@@ -21,6 +22,18 @@ export interface ForensicCheckDetail {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
   feedbackEn: string;
   feedbackAr: string;
+}
+
+export interface ForensicActionRecord {
+  id: string;
+  type:
+    | 'MEMORY_ACQUIRED'
+    | 'DISK_ACQUIRED'
+    | 'LOGS_COLLECTED'
+    | 'HOST_ISOLATED'
+    | 'HOST_POWERED_OFF'
+    | 'ACCOUNT_DISABLED';
+  virtualTime: number;
 }
 
 export interface ForensicsMasterState {
@@ -36,6 +49,7 @@ export interface ForensicsMasterState {
   selectedContainmentActionIds: string[];
   systemRecoveryState: SystemRecoveryState;
   lessonsDocumented: boolean;
+  actionRecords: ForensicActionRecord[];
 
   // Anti-cheat flags
   deletedOriginalEvidence: boolean;
@@ -45,6 +59,221 @@ export interface ForensicsMasterState {
   blockedEntireCompanyNetwork: boolean;
   disabledAllFinanceUsers: boolean;
   closedCaseWithoutRootCause: boolean;
+}
+
+export function getInitialForensicsChallengeState(): ForensicsMasterState {
+  return {
+    caseOpened: false,
+    selectedScopeHosts: [],
+    preservedVolatileMemoryFirst: false,
+    acquiredEvidence: [],
+    custodyRecords: [],
+    verifiedEvidenceHashes: [],
+    reconstructedTimeline: [],
+    identifiedLogTampering: false,
+    rootCauseFinding: null,
+    selectedContainmentActionIds: [],
+    systemRecoveryState: {
+      compromisedAccountReset: false,
+      unauthorizedPrivilegesReverted: false,
+      suspiciousProcessesTerminated: false,
+      maliciousFilesEradicated: false,
+      auditLoggingEnabled: false,
+      networkSecurityPoliciesApplied: false,
+      businessApplicationTested: false,
+      lingeringSuspiciousState: true,
+    },
+    lessonsDocumented: false,
+    actionRecords: [],
+
+    // Anti-cheat flags
+    deletedOriginalEvidence: false,
+    poweredOffBeforeMemoryAcquisition: false,
+    markedAllFilesMalicious: false,
+    reinstalledWithoutInvestigation: false,
+    blockedEntireCompanyNetwork: false,
+    disabledAllFinanceUsers: false,
+    closedCaseWithoutRootCause: false,
+  };
+}
+
+export function getSolvedForensicsMasterState(): ForensicsMasterState {
+  return {
+    caseOpened: true,
+    selectedScopeHosts: ['FIN-WS-01', 'DC-01', 'LINUX-SRV-01', 'APP-SRV-01', 'FIN-SRV'],
+    preservedVolatileMemoryFirst: true,
+    acquiredEvidence: [
+      {
+        id: 'EVD-MEM-FIN-WS01',
+        type: 'MEMORY_IMAGE',
+        sourceHost: 'FIN-WS-01',
+        sourceUser: 'sara',
+        acquiredAtVirtualTime: 10,
+        originalHash: 'sha256:11112222333344445555666677778888',
+        currentHash: 'sha256:11112222333344445555666677778888',
+        preserved: true,
+        integrityStatus: 'VERIFIED',
+        metadata: { ramDump: 'FIN-WS-01.raw' },
+      },
+      {
+        id: 'EVD-DISK-FIN-WS01',
+        type: 'DISK_IMAGE',
+        sourceHost: 'FIN-WS-01',
+        sourceUser: 'sara',
+        acquiredAtVirtualTime: 20,
+        originalHash: 'sha256:88887777666655554444333322221111',
+        currentHash: 'sha256:88887777666655554444333322221111',
+        preserved: true,
+        integrityStatus: 'VERIFIED',
+        metadata: { diskImage: 'FIN-WS-01.E01' },
+      },
+      {
+        id: 'EVD-LOG-WIN-SEC',
+        type: 'LOG_EXPORT',
+        sourceHost: 'FIN-WS-01',
+        sourceUser: 'sara',
+        acquiredAtVirtualTime: 30,
+        originalHash: 'sha256:99998888777766665555444433332222',
+        currentHash: 'sha256:99998888777766665555444433332222',
+        preserved: true,
+        integrityStatus: 'VERIFIED',
+        metadata: { logExport: 'Security.evtx' },
+      },
+      {
+        id: 'EVD-LOG-LINUX-AUTH',
+        type: 'LOG_EXPORT',
+        sourceHost: 'LINUX-SRV-01',
+        sourceUser: 'root',
+        acquiredAtVirtualTime: 40,
+        originalHash: 'sha256:ababababcdcdcdcd1212121234343434',
+        currentHash: 'sha256:ababababcdcdcdcd1212121234343434',
+        preserved: true,
+        integrityStatus: 'VERIFIED',
+        metadata: { logFile: '/var/log/auth.log' },
+      },
+      {
+        id: 'EVD-NET-PCAP-01',
+        type: 'NETWORK_CAPTURE',
+        sourceHost: 'FW-CORE-01',
+        sourceUser: 'sara',
+        acquiredAtVirtualTime: 50,
+        originalHash: 'sha256:00001111222233334444555566667777',
+        currentHash: 'sha256:00001111222233334444555566667777',
+        preserved: true,
+        integrityStatus: 'VERIFIED',
+        metadata: { pcap: 'fw_capture.pcap' },
+      },
+      {
+        id: 'EVD-BROWSER-HIST',
+        type: 'BROWSER_ARTIFACT',
+        sourceHost: 'FIN-WS-01',
+        sourceUser: 'sara',
+        acquiredAtVirtualTime: 60,
+        originalHash: 'sha256:55554444333322221111000099998888',
+        currentHash: 'sha256:55554444333322221111000099998888',
+        preserved: true,
+        integrityStatus: 'VERIFIED',
+        metadata: { history: 'History.db' },
+      },
+    ],
+    custodyRecords: [
+      { id: 'CUST-001', evidenceId: 'EVD-MEM-FIN-WS01', virtualTime: 10, action: 'COLLECTED', actor: 'Lead Investigator', notes: 'RAM Dump acquired' },
+      { id: 'CUST-002', evidenceId: 'EVD-MEM-FIN-WS01', virtualTime: 15, action: 'VERIFIED', actor: 'Evidence Officer', notes: 'Hash verified' },
+      { id: 'CUST-003', evidenceId: 'EVD-DISK-FIN-WS01', virtualTime: 20, action: 'COLLECTED', actor: 'Lead Investigator', notes: 'Disk Image acquired' },
+      { id: 'CUST-004', evidenceId: 'EVD-DISK-FIN-WS01', virtualTime: 25, action: 'VERIFIED', actor: 'Evidence Officer', notes: 'Hash verified' },
+      { id: 'CUST-005', evidenceId: 'EVD-LOG-WIN-SEC', virtualTime: 30, action: 'COLLECTED', actor: 'Lead Investigator', notes: 'Security.evtx exported' },
+      { id: 'CUST-006', evidenceId: 'EVD-LOG-WIN-SEC', virtualTime: 35, action: 'VERIFIED', actor: 'Evidence Officer', notes: 'Hash verified' },
+      { id: 'CUST-007', evidenceId: 'EVD-LOG-LINUX-AUTH', virtualTime: 40, action: 'COLLECTED', actor: 'Lead Investigator', notes: 'auth.log exported' },
+      { id: 'CUST-008', evidenceId: 'EVD-LOG-LINUX-AUTH', virtualTime: 45, action: 'VERIFIED', actor: 'Evidence Officer', notes: 'Hash verified' },
+      { id: 'CUST-009', evidenceId: 'EVD-NET-PCAP-01', virtualTime: 50, action: 'COLLECTED', actor: 'Lead Investigator', notes: 'pcap exported' },
+      { id: 'CUST-010', evidenceId: 'EVD-NET-PCAP-01', virtualTime: 55, action: 'VERIFIED', actor: 'Evidence Officer', notes: 'Hash verified' },
+      { id: 'CUST-011', evidenceId: 'EVD-BROWSER-HIST', virtualTime: 60, action: 'COLLECTED', actor: 'Lead Investigator', notes: 'History.db exported' },
+      { id: 'CUST-012', evidenceId: 'EVD-BROWSER-HIST', virtualTime: 65, action: 'VERIFIED', actor: 'Evidence Officer', notes: 'Hash verified' },
+    ],
+    verifiedEvidenceHashes: ['EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01', 'EVD-LOG-WIN-SEC', 'EVD-LOG-LINUX-AUTH', 'EVD-NET-PCAP-01', 'EVD-BROWSER-HIST'],
+    reconstructedTimeline: SYNTHETIC_MASTER_TIMELINE,
+    identifiedLogTampering: true,
+    rootCauseFinding: {
+      initialAccessVector: 'Brute-force password spray targeting user sara, Kerberos AS-REQ pre-auth bypass',
+      affectedIdentity: 'sara',
+      affectedHost: 'FIN-WS-01',
+      privilegeChange: 'Domain Admins',
+      impactedResources: ['\\\\FIN-SRV\\FinanceShare\\Q3_Report.xlsx'],
+      evidenceIds: ['EVD-LOG-WIN-SEC', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01', 'EVD-NET-PCAP-01'],
+    },
+    selectedContainmentActionIds: ['ACT-ISOLATE-NETWORK', 'ACT-REVOKE-SARA-SESSIONS', 'ACT-REVERT-PRIVILEGE'],
+    systemRecoveryState: {
+      compromisedAccountReset: true,
+      unauthorizedPrivilegesReverted: true,
+      suspiciousProcessesTerminated: true,
+      maliciousFilesEradicated: true,
+      auditLoggingEnabled: true,
+      networkSecurityPoliciesApplied: true,
+      businessApplicationTested: true,
+      lingeringSuspiciousState: false,
+    },
+    lessonsDocumented: true,
+    actionRecords: [
+      { id: 'ACT-001', type: 'MEMORY_ACQUIRED', virtualTime: 10 },
+      { id: 'ACT-002', type: 'DISK_ACQUIRED', virtualTime: 20 },
+      { id: 'ACT-003', type: 'LOGS_COLLECTED', virtualTime: 30 },
+      { id: 'ACT-004', type: 'HOST_ISOLATED', virtualTime: 100 },
+      { id: 'ACT-005', type: 'ACCOUNT_DISABLED', virtualTime: 110 },
+    ],
+
+    // Anti-cheat flags
+    deletedOriginalEvidence: false,
+    poweredOffBeforeMemoryAcquisition: false,
+    markedAllFilesMalicious: false,
+    reinstalledWithoutInvestigation: false,
+    blockedEntireCompanyNetwork: false,
+    disabledAllFinanceUsers: false,
+    closedCaseWithoutRootCause: false,
+  };
+}
+
+export function validateOrderOfVolatility(
+  evidence: ForensicEvidence[],
+  actionRecords: ForensicActionRecord[] = [],
+  preservedVolatileMemoryFirst: boolean = false
+): { passed: boolean; reasonEn: string; reasonAr: string } {
+  const powerOffRecord = actionRecords.find((a) => a.type === 'HOST_POWERED_OFF');
+  const memoryRecord = actionRecords.find((a) => a.type === 'MEMORY_ACQUIRED');
+  const memEvidence = evidence.find((e) => e.type === 'MEMORY_IMAGE');
+  const diskEvidence = evidence.find((e) => e.type === 'DISK_IMAGE');
+
+  if (powerOffRecord) {
+    const memTime = memoryRecord ? memoryRecord.virtualTime : (memEvidence ? memEvidence.acquiredAtVirtualTime : Infinity);
+    if (powerOffRecord.virtualTime <= memTime) {
+      return {
+        passed: false,
+        reasonEn: 'FAIL: Hard power off executed before volatile RAM memory acquisition, destroying volatile evidence.',
+        reasonAr: 'فشل: إيقاف التشغيل الإجباري قبل أخذ لقطة الذاكرة المؤقتة دمر أدلة الـ RAM.',
+      };
+    }
+  }
+
+  if (memEvidence && diskEvidence) {
+    if (diskEvidence.acquiredAtVirtualTime < memEvidence.acquiredAtVirtualTime) {
+      return {
+        passed: false,
+        reasonEn: 'FAIL: Non-volatile disk image acquired before volatile memory (RAM). Order of volatility violated.',
+        reasonAr: 'فشل: تم الاستحواذ على القرص قبل الذاكرة التطايرية. تم انتهاك تسلسل التطاير.',
+      };
+    }
+  }
+
+  const passed = preservedVolatileMemoryFirst && memEvidence !== undefined;
+
+  return {
+    passed,
+    reasonEn: passed
+      ? 'PASS: Volatile memory (RAM) evidence preserved prior to non-volatile acquisition.'
+      : 'FAIL: Volatile memory evidence must be preserved before non-volatile acquisition or reboot.',
+    reasonAr: passed
+      ? 'نجاح: تم حفظ الذاكرة التطايرية RAM قبل أي إجراء تخريبي.'
+      : 'فشل: يجب حفظ الذاكرة التطايرية أولاً.',
+  };
 }
 
 export interface ForensicsMasterValidationResult {
@@ -167,22 +396,22 @@ export function validateForensicInvestigationState(
   });
 
   // Check 3: Order of Volatility & Preservation
-  const preservationPassed = state.preservedVolatileMemoryFirst;
+  const oovRes = validateOrderOfVolatility(
+    state.acquiredEvidence,
+    state.actionRecords,
+    state.preservedVolatileMemoryFirst
+  );
   checks.push({
     id: 'chk-order-of-volatility',
     category: 'Evidence Preservation',
     nameEn: 'Order of Volatility Preservation (RAM before Disk)',
     nameAr: 'حفظ الأدلة حسب تسلسل التطاير (الذاكرة أولاً)',
-    passed: preservationPassed,
-    score: preservationPassed ? 10 : 0,
+    passed: oovRes.passed,
+    score: oovRes.passed ? 10 : 0,
     weight: 10,
     severity: 'CRITICAL',
-    feedbackEn: preservationPassed
-      ? 'PASS: Volatile memory (RAM) evidence preserved prior to destructive endpoint actions.'
-      : 'FAIL: Volatile memory evidence must be preserved before destructive containment or hard reboot.',
-    feedbackAr: preservationPassed
-      ? 'نجاح: تم حفظ الذاكرة التطايرية RAM قبل أي إجراء تخريبي.'
-      : 'فشل: يجب حفظ الذاكرة التطايرية أولاً.',
+    feedbackEn: oovRes.reasonEn,
+    feedbackAr: oovRes.reasonAr,
   });
 
   // Check 4: Memory & Disk Acquisition
@@ -254,9 +483,8 @@ export function validateForensicInvestigationState(
   });
 
   // Check 7: Forensic Timeline Reconstruction & Log Tampering
-  const timelineCount = state.reconstructedTimeline.length;
-  const sortedTL = sortTimeline(state.reconstructedTimeline);
-  const correctOrder = sortedTL.length >= 8 && state.identifiedLogTampering;
+  const timelineVal = validateForensicTimelineEvidence(state.reconstructedTimeline);
+  const correctOrder = timelineVal.valid && state.identifiedLogTampering;
   checks.push({
     id: 'chk-forensic-timeline-built',
     category: 'Timeline Reconstruction',
@@ -267,8 +495,8 @@ export function validateForensicInvestigationState(
     weight: 10,
     severity: 'HIGH',
     feedbackEn: correctOrder
-      ? `PASS: Forensic timeline reconstructed with ${timelineCount} evidence anchors including Event 1102 log tamper.`
-      : 'FAIL: Timeline incomplete or missing Event 1102 log tampering detection.',
+      ? `PASS: Forensic timeline reconstructed with ${state.reconstructedTimeline.length} evidence anchors including Event 1102 log tamper.`
+      : `FAIL: Timeline validation failed (${timelineVal.reasonsEn.join('; ') || 'missing log tamper detection'}).`,
     feedbackAr: correctOrder
       ? 'نجاح: تم بناء الخط الزمني للحادثة واكتشاف مسح السجلات.'
       : 'فشل: الخط الزمني غير مكتمل.',
@@ -276,10 +504,20 @@ export function validateForensicInvestigationState(
 
   // Check 8: Evidence-Backed Root Cause Analysis
   let rootCausePassed = false;
+  let rootCauseFeedbackEn = 'FAIL: Root cause analysis lacks supporting collected evidence or initial access vector.';
+  let rootCauseFeedbackAr = 'فشل: تحليل السبب الجذر يفتقر للأدلة.';
+
   if (state.rootCauseFinding) {
     const collectedIds = state.acquiredEvidence.map((e) => e.id);
     const evalRes = evaluateRootCauseFinding(state.rootCauseFinding, collectedIds);
     rootCausePassed = evalRes.valid;
+    if (!rootCausePassed) {
+      rootCauseFeedbackEn = `FAIL: ${evalRes.reasonsEn.join('; ')}`;
+      rootCauseFeedbackAr = `فشل: ${evalRes.reasonsAr.join('; ')}`;
+    } else {
+      rootCauseFeedbackEn = 'PASS: Root cause correctly attributes brute-force access, Kerberos elevation, and Finance share access with supporting evidence.';
+      rootCauseFeedbackAr = 'نجاح: تحليل السبب الجذر مدعوم بالأدلة الجنائية.';
+    }
   }
 
   checks.push({
@@ -291,12 +529,8 @@ export function validateForensicInvestigationState(
     score: rootCausePassed ? 15 : 0,
     weight: 15,
     severity: 'CRITICAL',
-    feedbackEn: rootCausePassed
-      ? 'PASS: Root cause correctly attributes brute-force access, Kerberos elevation, and Finance share access with supporting evidence.'
-      : 'FAIL: Root cause analysis lacks supporting collected evidence or initial access vector.',
-    feedbackAr: rootCausePassed
-      ? 'نجاح: تحليل السبب الجذر مدعوم بالأدلة الجنائية.'
-      : 'فشل: تحليل السبب الجذر يفتقر للأدلة.',
+    feedbackEn: rootCauseFeedbackEn,
+    feedbackAr: rootCauseFeedbackAr,
   });
 
   // Check 9: Proportional Containment & Eradication

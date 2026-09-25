@@ -110,20 +110,131 @@ export function sortTimeline(
   return [...events].sort((a, b) => a.virtualTime - b.virtualTime);
 }
 
+export interface TimelineEvidenceValidation {
+  valid: boolean;
+  missingStages: string[];
+  outOfOrderStages: string[];
+  missingEvidenceLinkStages: string[];
+  reasonsEn: string[];
+  reasonsAr: string[];
+}
+
+export const CORE_TIMELINE_STAGES = [
+  'AUTH_FAILURE',
+  'AUTH_SUCCESS',
+  'PRIVILEGED_GROUP_CHANGE',
+  'WINDOWS_PROCESS_ANOMALY',
+  'LINUX_PROCESS_ANOMALY',
+  'NETWORK_PROBE',
+  'SENSITIVE_RESOURCE_ACCESS',
+  'APPSEC_ANOMALY',
+  'LOG_TAMPER',
+] as const;
+
+export function identifyTimelineStage(event: ForensicTimelineEvent): string | null {
+  const id = event.id.toUpperCase();
+  const src = event.source.toUpperCase();
+  const desc = event.descriptionEn.toLowerCase();
+  const cat = event.category.toUpperCase();
+
+  if (id.includes('LOG-TAMPER') || src.includes('WIN_LOG_CLEARED') || desc.includes('cleared')) {
+    return 'LOG_TAMPER';
+  }
+  if (id.includes('APPSEC') || src.includes('APP_ACCESS_DENIED') || cat === 'APPLICATION_DEFENSE' || desc.includes('bola')) {
+    return 'APPSEC_ANOMALY';
+  }
+  if (id.includes('SENSITIVE') || src.includes('SENSITIVE_RESOURCE') || (cat === 'ACCESS_CONTROL' && desc.includes('q3_report'))) {
+    return 'SENSITIVE_RESOURCE_ACCESS';
+  }
+  if (id.includes('NET-PROBE') || src.includes('PACKET_BLOCKED') || cat === 'NETWORK') {
+    return 'NETWORK_PROBE';
+  }
+  if (id.includes('LINUX') || src.includes('LINUX') || desc.includes('linux')) {
+    return 'LINUX_PROCESS_ANOMALY';
+  }
+  if (id.includes('PROCESS-EXEC') || (cat === 'PROCESS_EXECUTION' && src === 'PROCESS_CREATION')) {
+    return 'WINDOWS_PROCESS_ANOMALY';
+  }
+  if (id.includes('PRIV-CHANGE') || src.includes('PRIVILEGED_GROUP') || cat === 'GROUP_MANAGEMENT') {
+    return 'PRIVILEGED_GROUP_CHANGE';
+  }
+  if (id.includes('AUTH-SUCCESS') || src.includes('KERBEROS_AUTH_SUCCESS') || (cat === 'AUTHENTICATION' && desc.includes('successful'))) {
+    return 'AUTH_SUCCESS';
+  }
+  if (id.includes('AUTH-FAIL') || src.includes('LOGIN_FAILED') || (cat === 'AUTHENTICATION' && (desc.includes('failed') || desc.includes('brute')))) {
+    return 'AUTH_FAILURE';
+  }
+
+  return null;
+}
+
+export function validateForensicTimelineEvidence(
+  events: ForensicTimelineEvent[]
+): TimelineEvidenceValidation {
+  const missingStages: string[] = [];
+  const outOfOrderStages: string[] = [];
+  const missingEvidenceLinkStages: string[] = [];
+  const reasonsEn: string[] = [];
+  const reasonsAr: string[] = [];
+
+  const stageEvents: Map<string, ForensicTimelineEvent> = new Map();
+
+  for (const ev of events) {
+    const stage = identifyTimelineStage(ev);
+    if (stage && !stageEvents.has(stage)) {
+      stageEvents.set(stage, ev);
+    }
+  }
+
+  // 1. Check stage presence and evidence link
+  for (const reqStage of CORE_TIMELINE_STAGES) {
+    const ev = stageEvents.get(reqStage);
+    if (!ev) {
+      missingStages.push(reqStage);
+      reasonsEn.push(`Missing required timeline attack stage: ${reqStage}`);
+      reasonsAr.push(`مرحلة هجومية مفقودة في الخط الزمني: ${reqStage}`);
+    } else if (!ev.evidenceIds || ev.evidenceIds.length === 0) {
+      missingEvidenceLinkStages.push(reqStage);
+      reasonsEn.push(`Stage ${reqStage} lacks supporting forensic evidence linkage.`);
+      reasonsAr.push(`المرحلة ${reqStage} تفتقر لربط دليل جنائي مؤيد.`);
+    }
+  }
+
+  // 2. Check chronological ordering
+  let lastTime = -1;
+  for (const reqStage of CORE_TIMELINE_STAGES) {
+    const ev = stageEvents.get(reqStage);
+    if (ev) {
+      if (ev.virtualTime < lastTime) {
+        outOfOrderStages.push(reqStage);
+        reasonsEn.push(`Stage ${reqStage} occurred out of chronological order (T+${ev.virtualTime} < T+${lastTime}).`);
+        reasonsAr.push(`المرحلة ${reqStage} جاءت بتسلسل زمني خاطئ.`);
+      }
+      lastTime = Math.max(lastTime, ev.virtualTime);
+    }
+  }
+
+  const valid = missingStages.length === 0 && outOfOrderStages.length === 0 && missingEvidenceLinkStages.length === 0;
+
+  return {
+    valid,
+    missingStages,
+    outOfOrderStages,
+    missingEvidenceLinkStages,
+    reasonsEn,
+    reasonsAr,
+  };
+}
+
 export function validateTimelineContinuity(
   events: ForensicTimelineEvent[]
 ): { continuous: boolean; missingStageCount: number; reasonsEn: string[]; reasonsAr: string[] } {
-  const categories = new Set(events.map((e) => e.category));
-  const requiredCategories = ['AUTHENTICATION', 'GROUP_MANAGEMENT', 'PROCESS_EXECUTION', 'NETWORK', 'ACCESS_CONTROL'];
-
-  const missing = requiredCategories.filter((cat) => !categories.has(cat));
-  const continuous = missing.length === 0;
-
+  const val = validateForensicTimelineEvidence(events);
   return {
-    continuous,
-    missingStageCount: missing.length,
-    reasonsEn: missing.map((m) => `Missing attack stage evidence for category: ${m}`),
-    reasonsAr: missing.map((m) => `غياب الأدلة للمرحلة الهجومية الخاصة بـ: ${m}`),
+    continuous: val.valid,
+    missingStageCount: val.missingStages.length,
+    reasonsEn: val.reasonsEn,
+    reasonsAr: val.reasonsAr,
   };
 }
 
