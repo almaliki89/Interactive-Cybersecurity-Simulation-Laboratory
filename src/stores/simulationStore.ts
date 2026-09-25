@@ -23,6 +23,7 @@ export type SimulationId =
   | 'windows'
   | 'crypto'
   | 'siem'
+  | 'soc'
   | 'knowledge'
   | 'explorer'
   | 'range'

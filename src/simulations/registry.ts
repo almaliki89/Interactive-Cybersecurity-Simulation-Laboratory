@@ -70,8 +70,8 @@ const WindowsSimulation = React.lazy(() =>
 const CryptoSimulation = React.lazy(() =>
   import('./crypto/CryptoSimulation').then((m) => ({ default: m.CryptoSimulation }))
 );
-const SiemSimulation = React.lazy(() =>
-  import('./siem/SiemSimulation').then((m) => ({ default: m.SiemSimulation }))
+const SocSimulation = React.lazy(() =>
+  import('./soc/SocSimulation').then((m) => ({ default: m.SocSimulation }))
 );
 
 const NetworkingWorldMap = React.lazy(() =>
@@ -302,9 +302,18 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
   siem: {
     id: 'siem',
     nameAr: 'مركز العمليات SOC ومحرك SIEM',
-    nameEn: 'SOC & SIEM Correlation',
+    nameEn: 'SOC, SIEM & Detection Engineering',
     domain: 'secops',
-    component: SiemSimulation,
+    component: SocSimulation,
+    worldId: 24,
+    category: 'lab',
+  },
+  soc: {
+    id: 'soc',
+    nameAr: 'مركز العمليات SOC وهندسة الكشف',
+    nameEn: 'SOC, SIEM & Detection Engineering',
+    domain: 'secops',
+    component: SocSimulation,
     worldId: 24,
     category: 'lab',
   },
