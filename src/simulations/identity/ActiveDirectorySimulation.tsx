@@ -33,11 +33,6 @@ export const ActiveDirectorySimulation: React.FC = () => {
   const isAr = language === 'ar';
 
   const [activeView, setActiveView] = useState<string>('map');
-  const [dynamicEvents, setDynamicEvents] = useState<ActiveDirectoryEvent[]>([]);
-
-  const handleAddDynamicEvent = (event: ActiveDirectoryEvent) => {
-    setDynamicEvents((prev) => [event, ...prev]);
-  };
 
   const navItems = [
     { id: 'map', nameEn: 'World Map', nameAr: 'خارطة المنظومة', icon: Compass },
@@ -90,7 +85,6 @@ export const ActiveDirectorySimulation: React.FC = () => {
           <DirectoryExplorer
             onBackToMap={() => setActiveView('map')}
             onNavigateToKerberos={() => setActiveView('kerberos')}
-            onAddEvent={handleAddDynamicEvent}
           />
         )}
 
@@ -98,7 +92,6 @@ export const ActiveDirectorySimulation: React.FC = () => {
           <UsersComputersLab
             onBackToMap={() => setActiveView('map')}
             onNavigateToAuth={() => setActiveView('auth')}
-            onAddEvent={handleAddDynamicEvent}
           />
         )}
 
@@ -120,7 +113,6 @@ export const ActiveDirectorySimulation: React.FC = () => {
           <KerberosSimulation
             onBackToMap={() => setActiveView('map')}
             onNavigateToAuthz={() => setActiveView('auth')}
-            onAddEvent={handleAddDynamicEvent}
           />
         )}
 
@@ -149,7 +141,6 @@ export const ActiveDirectorySimulation: React.FC = () => {
         {activeView === 'eventlog' && (
           <ActiveDirectoryEventLogLab
             onBackToMap={() => setActiveView('map')}
-            externalEvents={dynamicEvents}
           />
         )}
 

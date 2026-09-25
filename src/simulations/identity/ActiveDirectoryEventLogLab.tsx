@@ -6,6 +6,7 @@ import {
   filterAdEvents,
   AdEventFilterOptions,
 } from './logic/eventlog';
+import { projectRuntimeEventsToAdRecords } from './runtime/adEventBridge';
 import {
   Server,
   Filter,
@@ -26,19 +27,20 @@ import {
 
 interface ActiveDirectoryEventLogLabProps {
   onBackToMap?: () => void;
-  externalEvents?: ActiveDirectoryEvent[];
 }
 
 export const ActiveDirectoryEventLogLab: React.FC<ActiveDirectoryEventLogLabProps> = ({
   onBackToMap,
-  externalEvents = [],
 }) => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
   const BackArrow = isAr ? ArrowRight : ArrowLeft;
+  const runtimeEvents = useSimulationStore((s) => s.events);
 
-  const allEvents = [...INITIAL_AD_EVENTS, ...externalEvents].sort(
-    (a, b) => b.virtualTime - a.virtualTime
+  // Authoritatively derive AD events from shared SimulationRuntime events!
+  const projectedEvents = projectRuntimeEventsToAdRecords(runtimeEvents);
+  const allEvents = [...INITIAL_AD_EVENTS, ...projectedEvents].sort(
+    (a, b) => b.virtualTime - a.virtualTime || b.id.localeCompare(a.id)
   );
 
   const [selectedEventIdFilter, setSelectedEventIdFilter] = useState<string>('ALL');

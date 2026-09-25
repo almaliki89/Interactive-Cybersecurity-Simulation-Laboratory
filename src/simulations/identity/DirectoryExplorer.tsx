@@ -34,17 +34,16 @@ import {
   Info,
   Power,
 } from 'lucide-react';
+import { dispatchEnterpriseAdEvent } from './runtime/adEventBridge';
 
 interface DirectoryExplorerProps {
   onBackToMap?: () => void;
   onNavigateToKerberos?: () => void;
-  onAddEvent?: (event: any) => void;
 }
 
 export const DirectoryExplorer: React.FC<DirectoryExplorerProps> = ({
   onBackToMap,
   onNavigateToKerberos,
-  onAddEvent,
 }) => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
@@ -78,12 +77,10 @@ export const DirectoryExplorer: React.FC<DirectoryExplorerProps> = ({
     setObjects(updated);
 
     const obj = objects.find((o) => o.id === objectId);
-    if (onAddEvent && obj) {
-      onAddEvent({
-        id: `ad-evt-move-${virtualTime}-${objectId}`,
+    if (obj) {
+      dispatchEnterpriseAdEvent({
         eventId: 5136,
         channel: 'Directory Service',
-        provider: 'Microsoft-Windows-ActiveDirectory_DomainService',
         virtualTime,
         severity: 'Information',
         subjectUser: 'Administrator',
@@ -94,6 +91,7 @@ export const DirectoryExplorer: React.FC<DirectoryExplorerProps> = ({
         detailsEn: `Object '${(obj as any).displayName || (obj as any).name}' moved to '${targetOuDn}'.`,
         detailsAr: `تم نقل الكائن '${(obj as any).displayName || (obj as any).name}' إلى '${targetOuDn}'.`,
         category: 'Directory Service Access',
+        runtimeEventType: 'AD_USER_MOVED',
       });
     }
   };
@@ -105,12 +103,10 @@ export const DirectoryExplorer: React.FC<DirectoryExplorerProps> = ({
     setObjects(updated);
 
     const obj = objects.find((o) => o.id === objectId);
-    if (onAddEvent && obj) {
-      onAddEvent({
-        id: `ad-evt-status-${virtualTime}-${objectId}`,
+    if (obj) {
+      dispatchEnterpriseAdEvent({
         eventId: currentEnabled ? 4725 : 4722,
         channel: 'Security',
-        provider: 'Microsoft-Windows-Security-Auditing',
         virtualTime,
         severity: 'Information',
         subjectUser: 'Administrator',
@@ -121,6 +117,7 @@ export const DirectoryExplorer: React.FC<DirectoryExplorerProps> = ({
         detailsEn: `Account '${(obj as any).samAccountName}' status toggled to ${!currentEnabled}.`,
         detailsAr: `تم تغيير حالة الحساب '${(obj as any).samAccountName}' إلى ${!currentEnabled}.`,
         category: 'Account Management',
+        runtimeEventType: currentEnabled ? 'AD_USER_DISABLED' : 'AD_USER_ENABLED',
       });
     }
   };

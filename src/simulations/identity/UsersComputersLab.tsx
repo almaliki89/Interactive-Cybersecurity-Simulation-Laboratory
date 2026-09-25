@@ -28,17 +28,16 @@ import {
   Activity,
   UserCheck,
 } from 'lucide-react';
+import { dispatchEnterpriseAdEvent } from './runtime/adEventBridge';
 
 interface UsersComputersLabProps {
   onBackToMap?: () => void;
   onNavigateToAuth?: () => void;
-  onAddEvent?: (event: any) => void;
 }
 
 export const UsersComputersLab: React.FC<UsersComputersLabProps> = ({
   onBackToMap,
   onNavigateToAuth,
-  onAddEvent,
 }) => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
@@ -78,24 +77,21 @@ export const UsersComputersLab: React.FC<UsersComputersLabProps> = ({
 
     setUsers(updated);
 
-    if (onAddEvent) {
-      onAddEvent({
-        id: `ad-evt-grp-add-${virtualTime}-${selectedUser.id}`,
-        eventId: 4728,
-        channel: 'Security',
-        provider: 'Microsoft-Windows-Security-Auditing',
-        virtualTime,
-        severity: 'Information',
-        subjectUser: 'Administrator',
-        targetUserOrObject: groupName,
-        computer: 'DC01-NEXORA',
-        actionEn: 'Member added to security group',
-        actionAr: 'تمت إضافة عضو إلى مجموعة الأمان',
-        detailsEn: `User '${selectedUser.samAccountName}' added to group '${groupName}'.`,
-        detailsAr: `تمت إضافة المستخدم '${selectedUser.samAccountName}' إلى المجموعة '${groupName}'.`,
-        category: 'Account Management',
-      });
-    }
+    dispatchEnterpriseAdEvent({
+      eventId: 4728,
+      channel: 'Security',
+      virtualTime,
+      severity: 'Information',
+      subjectUser: 'Administrator',
+      targetUserOrObject: groupName,
+      computer: 'DC01-NEXORA',
+      actionEn: 'Member added to security group',
+      actionAr: 'تمت إضافة عضو إلى مجموعة الأمان',
+      detailsEn: `User '${selectedUser.samAccountName}' added to group '${groupName}'.`,
+      detailsAr: `تمت إضافة المستخدم '${selectedUser.samAccountName}' إلى المجموعة '${groupName}'.`,
+      category: 'Account Management',
+      runtimeEventType: 'AD_GROUP_MEMBERSHIP_CHANGED',
+    });
   };
 
   const handleRemoveGroupFromUser = (groupName: string) => {
@@ -113,24 +109,21 @@ export const UsersComputersLab: React.FC<UsersComputersLabProps> = ({
 
     setUsers(updated);
 
-    if (onAddEvent) {
-      onAddEvent({
-        id: `ad-evt-grp-rem-${virtualTime}-${selectedUser.id}`,
-        eventId: 4729,
-        channel: 'Security',
-        provider: 'Microsoft-Windows-Security-Auditing',
-        virtualTime,
-        severity: 'Information',
-        subjectUser: 'Administrator',
-        targetUserOrObject: groupName,
-        computer: 'DC01-NEXORA',
-        actionEn: 'Member removed from security group',
-        actionAr: 'تمت إزالة عضو من مجموعة الأمان',
-        detailsEn: `User '${selectedUser.samAccountName}' removed from group '${groupName}'.`,
-        detailsAr: `تمت إزالة المستخدم '${selectedUser.samAccountName}' من المجموعة '${groupName}'.`,
-        category: 'Account Management',
-      });
-    }
+    dispatchEnterpriseAdEvent({
+      eventId: 4729,
+      channel: 'Security',
+      virtualTime,
+      severity: 'Information',
+      subjectUser: 'Administrator',
+      targetUserOrObject: groupName,
+      computer: 'DC01-NEXORA',
+      actionEn: 'Member removed from security group',
+      actionAr: 'تمت إزالة عضو من مجموعة الأمان',
+      detailsEn: `User '${selectedUser.samAccountName}' removed from group '${groupName}'.`,
+      detailsAr: `تمت إزالة المستخدم '${selectedUser.samAccountName}' من المجموعة '${groupName}'.`,
+      category: 'Account Management',
+      runtimeEventType: 'AD_GROUP_MEMBERSHIP_CHANGED',
+    });
   };
 
   const handleToggleInteractiveLogon = (userId: string) => {

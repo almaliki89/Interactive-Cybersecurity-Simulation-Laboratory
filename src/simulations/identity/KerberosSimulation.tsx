@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
+import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import {
   INITIAL_USERS,
   AdUser,
@@ -9,9 +10,12 @@ import {
   KerberosTicket,
   KerberosFailureReason,
   EncryptionType,
-  advanceKerberosProtocol,
-  KerberosExchangeContext,
 } from './logic/kerberos';
+import {
+  loadKerberosScenario,
+  deriveKerberosStateFromEvents,
+  DerivedKerberosState,
+} from './runtime/KerberosScenario';
 import {
   Key,
   Shield,
@@ -21,6 +25,8 @@ import {
   ArrowLeft,
   RotateCcw,
   Play,
+  Pause,
+  FastForward,
   Clock,
   Lock,
   Unlock,
@@ -34,163 +40,122 @@ import {
   Info,
   ChevronRight,
   FileCheck,
+  History,
 } from 'lucide-react';
 
 interface KerberosSimulationProps {
   onBackToMap?: () => void;
   onNavigateToAuthz?: () => void;
-  onAddEvent?: (event: any) => void;
 }
 
 export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
   onBackToMap,
   onNavigateToAuthz,
-  onAddEvent,
 }) => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
   const BackArrow = isAr ? ArrowRight : ArrowLeft;
-  const virtualTime = useSimulationStore((s) => s.virtualTime);
 
-  // State machine state
-  const [kerberosState, setKerberosState] = useState<KerberosState>('IDLE');
+  // Runtime-backed state from simulationStore
+  const virtualTime = useSimulationStore((s) => s.virtualTime);
+  const clockStatus = useSimulationStore((s) => s.clockStatus);
+  const clockSpeed = useSimulationStore((s) => s.clockSpeed);
+  const runtimeEvents = useSimulationStore((s) => s.events);
+
+  // Configuration options (User intent)
   const [selectedUser, setSelectedUser] = useState<string>('sara');
   const [targetSpn, setTargetSpn] = useState<string>('cifs/fin-srv01.corp.nexora.local');
   const [encryptionType, setEncryptionType] = useState<EncryptionType>('AES-256');
-
-  // Simulation failure controls
   const [forcedFailure, setForcedFailure] = useState<KerberosFailureReason>('NONE');
-  const [clientVirtualTimeOffset, setClientVirtualTimeOffset] = useState<number>(0); // Clock skew simulation in virtual seconds
-  const [tgtTicket, setTgtTicket] = useState<KerberosTicket | undefined>(undefined);
-  const [serviceTicket, setServiceTicket] = useState<KerberosTicket | undefined>(undefined);
+
+  // Interactive Replay / Time-travel state (null = live virtualTime)
+  const [replayVirtualTime, setReplayVirtualTime] = useState<number | null>(null);
   const [selectedTicketForInspect, setSelectedTicketForInspect] = useState<KerberosTicket | null>(null);
 
-  // Exchange logs
-  const [exchangeLogs, setExchangeLogs] = useState<
-    { state: KerberosState; messageEn: string; messageAr: string; time: number; failure?: boolean }[]
-  >([]);
+  // Authoritative Derived State from Global Runtime Events!
+  const effectiveTime = replayVirtualTime !== null ? replayVirtualTime : virtualTime;
+  const derivedState: DerivedKerberosState = deriveKerberosStateFromEvents(
+    runtimeEvents,
+    effectiveTime
+  );
+
+  const {
+    protocolState,
+    tgtTicket,
+    serviceTicket,
+    exchangeLogs,
+    failureReason,
+    errorMessageEn,
+    errorMessageAr,
+  } = derivedState;
 
   const currentUser = INITIAL_USERS.find((u) => u.samAccountName === selectedUser) || INITIAL_USERS[0];
 
-  const handleStep = () => {
-    const clientTime = virtualTime + clientVirtualTimeOffset;
-    const kdcTime = virtualTime;
+  // Protocol Orchestration delegating to globalSimulationRuntime
+  const handleStart = () => {
+    setReplayVirtualTime(null);
+    globalSimulationRuntime.reset();
 
-    const ctx: KerberosExchangeContext = {
+    loadKerberosScenario(globalSimulationRuntime, {
       clientPrincipal: currentUser.userPrincipalName,
       targetSpn,
-      clientVirtualTime: clientTime,
-      kdcVirtualTime: kdcTime,
-      accountEnabled: currentUser.enabled,
-      passwordValid: forcedFailure !== 'WRONG_PASSWORD',
-      userKnown: forcedFailure !== 'USER_UNKNOWN',
-      spnKnown: forcedFailure !== 'SPN_UNKNOWN',
-      kdcAvailable: forcedFailure !== 'KDC_UNAVAILABLE',
-      pacGroups: ['S-1-5-21-392841-513', 'S-1-5-21-392841-1101'], // Domain Users, Finance-Users
       encryptionType,
-      ticketLifetime: 600,
-      maxClockSkew: 300,
-      forcedFailure,
-      seq: exchangeLogs.length + 1,
-    };
+      failureScenario: forcedFailure,
+      startVirtualTime: 0,
+      stepIntervalMs: 500,
+    });
 
-    const res = advanceKerberosProtocol(kerberosState, ctx, tgtTicket, serviceTicket);
-    setKerberosState(res.nextState);
+    globalSimulationRuntime.start();
+  };
 
-    if (res.ticketIssued) {
-      if (res.ticketIssued.type === 'TGT') {
-        setTgtTicket(res.ticketIssued);
-      } else {
-        setServiceTicket(res.ticketIssued);
-      }
+  const handleStep = () => {
+    setReplayVirtualTime(null);
+
+    // If scenario hasn't been scheduled yet, schedule it
+    const hasKerberosEvents = runtimeEvents.some((e) => e.type.startsWith('KERBEROS_'));
+    if (!hasKerberosEvents) {
+      loadKerberosScenario(globalSimulationRuntime, {
+        clientPrincipal: currentUser.userPrincipalName,
+        targetSpn,
+        encryptionType,
+        failureScenario: forcedFailure,
+        startVirtualTime: virtualTime,
+        stepIntervalMs: 500,
+      });
     }
 
-    const isFailure = res.nextState === 'FAILED';
-    setExchangeLogs((prev) => [
-      ...prev,
-      {
-        state: res.nextState,
-        messageEn: res.messageEn,
-        messageAr: res.messageAr,
-        time: res.virtualTimestamp,
-        failure: isFailure,
-      },
-    ]);
+    // Step the simulation clock forward deterministically by 500 virtual ms
+    globalSimulationRuntime.step(500);
+  };
 
-    // Emit synthetic AD event
-    if (onAddEvent) {
-      let eventId = 4768; // TGT request
-      let actionEn = 'Kerberos TGT requested';
-      let actionAr = 'تم طلب تذكرة TGT';
-
-      if (res.nextState === 'SERVICE_TICKET_ISSUED') {
-        eventId = 4769;
-        actionEn = 'Kerberos Service Ticket requested';
-        actionAr = 'تم طلب تذكرة خدمة Kerberos';
-      } else if (res.nextState === 'FAILED') {
-        eventId = 4771;
-        actionEn = 'Kerberos pre-authentication failed';
-        actionAr = 'فشلت المصادقة المسبقة لـ Kerberos';
-      }
-
-      onAddEvent({
-        id: `ad-evt-krb-${virtualTime}-${exchangeLogs.length + 1}`,
-        eventId,
-        channel: 'Security',
-        provider: 'Microsoft-Windows-Security-Auditing',
-        virtualTime,
-        severity: isFailure ? 'Warning' : 'Information',
-        subjectUser: currentUser.samAccountName,
-        targetUserOrObject: targetSpn,
-        computer: 'DC01-NEXORA',
-        actionEn,
-        actionAr,
-        detailsEn: res.messageEn,
-        detailsAr: res.messageAr,
-        category: 'Logon/Logoff',
-      });
+  const handlePauseResume = () => {
+    if (clockStatus === 'running') {
+      globalSimulationRuntime.pause();
+    } else {
+      globalSimulationRuntime.resume();
     }
   };
 
   const handleReset = () => {
-    setKerberosState('IDLE');
-    setTgtTicket(undefined);
-    setServiceTicket(undefined);
+    setReplayVirtualTime(null);
     setSelectedTicketForInspect(null);
-    setExchangeLogs([]);
+    globalSimulationRuntime.reset();
   };
 
-  const stepsList = [
-    { id: 'AS_REQ', labelEn: '1. AS-REQ (Client -> KDC)', labelAr: '1. طلب AS-REQ (العميل -> KDC)' },
-    { id: 'TGT', labelEn: '2. AS-REP (TGT Issued)', labelAr: '2. استلام تذكرة TGT' },
-    { id: 'TGS_REQ', labelEn: '3. TGS-REQ (Client -> KDC)', labelAr: '3. طلب TGS-REQ بتذكرة TGT' },
-    { id: 'SERVICE_TICKET', labelEn: '4. TGS-REP (Service Ticket)', labelAr: '4. استلام تذكرة الخدمة' },
-    { id: 'AP_REQ', labelEn: '5. AP-REQ (Client -> Server)', labelAr: '5. تقديم AP-REQ لخادم التطبيق' },
-    { id: 'AUTHENTICATED', labelEn: '6. Authenticated Session', labelAr: '6. اكتمال المصادقة وجلسة العمل' },
-  ];
-
-  const getStepProgressIndex = (state: KerberosState): number => {
-    switch (state) {
-      case 'IDLE':
-        return 0;
-      case 'AS_REQ_SENT':
-        return 1;
-      case 'TGT_ISSUED':
-        return 2;
-      case 'TGS_REQ_SENT':
-        return 3;
-      case 'SERVICE_TICKET_ISSUED':
-        return 4;
-      case 'AP_REQ_SENT':
-        return 5;
-      case 'AUTHENTICATED':
-        return 6;
-      case 'FAILED':
-        return -1;
-    }
+  const handleSpeedChange = (speed: number) => {
+    globalSimulationRuntime.setSpeed(speed);
   };
 
-  const currentProgress = getStepProgressIndex(kerberosState);
+  const handleReplaySeek = (time: number) => {
+    setReplayVirtualTime(time);
+  };
+
+  // Find max event virtual time for replay slider
+  const maxEventTime = Math.max(
+    ...runtimeEvents.filter((e) => e.type.startsWith('KERBEROS_')).map((e) => e.virtualTime ?? 0),
+    virtualTime,
+    2500
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 select-none">
@@ -212,8 +177,8 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
             </h1>
             <p className="text-xs text-slate-400">
               {isAr
-                ? 'تتبع حزم AS-REQ و TGT و TGS-REQ وتذاكر الخدمة، مع فحص حزم PAC وضوابط انحراف الساعة والتشفير'
-                : 'Interactive step-by-step Kerberos authentication engine with PAC token inspection and security failure testing'}
+                ? 'تشغيل حتمي مربوط بمحرك SimulationRuntime العام: يتأثر بالإيقاف المؤقت، السرعة، والخطوة، ويدعم إعادة التشغيل الزمني'
+                : 'Runtime-driven simulation obeying SimulationRuntime clock, speed, pause, step, and deterministic replay'}
             </p>
           </div>
         </div>
@@ -274,7 +239,10 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
           <label className="text-slate-300 font-bold block">{isAr ? 'خوارزمية التشفير:' : 'Encryption Type:'}</label>
           <select
             value={encryptionType}
-            onChange={(e) => setEncryptionType(e.target.value as EncryptionType)}
+            onChange={(e) => {
+              setEncryptionType(e.target.value as EncryptionType);
+              handleReset();
+            }}
             className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
           >
             <option value="AES-256">AES-256 (Modern & Secure)</option>
@@ -304,26 +272,49 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
         </div>
       </div>
 
-      {/* Stepping Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
-        <div className="flex items-center gap-3">
+      {/* Runtime Simulation Controls (Play, Pause, Step, Speed, Clock, Replay) */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800 font-mono text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Start / Run */}
           <button
-            onClick={handleStep}
-            disabled={kerberosState === 'AUTHENTICATED' || kerberosState === 'FAILED'}
-            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white font-mono font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-900/30 transition-all"
+            onClick={handleStart}
+            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold flex items-center gap-2 shadow-lg shadow-cyan-900/30 transition-all"
           >
             <Play className="w-4 h-4 fill-current" />
-            <span>
-              {kerberosState === 'IDLE'
-                ? isAr
-                  ? 'بدء مصادقة Kerberos (AS-REQ)'
-                  : 'Start Kerberos Exchange (AS-REQ)'
-                : isAr
-                ? 'الخطوة التالية في البروتوكول'
-                : 'Advance Next Protocol Step'}
-            </span>
+            <span>{isAr ? 'بدء التبادل التلقائي' : 'Start Flow (Auto)'}</span>
           </button>
 
+          {/* Pause / Resume */}
+          <button
+            onClick={handlePauseResume}
+            disabled={clockStatus === 'idle'}
+            className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 flex items-center gap-1.5"
+          >
+            {clockStatus === 'running' ? (
+              <>
+                <Pause className="w-3.5 h-3.5" />
+                <span>{isAr ? 'إيقاف مؤقت' : 'Pause'}</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5" />
+                <span>{isAr ? 'استئناف' : 'Resume'}</span>
+              </>
+            )}
+          </button>
+
+          {/* Step Control */}
+          <button
+            onClick={handleStep}
+            disabled={protocolState === 'AUTHENTICATED' || protocolState === 'FAILED'}
+            className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white disabled:opacity-40 flex items-center gap-1.5"
+            title="Advance exactly 500 virtual milliseconds"
+          >
+            <FastForward className="w-3.5 h-3.5" />
+            <span>{isAr ? 'خطوة واحدة (+500ms)' : 'Step (+500ms)'}</span>
+          </button>
+
+          {/* Reset */}
           <button
             onClick={handleReset}
             className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
@@ -331,23 +322,80 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
           >
             <RotateCcw className="w-4 h-4" />
           </button>
+
+          {/* Speed Selector */}
+          <div className="flex items-center gap-1 ml-2 border-l border-slate-800 pl-3">
+            {[0.5, 1, 2].map((s) => (
+              <button
+                key={s}
+                onClick={() => handleSpeedChange(s)}
+                className={`px-2 py-1 rounded text-[11px] font-bold ${
+                  clockSpeed === s
+                    ? 'bg-cyan-950 text-cyan-300 border border-cyan-700'
+                    : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {s}x
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-mono">
-          <span className="text-slate-400">Current State:</span>
+        {/* Virtual Time & Status Badges */}
+        <div className="flex items-center gap-3">
+          <span className="text-slate-400 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Virtual Time: <strong className="text-white">T+{effectiveTime}ms</strong></span>
+          </span>
+
           <span
             className={`px-3 py-1 rounded-xl font-bold border ${
-              kerberosState === 'AUTHENTICATED'
+              protocolState === 'AUTHENTICATED'
                 ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
-                : kerberosState === 'FAILED'
+                : protocolState === 'FAILED'
                 ? 'bg-red-950 text-red-300 border-red-700'
                 : 'bg-slate-950 text-cyan-300 border-slate-800'
             }`}
           >
-            {kerberosState}
+            {protocolState}
           </span>
         </div>
       </div>
+
+      {/* Time-Travel Replay Slider */}
+      {runtimeEvents.some((e) => e.type.startsWith('KERBEROS_')) && (
+        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-2 font-mono text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 font-bold flex items-center gap-1.5">
+              <History className="w-3.5 h-3.5 text-purple-400" />
+              <span>{isAr ? 'شريط إعادة التشغيل الزمني (Deterministic Time-Travel Replay):' : 'Replay Slider (Inspect ticket state at any virtual timestamp):'}</span>
+            </span>
+            <span className="text-cyan-400 font-bold">
+              {replayVirtualTime !== null ? `Seeking: T+${replayVirtualTime}ms` : 'Live (Current State)'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min="0"
+              max={maxEventTime}
+              step="100"
+              value={effectiveTime}
+              onChange={(e) => handleReplaySeek(Number(e.target.value))}
+              className="w-full accent-cyan-500 cursor-pointer"
+            />
+            {replayVirtualTime !== null && (
+              <button
+                onClick={() => setReplayVirtualTime(null)}
+                className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[10px] text-slate-300 hover:text-white"
+              >
+                Go Live
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 3-Tier Visual Architecture & Ticket Flow */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -367,7 +415,7 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Virtual Clock:</span>
-              <span className="text-white">T+{virtualTime + clientVirtualTimeOffset}s</span>
+              <span className="text-white">T+{effectiveTime}ms</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Cred Cache:</span>
@@ -377,7 +425,7 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
             </div>
           </div>
 
-          {/* Ticket Badges */}
+          {/* Ticket Badges (Derived from Runtime!) */}
           <div className="space-y-2 pt-2 border-t border-slate-800">
             {tgtTicket && (
               <div
@@ -451,14 +499,14 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Mutual Auth:</span>
-              <span className={kerberosState === 'AUTHENTICATED' ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-                {kerberosState === 'AUTHENTICATED' ? 'SESSION ESTABLISHED' : 'PENDING'}
+              <span className={protocolState === 'AUTHENTICATED' ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                {protocolState === 'AUTHENTICATED' ? 'SESSION ESTABLISHED' : 'PENDING'}
               </span>
             </div>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400">
-            {kerberosState === 'AUTHENTICATED'
+            {protocolState === 'AUTHENTICATED'
               ? 'Decrypted Service Ticket using server secret key. Validated Authenticator timestamp and PAC.'
               : 'Awaiting AP-REQ from client containing encrypted service ticket.'}
           </div>
@@ -505,7 +553,7 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
             <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
               <span className="text-slate-500 block">Validity Window</span>
               <span className="text-emerald-400">
-                T+{selectedTicketForInspect.issuedAtVirtualTime}s → T+{selectedTicketForInspect.expiresAtVirtualTime}s
+                T+{selectedTicketForInspect.issuedAtVirtualTime}ms → T+{selectedTicketForInspect.expiresAtVirtualTime}ms
               </span>
             </div>
             <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
@@ -532,18 +580,18 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
         </div>
       )}
 
-      {/* Exchange Timeline Logs */}
+      {/* Exchange Timeline Logs (Projected from SimulationRuntime Events) */}
       <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3 font-mono text-xs">
         <h3 className="font-bold text-white uppercase tracking-wider flex items-center gap-2">
           <Clock className="w-4 h-4 text-cyan-400" />
-          <span>{isAr ? 'سجل تبادل رسائل Kerberos الزمني:' : 'Kerberos Message Timeline:'}</span>
+          <span>{isAr ? 'سجل تبادل رسائل Kerberos المستمد من المحرك العام:' : 'Runtime Kerberos Message Timeline:'}</span>
         </h3>
 
         {exchangeLogs.length === 0 ? (
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-500 text-center">
             {isAr
-              ? 'انقر على "بدء مصادقة Kerberos" لتتبع مراحل تبادل التذاكر.'
-              : 'Click "Start Kerberos Exchange" to initiate the protocol sequence.'}
+              ? 'انقر على "بدء التبادل التلقائي" أو "خطوة واحدة" لتشغيل السيناريو عبر محرك المحاكاة.'
+              : 'Click "Start Flow" or "Step" to run the scenario through the global simulation runtime.'}
           </div>
         ) : (
           <div className="space-y-2">
@@ -557,7 +605,7 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
                 }`}
               >
                 <span className="text-[10px] text-cyan-400 font-bold shrink-0 mt-0.5">
-                  T+{log.time}s
+                  T+{log.time}ms
                 </span>
                 <span className="text-white font-bold shrink-0">[{log.state}]</span>
                 <span className="leading-relaxed">{isAr ? log.messageAr : log.messageEn}</span>
