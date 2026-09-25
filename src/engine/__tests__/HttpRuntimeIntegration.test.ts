@@ -64,7 +64,56 @@ describe('HTTP Pipeline & AppSec SimulationRuntime Integration Tests', () => {
   });
 
   // ==========================================
-  // 2. Pause & Resume Controls
+  // 2. Simulation Clock Speed Control & Virtual Progression
+  // ==========================================
+  describe('Simulation Clock Speed Control & Virtual Progression', () => {
+    it('configures and updates clock speed (0.5x, 1x, 2x) through Runtime APIs', () => {
+      expect(runtime.clock.getSpeed()).toBe(1.0);
+      expect(runtime.getState().speed).toBe(1.0);
+
+      // Set to 0.5x
+      runtime.setSpeed(0.5);
+      expect(runtime.clock.getSpeed()).toBe(0.5);
+      expect(runtime.getState().speed).toBe(0.5);
+
+      // Set to 2.0x
+      runtime.setSpeed(2.0);
+      expect(runtime.clock.getSpeed()).toBe(2.0);
+      expect(runtime.getState().speed).toBe(2.0);
+
+      // Reset to 1.0x
+      runtime.setSpeed(1.0);
+      expect(runtime.clock.getSpeed()).toBe(1.0);
+      expect(runtime.getState().speed).toBe(1.0);
+    });
+
+    it('maintains strict virtual time event ordering under various speed settings', () => {
+      [0.5, 1.0, 2.0].forEach((speedMultiplier) => {
+        const testRuntime = new SimulationRuntime();
+        testRuntime.setSpeed(speedMultiplier);
+
+        loadHttpRequestScenario(testRuntime, {
+          method: 'GET',
+          path: '/api/v1/orders/1001',
+          startVirtualTime: 0,
+          stepIntervalMs: 100,
+        });
+
+        // Step through the pipeline
+        testRuntime.step(500); // Browser -> DNS -> TCP -> TLS -> Proxy -> Route
+        let derived = deriveHttpRequestStateFromEvents(testRuntime.events.getHistory());
+        expect(derived.currentStage).toBe('ROUTE_MATCHED');
+
+        testRuntime.step(600); // Remaining stages -> Response Sent
+        derived = deriveHttpRequestStateFromEvents(testRuntime.events.getHistory());
+        expect(derived.currentStage).toBe('RESPONSE_SENT');
+        expect(derived.response?.statusCode).toBe(200);
+      });
+    });
+  });
+
+  // ==========================================
+  // 3. Pause & Resume Controls
   // ==========================================
   describe('Simulation Clock Pause & Resume', () => {
     it('pauses mid-request and halts virtual progression until resumed', () => {

@@ -539,22 +539,11 @@ describe('Web & Application Security Production Logic Test Suite', () => {
   });
 
   // ==========================================
-  // 13. Master Challenge Hardening Validator
+  // 13. Master Challenge Hardening Validator & Anti-Cheat
   // ==========================================
   describe('Nexora Customer Portal Master Hardening Validator', () => {
-    it('fails on initial vulnerable portal state', () => {
-      const initial = getInitialChallengeState();
-      const res = validateAppSecurityState(initial);
-
-      expect(res.success).toBe(false);
-      expect(res.score).toBeLessThan(50);
-      expect(res.failedChecks.length).toBeGreaterThan(0);
-    });
-
-    it('passes when all 12 enterprise controls are hardened while preserving workflows', () => {
+    const getHardenedState = () => {
       const state = getInitialChallengeState();
-
-      // Apply full hardening
       state.cookieSettings = { httpOnly: true, secure: true, sameSite: 'Lax', path: '/', maxAgeSeconds: 3600 };
       state.enforceObjectOwnership = true;
       state.financeRouteRequiredRole = 'Finance';
@@ -587,21 +576,164 @@ describe('Web & Application Security Production Logic Test Suite', () => {
         'Strict-Transport-Security': RECOMMENDED_SECURITY_HEADERS['Strict-Transport-Security'],
         'X-Content-Type-Options': 'nosniff',
       };
+      return state;
+    };
 
+    it('fails on initial vulnerable portal state', () => {
+      const initial = getInitialChallengeState();
+      const res = validateAppSecurityState(initial);
+
+      expect(res.success).toBe(false);
+      expect(res.score).toBeLessThan(50);
+      expect(res.failedChecks.length).toBeGreaterThan(0);
+    });
+
+    it('passes with 100% score when all 12 controls + business continuity requirement are satisfied', () => {
+      const state = getHardenedState();
       const res = validateAppSecurityState(state);
+
       expect(res.failedChecks).toEqual([]);
       expect(res.success).toBe(true);
       expect(res.score).toBe(100);
-      expect(res.failedChecks).toHaveLength(0);
+      expect(res.businessContinuityPassed).toBe(true);
     });
 
-    it('anti-cheat: fails if learner disables the application entirely', () => {
-      const state = getInitialChallengeState();
-      state.disableEntireApplication = true;
+    // Independent Single-Defect Failure Tests
+    describe('Independent Single-Defect Hardening Failures', () => {
+      it('insecure session cookie → fail', () => {
+        const state = getHardenedState();
+        state.cookieSettings.httpOnly = false;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-session-cookie');
+      });
 
-      const res = validateAppSecurityState(state);
-      expect(res.success).toBe(false);
-      expect(res.businessContinuityPassed).toBe(false);
+      it('object ownership disabled → fail', () => {
+        const state = getHardenedState();
+        state.enforceObjectOwnership = false;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-object-ownership');
+      });
+
+      it('Finance RBAC missing → fail', () => {
+        const state = getHardenedState();
+        state.financeRouteRequiredRole = 'None';
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-finance-rbac');
+      });
+
+      it('unsafe SQL mode → fail', () => {
+        const state = getHardenedState();
+        state.databaseQueryMode = 'UNSAFE_CONCATENATION';
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-sqli-parameterized');
+      });
+
+      it('XSS encoding disabled → fail', () => {
+        const state = getHardenedState();
+        state.enableContextAwareOutputEncoding = false;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-xss-encoding');
+      });
+
+      it('CSRF protection disabled → fail', () => {
+        const state = getHardenedState();
+        state.enableCsrfTokensOnStateChangingRequests = false;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-csrf-protection');
+      });
+
+      it('JWT audience/issuer validation missing → fail', () => {
+        const state = getHardenedState();
+        state.jwtValidateAudience = false;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-jwt-validation');
+      });
+
+      it('CORS wildcard → fail', () => {
+        const state = getHardenedState();
+        state.corsConfig.allowedOrigins = ['*'];
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-cors-hardening');
+      });
+
+      it('unsafe upload policy → fail', () => {
+        const state = getHardenedState();
+        state.uploadPolicy.allowedExtensions = ['.pdf', '.php'];
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-upload-hardening');
+      });
+
+      it('rate limiting disabled → fail', () => {
+        const state = getHardenedState();
+        state.enableLoginRateLimiting = false;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-rate-limiting');
+      });
+
+      it('security headers missing → fail', () => {
+        const state = getHardenedState();
+        state.responseHeaders = {};
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-security-headers');
+      });
+
+      it('audit logging disabled → fail', () => {
+        const state = getHardenedState();
+        state.enableSecurityAuditLogging = false;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.failedChecks).toContain('chk-audit-logging');
+      });
+    });
+
+    // Independent Business Continuity Anti-Cheat Tests
+    describe('Business Continuity Anti-Cheat Verifications', () => {
+      it('disableEntireApplication → fail', () => {
+        const state = getHardenedState();
+        state.disableEntireApplication = true;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.businessContinuityPassed).toBe(false);
+        expect(res.failedChecks).toContain('chk-business-continuity');
+      });
+
+      it('grantAllUsersAdminRole → fail', () => {
+        const state = getHardenedState();
+        state.grantAllUsersAdminRole = true;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.businessContinuityPassed).toBe(false);
+        expect(res.failedChecks).toContain('chk-least-privilege');
+      });
+
+      it('blockAllApiTraffic → fail', () => {
+        const state = getHardenedState();
+        state.blockAllApiTraffic = true;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.businessContinuityPassed).toBe(false);
+        expect(res.failedChecks).toContain('chk-business-workflow');
+      });
+
+      it('disableCustomerFileUploadsEntirely → fail', () => {
+        const state = getHardenedState();
+        state.disableCustomerFileUploadsEntirely = true;
+        const res = validateAppSecurityState(state);
+        expect(res.success).toBe(false);
+        expect(res.businessContinuityPassed).toBe(false);
+        expect(res.failedChecks).toContain('chk-business-workflow');
+      });
     });
   });
 });

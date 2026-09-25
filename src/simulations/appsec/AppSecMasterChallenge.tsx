@@ -49,70 +49,24 @@ export const AppSecMasterChallenge: React.FC<AppSecMasterChallengeProps> = ({
 
   const validation: MasterValidationResult = validateAppSecurityState(state);
 
-  const handleRemediateAll = () => {
-    setState({
-      cookieSettings: {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Lax',
-        path: '/',
-        maxAgeSeconds: 3600,
-      },
-      sessionTtlMinutes: 60,
-      enforceObjectOwnership: true,
-      financeRouteRequiredRole: 'Finance',
-      databaseQueryMode: 'PARAMETERIZED_PREPARED_STATEMENT',
-      enableContextAwareOutputEncoding: true,
-      enableCsrfTokensOnStateChangingRequests: true,
-      jwtValidateAudience: true,
-      jwtValidateIssuer: true,
-      jwtValidateExpiry: true,
-      corsConfig: {
-        allowedOrigins: ['https://portal.corp.nexora.local', 'https://app.corp.nexora.local'],
-        allowedMethods: ['GET', 'POST', 'PUT', 'DELETE'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-        allowCredentials: true,
-      },
-      uploadPolicy: {
-        allowedExtensions: ['.pdf', '.png', '.jpg', '.jpeg', '.docx'],
-        allowedMimeTypes: ['application/pdf', 'image/png', 'image/jpeg'],
-        maxSizeBytes: 5 * 1024 * 1024,
-        enforceMagicBytesMatch: true,
-        isolateStorageOutsideWebroot: true,
-        renameToUuidOrHash: true,
-        disableExecutablePermissions: true,
-      },
-      enableLoginRateLimiting: true,
-      loginMaxAttemptsPerMinute: 5,
-      enableSecurityAuditLogging: true,
-      responseHeaders: {
-        'Content-Security-Policy': RECOMMENDED_SECURITY_HEADERS['Content-Security-Policy'],
-        'Strict-Transport-Security': RECOMMENDED_SECURITY_HEADERS['Strict-Transport-Security'],
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'Referrer-Policy': 'strict-origin-when-cross-origin',
-        'Permissions-Policy': RECOMMENDED_SECURITY_HEADERS['Permissions-Policy'],
-      },
-      disableEntireApplication: false,
-      grantAllUsersAdminRole: false,
-      blockAllApiTraffic: false,
-      disableCustomerFileUploadsEntirely: false,
-    });
+  const handleRunAudit = () => {
+    const result = validateAppSecurityState(state);
+    if (result.success && result.score === 100) {
+      if (completeChallenge) {
+        completeChallenge('appsec_master');
+      }
 
-    if (completeChallenge) {
-      completeChallenge('appsec_master');
-    }
-
-    if (addEvent) {
-      addEvent({
-        id: `evt-appsec-master-complete-${virtualTime}`,
-        type: 'MASTER_CHALLENGE_COMPLETED',
-        virtualTime,
-        timestamp: virtualTime,
-        category: 'APPSEC',
-        severity: 'success',
-        description: 'Nexora Customer Portal production hardening challenge completed at 100% score!',
-      });
+      if (addEvent) {
+        addEvent({
+          id: `evt-appsec-master-complete-${virtualTime}`,
+          type: 'MASTER_CHALLENGE_COMPLETED',
+          virtualTime,
+          timestamp: virtualTime,
+          category: 'APPSEC',
+          severity: 'success',
+          description: 'Nexora Customer Portal production hardening challenge completed at 100% score (12 security controls + 1 business continuity requirement verified)!',
+        });
+      }
     }
   };
 
@@ -140,19 +94,23 @@ export const AppSecMasterChallenge: React.FC<AppSecMasterChallengeProps> = ({
             </h1>
             <p className="text-xs text-slate-400">
               {isAr
-                ? 'تطبيق إنتاجي متكامل يعاني من 12 ثغرة ونقطة ضعف أمنية. أصلح كافة المشاكل دون كسر استمرارية عمل التطبيق!'
-                : 'Production customer portal with 12 security deficiencies. Remediate all vulnerabilities while preserving business functionality.'}
+                ? 'تطبيق إنتاجي متكامل يتطلب تأمين 12 ضابطاً أمنياً + متطلب استمرارية الأعمال. أصلح كافة المشاكل دون كسر استمرارية عمل التطبيق!'
+                : 'Production customer portal requiring 12 security controls + 1 business continuity requirement. Remediate all vulnerabilities while preserving business functionality.'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={handleRemediateAll}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-lg shadow-emerald-950/40"
+            onClick={handleRunAudit}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold shadow-lg transition-all ${
+              validation.success
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-950/40'
+                : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-950/40'
+            }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isAr ? 'تطبيق كافة الإصلاحات الأمنية' : 'Apply Full Remediation'}</span>
+            <ShieldCheck className="w-4 h-4 text-white" />
+            <span>{isAr ? 'تشغيل التدقيق الأمني' : 'Run Security Audit'}</span>
           </button>
           <button
             onClick={handleReset}
@@ -460,7 +418,9 @@ export const AppSecMasterChallenge: React.FC<AppSecMasterChallengeProps> = ({
       {/* Master Checklist Breakdown */}
       <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
         <span className="font-bold text-slate-300 uppercase block pb-2 border-b border-slate-800">
-          Enterprise Security Compliance Checklist ({validation.passedChecks.length} / {validation.checkDetails.length})
+          {isAr
+            ? `قائمة التحقق من الامتثال الأمني: 12 ضابطاً أمنياً + متطلب استمرارية الأعمال (${validation.passedChecks.length} / ${validation.checkDetails.length})`
+            : `Enterprise Security Compliance Checklist: 12 Security Controls + 1 Business Continuity Requirement (${validation.passedChecks.length} / ${validation.checkDetails.length})`}
         </span>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

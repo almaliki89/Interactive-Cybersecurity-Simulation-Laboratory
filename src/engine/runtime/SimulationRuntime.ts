@@ -150,6 +150,7 @@ export class SimulationRuntime {
 
   public setSpeed(speed: number): void {
     this.clock.setSpeed(speed);
+    this.notifyState();
   }
 
   public setNodes(nodes: SimulationNode[]): void {

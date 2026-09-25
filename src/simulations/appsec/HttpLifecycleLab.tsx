@@ -48,6 +48,8 @@ export const HttpLifecycleLab: React.FC<HttpLifecycleLabProps> = ({
   // Runtime-backed state from simulationStore
   const virtualTime = useSimulationStore((s) => s.virtualTime);
   const clockStatus = useSimulationStore((s) => s.clockStatus);
+  const clockSpeed = useSimulationStore((s) => s.clockSpeed);
+  const setClockSpeed = useSimulationStore((s) => s.setClockSpeed);
   const runtimeEvents = useSimulationStore((s) => s.events);
 
   // Request Configuration (User Intent)
@@ -231,6 +233,27 @@ export const HttpLifecycleLab: React.FC<HttpLifecycleLabProps> = ({
 
         {/* Right: Runtime Controls */}
         <div className="lg:col-span-4 flex flex-wrap items-center justify-end gap-2 border-t lg:border-t-0 lg:border-l border-slate-800 pt-3 lg:pt-0 lg:pl-4">
+          {/* Speed Controls */}
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            {[0.5, 1, 2].map((spd) => (
+              <button
+                key={spd}
+                onClick={() => {
+                  globalSimulationRuntime.setSpeed(spd);
+                  setClockSpeed(spd);
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                  clockSpeed === spd
+                    ? 'bg-cyan-500 text-slate-950 font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title={`${spd}x Speed`}
+              >
+                {spd}x
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={handleStart}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold"

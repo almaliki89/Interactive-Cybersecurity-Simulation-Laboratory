@@ -496,12 +496,12 @@ export function validateAppSecurityState(state: AppSecChallengeState): MasterVal
     passedChecks,
     failedChecks,
     checkDetails: checks,
-    businessContinuityPassed: true,
+    businessContinuityPassed: workflowContinuity,
     summaryEn: isSuccess
-      ? 'NEXORA PORTAL HARDENED: All 13 application security controls verified. Enterprise posture achieved!'
+      ? 'NEXORA PORTAL HARDENED: All 12 security controls + 1 business continuity requirement verified. Enterprise posture achieved!'
       : `PORTAL SECURITY INCOMPLETE: Score ${totalEarnedScore}/100. ${failedChecks.length} defense control(s) require remediation.`,
     summaryAr: isSuccess
-      ? 'تم تأمين بوابة Nexora بالكامل: تم اجتياز جميع الضوابط الأمنية الـ 13 بنجاح!'
+      ? 'تم تأمين بوابة Nexora بالكامل: تم اجتياز جميع الضوابط الأمنية الـ 12 + متطلب استمرارية الأعمال بنجاح!'
       : `الأمان غير مكتمل: النتيجة ${totalEarnedScore}/100. هناك ${failedChecks.length} ضابط أمني بحاجة لإصلاح.`,
   };
 }
