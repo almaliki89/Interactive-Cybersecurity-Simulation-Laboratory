@@ -312,7 +312,9 @@ export function spawnWindowsProcess(
   integrityLevel: IntegrityLevel,
   commandLine: string
 ): WindowsProcess[] {
-  const nextPid = Math.max(...processTree.map((p) => p.pid), 5000) + Math.floor(Math.random() * 20 + 4);
+  // Deterministic PID allocation aligned to 4-byte boundaries (Windows PID convention)
+  const currentMax = Math.max(...processTree.map((p) => p.pid), 5000);
+  const nextPid = currentMax + 4;
   const parent = processTree.find((p) => p.name === 'explorer.exe') || processTree[0];
 
   const newProc: WindowsProcess = {

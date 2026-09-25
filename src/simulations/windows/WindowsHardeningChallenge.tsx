@@ -143,7 +143,7 @@ export const WindowsHardeningChallenge: React.FC<WindowsHardeningChallengeProps>
         timestamp: virtualTime,
       });
       addEvent({
-        id: `evt-comp-${Date.now()}`,
+        id: `evt-comp-win-hard-${virtualTime}`,
         type: 'status_change',
         description: isAr ? 'اكتمل تحدي تحصين محطة عمل ويندوز بنجاح!' : 'Windows Security Hardening Challenge completed!',
         timestamp: virtualTime,

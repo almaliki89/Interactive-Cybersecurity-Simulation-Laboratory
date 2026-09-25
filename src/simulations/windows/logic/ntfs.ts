@@ -307,7 +307,20 @@ export function toggleInheritance(resource: NtfsResource, parentDacl?: NtfsAce[]
 }
 
 /**
- * Adds an ACE to resource DACL.
+ * Deterministically computes the next unused ACE ID for a resource,
+ * scanning existing IDs to prevent collisions even after deletions.
+ */
+export function getNextAceId(resource: NtfsResource): string {
+  const existingIds = new Set(resource.dacl.map((a) => a.id));
+  let counter = 1;
+  while (existingIds.has(`ace-${resource.id}-${counter}`)) {
+    counter++;
+  }
+  return `ace-${resource.id}-${counter}`;
+}
+
+/**
+ * Adds an ACE to resource DACL deterministically.
  */
 export function addAceToResource(
   resource: NtfsResource,
@@ -315,7 +328,7 @@ export function addAceToResource(
 ): NtfsResource {
   const newAce: NtfsAce = {
     ...ace,
-    id: `ace-${resource.id}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 5)}`,
+    id: getNextAceId(resource),
   };
   return {
     ...resource,

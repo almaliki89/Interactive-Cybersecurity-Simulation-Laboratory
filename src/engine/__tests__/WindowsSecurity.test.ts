@@ -25,6 +25,7 @@ import {
   toggleInheritance,
   addAceToResource,
   removeAceFromResource,
+  getNextAceId,
 } from '../../simulations/windows/logic/ntfs';
 import {
   WindowsProcess,
@@ -282,6 +283,108 @@ describe('Windows Security World — Production Logic Suite', () => {
       expect(matrix.Read).toBe(true);
       expect(matrix.Write).toBe(true);
       expect(matrix.FullControl).toBe(true);
+    });
+
+    it('enforces deterministic ACE IDs across repeated identical executions', () => {
+      const testResource: NtfsResource = {
+        id: 'res-det',
+        path: 'C:\\Data',
+        name: 'Data',
+        type: 'folder',
+        ownerSid: WELL_KNOWN_SIDS.ADMINISTRATORS,
+        ownerName: 'Administrators',
+        inheritanceEnabled: false,
+        dacl: [],
+        securityRelevanceEn: 'Determinism test',
+        securityRelevanceAr: 'اختبار الحتمية',
+      };
+
+      const aceInput = {
+        trusteeSid: WELL_KNOWN_SIDS.USERS,
+        trusteeName: 'Users',
+        type: 'Allow' as const,
+        permissions: ['Read' as const],
+        isInherited: false,
+      };
+
+      const a = addAceToResource(testResource, aceInput);
+      const b = addAceToResource(testResource, aceInput);
+
+      // Same initial state + same input must produce strictly identical DACL and ACE ID
+      expect(a.dacl).toEqual(b.dacl);
+      expect(a.dacl[0].id).toBe('ace-res-det-1');
+    });
+
+    it('guarantees unique sequential ACE IDs and prevents collisions when ACEs are deleted', () => {
+      let resource: NtfsResource = {
+        id: 'res-seq',
+        path: 'C:\\DataSeq',
+        name: 'DataSeq',
+        type: 'folder',
+        ownerSid: WELL_KNOWN_SIDS.ADMINISTRATORS,
+        ownerName: 'Administrators',
+        inheritanceEnabled: false,
+        dacl: [],
+        securityRelevanceEn: 'Sequence test',
+        securityRelevanceAr: 'اختبار التسلسل',
+      };
+
+      // 1. Multiple ACE additions produce unique sequential IDs
+      resource = addAceToResource(resource, {
+        trusteeSid: WELL_KNOWN_SIDS.USERS,
+        trusteeName: 'Users',
+        type: 'Allow',
+        permissions: ['Read'],
+        isInherited: false,
+      });
+      expect(resource.dacl[0].id).toBe('ace-res-seq-1');
+
+      resource = addAceToResource(resource, {
+        trusteeSid: WELL_KNOWN_SIDS.FINANCE,
+        trusteeName: 'Finance',
+        type: 'Allow',
+        permissions: ['Write'],
+        isInherited: false,
+      });
+      expect(resource.dacl[1].id).toBe('ace-res-seq-2');
+
+      resource = addAceToResource(resource, {
+        trusteeSid: WELL_KNOWN_SIDS.ADMINISTRATORS,
+        trusteeName: 'Administrators',
+        type: 'Allow',
+        permissions: ['FullControl'],
+        isInherited: false,
+      });
+      expect(resource.dacl[2].id).toBe('ace-res-seq-3');
+
+      // 2. Delete ACE #1
+      resource = removeAceFromResource(resource, 'ace-res-seq-1');
+      expect(resource.dacl.map((a) => a.id)).toEqual(['ace-res-seq-2', 'ace-res-seq-3']);
+
+      // 3. Add another ACE — next available sequential slot should be #1 without duplicate
+      resource = addAceToResource(resource, {
+        trusteeSid: WELL_KNOWN_SIDS.GUESTS,
+        trusteeName: 'Guests',
+        type: 'Deny',
+        permissions: ['Write'],
+        isInherited: false,
+      });
+      expect(resource.dacl[2].id).toBe('ace-res-seq-1');
+
+      // 4. Add another ACE — should select #4
+      resource = addAceToResource(resource, {
+        trusteeSid: WELL_KNOWN_SIDS.EVERYONE,
+        trusteeName: 'Everyone',
+        type: 'Allow',
+        permissions: ['Read'],
+        isInherited: false,
+      });
+      expect(resource.dacl[3].id).toBe('ace-res-seq-4');
+
+      // Ensure all IDs are strictly unique
+      const allIds = resource.dacl.map((a) => a.id);
+      const uniqueIds = new Set(allIds);
+      expect(uniqueIds.size).toBe(allIds.length);
     });
   });
 
