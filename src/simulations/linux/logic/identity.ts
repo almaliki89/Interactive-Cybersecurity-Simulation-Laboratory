@@ -84,3 +84,49 @@ export function canUserAccessResource(
       : `تم رفض الوصول (EACCES). يقع المستخدم '${user.username}' في فئة 'الآخرين' بالنسبة لـ '${resource.path}' وتفتقر صلاحياتهم للبت '${action}'.`,
   };
 }
+
+export function createUser(
+  users: LinuxUser[],
+  username: string,
+  primaryGroup: string,
+  supplementaryGroups: string[] = []
+): LinuxUser[] {
+  if (users.some((u) => u.username === username)) {
+    return users;
+  }
+  return [...users, { username, primaryGroup, supplementaryGroups }];
+}
+
+export function changePrimaryGroup(
+  users: LinuxUser[],
+  username: string,
+  newPrimaryGroup: string
+): LinuxUser[] {
+  return users.map((u) =>
+    u.username === username ? { ...u, primaryGroup: newPrimaryGroup } : u
+  );
+}
+
+export function addSupplementaryGroup(
+  users: LinuxUser[],
+  username: string,
+  groupName: string
+): LinuxUser[] {
+  return users.map((u) => {
+    if (u.username !== username) return u;
+    if (u.supplementaryGroups.includes(groupName)) return u;
+    return { ...u, supplementaryGroups: [...u.supplementaryGroups, groupName] };
+  });
+}
+
+export function removeSupplementaryGroup(
+  users: LinuxUser[],
+  username: string,
+  groupName: string
+): LinuxUser[] {
+  return users.map((u) => {
+    if (u.username !== username) return u;
+    return { ...u, supplementaryGroups: u.supplementaryGroups.filter((g) => g !== groupName) };
+  });
+}
+

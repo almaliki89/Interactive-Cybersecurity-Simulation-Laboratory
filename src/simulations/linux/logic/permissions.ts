@@ -63,3 +63,37 @@ export function evaluatePosixPermission(
 
   return file.permissions.other[action];
 }
+
+export function applyChmodSymbolic(
+  current: PosixPermissions,
+  targetClass: 'u' | 'g' | 'o' | 'a',
+  operation: '+' | '-' | '=',
+  bits: ('r' | 'w' | 'x')[]
+): PosixPermissions {
+  const next: PosixPermissions = JSON.parse(JSON.stringify(current));
+  const classesToModify: ('owner' | 'group' | 'other')[] =
+    targetClass === 'a'
+      ? ['owner', 'group', 'other']
+      : targetClass === 'u'
+      ? ['owner']
+      : targetClass === 'g'
+      ? ['group']
+      : ['other'];
+
+  for (const c of classesToModify) {
+    if (operation === '=') {
+      next[c] = {
+        r: bits.includes('r'),
+        w: bits.includes('w'),
+        x: bits.includes('x'),
+      };
+    } else {
+      for (const b of bits) {
+        next[c][b] = operation === '+';
+      }
+    }
+  }
+
+  return next;
+}
+
