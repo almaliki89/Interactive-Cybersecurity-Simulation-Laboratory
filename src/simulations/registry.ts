@@ -73,6 +73,9 @@ const CryptoSimulation = React.lazy(() =>
 const SocSimulation = React.lazy(() =>
   import('./soc/SocSimulation').then((m) => ({ default: m.SocSimulation }))
 );
+const ForensicsSimulation = React.lazy(() =>
+  import('./forensics/ForensicsSimulation').then((m) => ({ default: m.ForensicsSimulation }))
+);
 
 const NetworkingWorldMap = React.lazy(() =>
   import('./networking/NetworkingWorldMap').then((m) => ({ default: m.NetworkingWorldMap }))
@@ -315,6 +318,15 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
     domain: 'secops',
     component: SocSimulation,
     worldId: 24,
+    category: 'lab',
+  },
+  forensics: {
+    id: 'forensics',
+    nameAr: 'التحقيق الجنائي الرقمي والاستجابة للحوادث',
+    nameEn: 'Incident Response & Digital Forensics',
+    domain: 'investigation',
+    component: ForensicsSimulation,
+    worldId: 28,
     category: 'lab',
   },
   threat_hunting: {
