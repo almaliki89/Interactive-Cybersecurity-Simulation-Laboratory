@@ -20,6 +20,7 @@ export type SimulationId =
   | 'http'
   | 'tls'
   | 'linux'
+  | 'windows'
   | 'crypto'
   | 'siem'
   | 'knowledge'

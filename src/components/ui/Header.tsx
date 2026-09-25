@@ -59,6 +59,7 @@ export const Header: React.FC = () => {
     { id: 'dns', nameAr: 'خوادم وحل أسماء النطاقات DNS', nameEn: 'DNS Recursive Resolution', icon: Globe, category: 'B. الشبكات' },
     { id: 'firewall', nameAr: 'جدار الحماية وقواعد ACL وDMZ', nameEn: 'Firewall ACL & DMZ Ingress', icon: Shield, category: 'B. الشبكات' },
     { id: 'linux', nameAr: 'صلاحيات لينكس الثمانية وDAC', nameEn: 'Linux OS DAC Permissions', icon: Terminal, category: 'B. الأنظمة' },
+    { id: 'windows', nameAr: 'أمن أنظمة ويندوز وهيكل الصلاحيات', nameEn: 'Windows Security & Tokens', icon: Laptop, category: 'B. الأنظمة' },
     { id: 'active_directory', nameAr: 'Active Directory ومصادقة Kerberos', nameEn: 'Active Directory & Kerberos', icon: Key, category: 'B. الأنظمة' },
     { id: 'http', nameAr: 'دورة طلب واستجابة HTTP', nameEn: 'HTTP Full Request Lifecycle', icon: Globe, category: 'C. التطبيقات' },
     { id: 'appsec_api', nameAr: 'أمن الويب وتحديد معدل API', nameEn: 'Web AppSec & API Rate Limiting', icon: FileCode, category: 'C. التطبيقات' },

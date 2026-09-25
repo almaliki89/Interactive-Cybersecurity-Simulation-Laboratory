@@ -64,6 +64,9 @@ const TlsSimulation = React.lazy(() =>
 const LinuxSimulation = React.lazy(() =>
   import('./linux/LinuxSimulation').then((m) => ({ default: m.LinuxSimulation }))
 );
+const WindowsSimulation = React.lazy(() =>
+  import('./windows/WindowsSimulation').then((m) => ({ default: m.WindowsSimulation }))
+);
 const CryptoSimulation = React.lazy(() =>
   import('./crypto/CryptoSimulation').then((m) => ({ default: m.CryptoSimulation }))
 );
@@ -231,6 +234,15 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
     domain: 'infrastructure',
     component: LinuxSimulation,
     worldId: 5,
+    category: 'lab',
+  },
+  windows: {
+    id: 'windows',
+    nameAr: 'أمن أنظمة ويندوز وهيكل الصلاحيات',
+    nameEn: 'Windows Security & Tokens',
+    domain: 'infrastructure',
+    component: WindowsSimulation,
+    worldId: 6,
     category: 'lab',
   },
   active_directory: {

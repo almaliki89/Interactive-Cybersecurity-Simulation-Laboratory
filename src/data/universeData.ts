@@ -384,7 +384,7 @@ export const WORLDS_REGISTRY: Record<number, WorldDefinition> = {
     descriptionAr: 'استكشف عمارة ويندوز الأمنية، وفحص سجلات الأحداث الحقيقية لتتبع تسجيل الدخول الفاشل والناجح وإنشاء العمليات.',
     descriptionEn: 'Interactive Windows security model: explore NTFS permissions, Registry hives, and investigate Windows Event Logs.',
     difficulty: 'Intermediate',
-    simulationType: 'threat_hunting',
+    simulationType: 'windows',
     iconName: 'AppWindow',
     prerequisites: [2],
     relatedWorlds: [5, 7, 24, 25, 27],

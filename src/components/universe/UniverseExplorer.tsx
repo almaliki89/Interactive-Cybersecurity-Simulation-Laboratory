@@ -62,7 +62,8 @@ export const UniverseExplorer: React.FC = () => {
     if (worldId === 3 || worldId === 42) return 'subnet_routing';
     if (worldId === 4) return 'firewall';
     if (worldId === 5) return 'linux';
-    if (worldId === 6 || worldId === 28) return 'threat_hunting';
+    if (worldId === 6) return 'windows';
+    if (worldId === 28) return 'threat_hunting';
     if (worldId === 7 || worldId === 16 || worldId === 17) return 'active_directory';
     if (worldId === 8) return 'http';
     if (worldId === 9 || worldId === 10 || worldId === 11 || worldId === 12 || worldId === 13 || worldId === 14) return 'appsec_api';
