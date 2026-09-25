@@ -34,8 +34,8 @@ const SubnetRoutingSimulation = React.lazy(() =>
 const ActiveDirectorySimulation = React.lazy(() =>
   import('./identity/ActiveDirectorySimulation').then((m) => ({ default: m.ActiveDirectorySimulation }))
 );
-const AppSecApiSimulation = React.lazy(() =>
-  import('./appsec/AppSecApiSimulation').then((m) => ({ default: m.AppSecApiSimulation }))
+const AppSecSimulation = React.lazy(() =>
+  import('./appsec/AppSecSimulation').then((m) => ({ default: m.AppSecSimulation }))
 );
 const CloudContainerSimulation = React.lazy(() =>
   import('./cloud/CloudContainerSimulation').then((m) => ({ default: m.CloudContainerSimulation }))
@@ -265,10 +265,10 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
   },
   appsec_api: {
     id: 'appsec_api',
-    nameAr: 'أمن الويب OWASP وبوابات API',
-    nameEn: 'Web AppSec & API Security',
+    nameAr: 'أمن تطبيقات الويب (AppSec World)',
+    nameEn: 'Web & Application Security',
     domain: 'appsec',
-    component: AppSecApiSimulation,
+    component: AppSecSimulation,
     worldId: 9,
     category: 'lab',
   },
