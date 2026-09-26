@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSimulationStore } from '../../../stores/simulationStore';
 import { useForensicsStore } from '../../../stores/forensicsStore';
 import { ForensicsCaseHeader } from './ForensicsCaseHeader';
@@ -6,20 +6,21 @@ import { ForensicsPhaseNavigator } from './ForensicsPhaseNavigator';
 import { ForensicsEvidenceBoard } from './ForensicsEvidenceBoard';
 import { ForensicsEvidenceInspector } from './ForensicsEvidenceInspector';
 import { ForensicsTechnicalDrawer } from './ForensicsTechnicalDrawer';
-import { PanelBottom, Database, Search } from 'lucide-react';
+import { PanelBottom, Database, Search, Menu, X } from 'lucide-react';
 
 export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
   
-  const [isEvidenceBoardVisible, setEvidenceBoardVisible] = React.useState(true);
-  const [isInspectorVisible, setInspectorVisible] = React.useState(true);
-  const [isDrawerOpen, setDrawerOpen] = React.useState(false);
+  const [isEvidenceBoardVisible, setEvidenceBoardVisible] = useState(true);
+  const [isInspectorVisible, setInspectorVisible] = useState(true);
+  const [isDrawerOpen, setDrawerOpen] = useState(false);
+  const [isNavigatorDrawerOpen, setNavigatorDrawerOpen] = useState(false);
   
   const selectedEvidenceId = useForensicsStore((s) => s.selectedEvidenceId);
 
   // Auto-show inspector when evidence is selected
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedEvidenceId) setInspectorVisible(true);
   }, [selectedEvidenceId]);
 
@@ -28,9 +29,16 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
       {/* 1. Header */}
       <ForensicsCaseHeader />
 
-      {/* 2. Top Toolbar (Controls for Panels) */}
+      {/* 2. Top Toolbar (Controls for Panels & Drawers) */}
       <div className="h-10 border-b border-slate-900 bg-slate-950 px-4 flex items-center justify-between shrink-0 z-10">
          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setNavigatorDrawerOpen(!isNavigatorDrawerOpen)}
+              className="sm:hidden p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-white transition-colors"
+              title={isAr ? 'قائمة المراحل' : 'Toggle Phases'}
+            >
+               <Menu className="w-3.5 h-3.5" />
+            </button>
             <button 
               onClick={() => setEvidenceBoardVisible(!isEvidenceBoardVisible)}
               className={`p-2 rounded-lg transition-colors ${isEvidenceBoardVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
@@ -60,10 +68,28 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
 
       {/* 3. Main Body */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left: Navigator */}
+        {/* Left: Navigator (Desktop) */}
         <div className="hidden sm:block">
           <ForensicsPhaseNavigator />
         </div>
+
+        {/* Mobile Navigator Drawer Overlay */}
+        {isNavigatorDrawerOpen && (
+          <div className="absolute inset-0 z-40 bg-black/80 flex sm:hidden">
+            <div className="w-64 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
+              <button 
+                onClick={() => setNavigatorDrawerOpen(false)}
+                className="absolute top-3 right-3 p-1 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex-1 overflow-y-auto pt-6">
+                <ForensicsPhaseNavigator />
+              </div>
+            </div>
+            <div className="flex-1" onClick={() => setNavigatorDrawerOpen(false)} />
+          </div>
+        )}
 
         {/* Left-ish: Evidence Board (Collapsible) */}
         {isEvidenceBoardVisible && (
