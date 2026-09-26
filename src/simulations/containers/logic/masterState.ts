@@ -295,18 +295,105 @@ export function validateKubernetesMasterChallenge(state: KubernetesMasterState):
     failedChecks.push('testedNetworkPathsPassed gate incomplete');
   }
 
-  // Check 3: Architecture Validation
+  // Explicit & Derived Anti-Cheat Checks (Requirement 2 & 3)
+  const flags = state.antiCheatFlags || {};
+
+  // 1. deleteProductionWorkloads
+  const prodPodsRunning = state.pods.filter(
+    (p) => ['frontend', 'backend', 'finance'].includes(p.namespace) && p.status === 'Running'
+  );
+  if (flags.deleteProductionWorkloads || prodPodsRunning.length === 0) {
+    antiCheatViolations.push('Security remediation cannot delete required production workloads.');
+  }
+
+  // 2. scaleAllDeploymentsToZero
+  const allPodsZero = state.pods.length === 0 || state.pods.every((p) => p.status === 'Terminated');
+  if (flags.scaleAllDeploymentsToZero || allPodsZero) {
+    antiCheatViolations.push('Hardening cannot make the production application unavailable.');
+  }
+
+  // 3. blockAllIngress
+  const ingressReach = evaluatePodNetworkReachability(
+    {
+      srcPod: { name: 'internet-client', namespace: 'external', labels: {} },
+      dstPod: { name: 'frontend-service', namespace: 'frontend', labels: { app: 'frontend' } },
+      dstPort: 443,
+      isExternal: true,
+    },
+    state.networkPolicies
+  );
+  if (flags.blockAllIngress || !ingressReach.reachable) {
+    antiCheatViolations.push('Public customer entry point must remain reachable.');
+  }
+
+  // 4. blockAllEgress
+  const backendFinanceReach = evaluatePodNetworkReachability(
+    {
+      srcPod: { name: 'backend-service', namespace: 'backend', labels: { app: 'backend' } },
+      dstPod: { name: 'finance-api', namespace: 'finance', labels: { app: 'finance-api' } },
+      dstPort: 8080,
+    },
+    state.networkPolicies
+  );
+  if (flags.blockAllEgress || !backendFinanceReach.reachable) {
+    antiCheatViolations.push('Required backend and service dependencies must remain reachable.');
+  }
+
+  // 5. deleteAllSecrets
+  if (flags.deleteAllSecrets || state.secrets.length === 0) {
+    antiCheatViolations.push('Required application secrets must remain available to authorized workloads.');
+  }
+
+  // 6. grantEveryoneClusterAdmin
+  const hasAppClusterAdmin = state.bindings.some(
+    (b) =>
+      b.roleRefName === 'cluster-admin' &&
+      b.subjects.some((s) => ['frontend-sa', 'backend-sa', 'finance-sa'].includes(s.name))
+  );
+  if (flags.grantEveryoneClusterAdmin || hasAppClusterAdmin) {
+    antiCheatViolations.push('Universal cluster-admin violates least privilege.');
+  }
+
+  // 7. disableAllServiceAccounts
+  if (flags.disableAllServiceAccounts || state.serviceAccounts.length === 0) {
+    antiCheatViolations.push('Legitimate workload identity must remain functional.');
+  }
+
+  // 8. deleteAllNetworkPoliciesToAvoidConflicts
+  if (flags.deleteAllNetworkPoliciesToAvoidConflicts || state.networkPolicies.length === 0) {
+    antiCheatViolations.push('Removing segmentation controls is not valid remediation.');
+  }
+
+  // 9. disableAuditToHideAlerts
+  if (flags.disableAuditToHideAlerts || !state.auditConfig.enabled || state.auditConfig.policyLevel === 'None') {
+    antiCheatViolations.push('Audit visibility must remain enabled.');
+  }
+
+  // 10. markImagesTrustedWithoutSignature
+  const hasUnsignedImages =
+    state.images.some((i) => !i.isSignedCosign) || state.pods.some((p) => !p.image.isSignedCosign);
+  if (flags.markImagesTrustedWithoutSignature || hasUnsignedImages) {
+    antiCheatViolations.push('Image trust cannot be asserted without cryptographic evidence.');
+  }
+
+  // 11. bypassAdmissionValidation
+  const admissionDisabled =
+    state.admissionPolicies.length === 0 || state.admissionPolicies.every((a) => a.enforceAction === 'DISABLED');
+  if (flags.bypassAdmissionValidation || admissionDisabled) {
+    antiCheatViolations.push('Admission controls cannot be bypassed.');
+  }
+
+  if (flags.noStateTampering === false) {
+    antiCheatViolations.push('Direct state tampering or unauthorized bypass detected.');
+  }
+
+  // Architecture Validation
   const archEval = validateKubernetesArchitecture(state);
   if (!archEval.passed) {
     failedChecks.push(...archEval.failedChecks);
   }
 
-  // Check 4: Anti-Cheat Violations
-  if (state.antiCheatFlags?.noStateTampering === false) {
-    antiCheatViolations.push('Direct state tampering or unauthorized bypass detected.');
-  }
-
-  // Check 5: RBAC Specific Evaluation
+  // RBAC Specific Evaluation
   const frontendFinanceSecretCheck = evaluateKubernetesAuthorization({
     subject: { kind: 'ServiceAccount', name: 'frontend-sa', namespace: 'frontend' },
     verb: 'get',
@@ -327,5 +414,114 @@ export function validateKubernetesMasterChallenge(state: KubernetesMasterState):
     failedChecks,
     antiCheatViolations,
     businessContinuityPassed: archEval.businessContinuityPassed,
+  };
+}
+
+export function createHardenedKubernetesMasterState(): KubernetesMasterState {
+  const base = createDefaultKubernetesMasterState();
+  return {
+    ...base,
+    testedAuthorizationsPassed: true,
+    testedNetworkPathsPassed: true,
+    auditConfig: { enabled: true, policyLevel: 'RequestResponse', logPath: '/var/log/kube-audit.log' },
+    secrets: [
+      {
+        id: 'sec-fin-1',
+        name: 'finance-db-credentials',
+        namespace: 'finance',
+        secretType: 'Opaque',
+        encryptedAtRest: true,
+        managedByExternalVault: true,
+        keys: [{ key: 'db-password', valueMasked: '********', sensitive: true }],
+      },
+    ],
+    images: base.images.map((img) => ({
+      ...img,
+      isSignedCosign: true,
+      runsAsUser: 'nonroot',
+      layers: [],
+    })),
+    pods: base.pods.map((p) => ({
+      ...p,
+      image: {
+        ...p.image,
+        isSignedCosign: true,
+        runsAsUser: 'nonroot',
+        layers: [],
+      },
+      securityContext: {
+        ...p.securityContext,
+        privileged: false,
+        runAsNonRoot: true,
+        runAsUser: 10001,
+        readOnlyRootFilesystem: true,
+        allowPrivilegeEscalation: false,
+        capabilitiesAdd: [],
+        capabilitiesDrop: ['CAP_SYS_ADMIN', 'CAP_NET_ADMIN', 'CAP_NET_RAW'],
+      },
+      volumeMounts: [],
+    })),
+    roles: [
+      {
+        id: 'r-frontend',
+        name: 'frontend-reader',
+        namespace: 'frontend',
+        isClusterRole: false,
+        rules: [{ apiGroups: [''], resources: ['pods'], verbs: ['get', 'list'] }],
+      },
+    ],
+    bindings: [
+      {
+        id: 'b-frontend',
+        name: 'frontend-reader-binding',
+        namespace: 'frontend',
+        isClusterRoleBinding: false,
+        roleRefName: 'frontend-reader',
+        subjects: [{ kind: 'ServiceAccount', name: 'frontend-sa', namespace: 'frontend' }],
+      },
+    ],
+    networkPolicies: [
+      {
+        id: 'pol-deny-fin',
+        name: 'default-deny-finance',
+        namespace: 'finance',
+        podSelector: {},
+        policyTypes: ['Ingress', 'Egress'],
+        ingressRules: [
+          {
+            from: [{ podSelector: { app: 'backend' } }],
+            ports: [{ protocol: 'TCP', port: 8080 }],
+          },
+        ],
+        egressRules: [],
+        enabled: true,
+      },
+      {
+        id: 'pol-allow-fb',
+        name: 'allow-frontend-backend',
+        namespace: 'backend',
+        podSelector: { app: 'backend' },
+        policyTypes: ['Ingress'],
+        ingressRules: [
+          {
+            from: [{ podSelector: { app: 'frontend' } }],
+            ports: [{ protocol: 'TCP', port: 443 }],
+          },
+        ],
+        egressRules: [],
+        enabled: true,
+      },
+    ],
+    admissionPolicies: base.admissionPolicies.map((a) => ({ ...a, enforceAction: 'DENY' as const })),
+    antiCheatFlags: {
+      imageSecuredWithNonRootAndDistroless: true,
+      dangerousCapabilitiesDropped: true,
+      hostSockAndPrivilegedDisabled: true,
+      rbacWildcardsAndExecEliminated: true,
+      defaultDenyNetworkPolicyEnforced: true,
+      etcdKmsEncryptionEnabled: true,
+      falcoRuntimeRulesActiveAndQuarantineVerified: true,
+      noStateTampering: true,
+    },
   };
 }

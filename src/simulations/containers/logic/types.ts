@@ -225,14 +225,26 @@ export interface RuntimeSecurityEvent {
 }
 
 export interface ContainerAntiCheatFlags {
-  imageSecuredWithNonRootAndDistroless: boolean;
-  dangerousCapabilitiesDropped: boolean;
-  hostSockAndPrivilegedDisabled: boolean;
-  rbacWildcardsAndExecEliminated: boolean;
-  defaultDenyNetworkPolicyEnforced: boolean;
-  etcdKmsEncryptionEnabled: boolean;
-  falcoRuntimeRulesActiveAndQuarantineVerified: boolean;
+  imageSecuredWithNonRootAndDistroless?: boolean;
+  dangerousCapabilitiesDropped?: boolean;
+  hostSockAndPrivilegedDisabled?: boolean;
+  rbacWildcardsAndExecEliminated?: boolean;
+  defaultDenyNetworkPolicyEnforced?: boolean;
+  etcdKmsEncryptionEnabled?: boolean;
+  falcoRuntimeRulesActiveAndQuarantineVerified?: boolean;
   noStateTampering?: boolean;
+
+  deleteProductionWorkloads?: boolean;
+  scaleAllDeploymentsToZero?: boolean;
+  blockAllIngress?: boolean;
+  blockAllEgress?: boolean;
+  deleteAllSecrets?: boolean;
+  grantEveryoneClusterAdmin?: boolean;
+  disableAllServiceAccounts?: boolean;
+  deleteAllNetworkPoliciesToAvoidConflicts?: boolean;
+  disableAuditToHideAlerts?: boolean;
+  markImagesTrustedWithoutSignature?: boolean;
+  bypassAdmissionValidation?: boolean;
 }
 
 export interface KubernetesNamespace {

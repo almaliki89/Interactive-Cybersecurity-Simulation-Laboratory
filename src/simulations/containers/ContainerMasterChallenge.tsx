@@ -158,97 +158,6 @@ export const ContainerMasterChallenge: React.FC = () => {
     }
   };
 
-  const completeAllDefenses = () => {
-    setFlags({
-      imageSecuredWithNonRootAndDistroless: true,
-      dangerousCapabilitiesDropped: true,
-      hostSockAndPrivilegedDisabled: true,
-      rbacWildcardsAndExecEliminated: true,
-      defaultDenyNetworkPolicyEnforced: true,
-      etcdKmsEncryptionEnabled: true,
-      falcoRuntimeRulesActiveAndQuarantineVerified: true,
-      noStateTampering: true,
-    });
-
-    // Clean master state to pass architecture & gates
-    setMasterState((prev) => ({
-      ...prev,
-      testedAuthorizationsPassed: true,
-      testedNetworkPathsPassed: true,
-      auditConfig: { enabled: true, policyLevel: 'RequestResponse', logPath: '/var/log/kube-audit.log' },
-      secrets: prev.secrets.map((s) => ({ ...s, encryptedAtRest: true })),
-      images: prev.images.map((img) => ({
-        ...img,
-        isSignedCosign: true,
-        runsAsUser: 'appuser',
-        layers: img.layers.map((l) => ({ ...l, vulnerabilities: [] })),
-      })),
-      pods: prev.pods.map((p) => ({
-        ...p,
-        securityContext: {
-          ...p.securityContext,
-          privileged: false,
-          runAsNonRoot: true,
-          runAsUser: 10001,
-          allowPrivilegeEscalation: false,
-          capabilitiesAdd: [],
-        },
-        volumeMounts: [],
-      })),
-      roles: [
-        {
-          id: 'role-restricted',
-          name: 'frontend-pod-reader',
-          namespace: 'frontend',
-          isClusterRole: false,
-          rules: [{ apiGroups: [''], resources: ['pods'], verbs: ['get', 'list'] }],
-        },
-      ],
-      bindings: [
-        {
-          id: 'bind-restricted',
-          name: 'frontend-pod-reader-binding',
-          namespace: 'frontend',
-          isClusterRoleBinding: false,
-          roleRefName: 'frontend-pod-reader',
-          subjects: [{ kind: 'ServiceAccount', name: 'frontend-sa', namespace: 'frontend' }],
-        },
-      ],
-      networkPolicies: [
-        {
-          id: 'default-deny-ingress',
-          name: 'default-deny-all',
-          namespace: 'finance',
-          podSelector: {} as Record<string, string>,
-          policyTypes: ['Ingress', 'Egress'],
-          ingressRules: [
-            {
-              from: [{ podSelector: { app: 'backend' } }],
-              ports: [{ protocol: 'TCP', port: 8080 }],
-            },
-          ],
-          egressRules: [],
-          enabled: true,
-        },
-        {
-          id: 'allow-frontend-backend',
-          name: 'allow-frontend-to-backend',
-          namespace: 'backend',
-          podSelector: { app: 'backend' } as Record<string, string>,
-          policyTypes: ['Ingress'],
-          ingressRules: [
-            {
-              from: [{ podSelector: { app: 'frontend' } }],
-              ports: [{ protocol: 'TCP', port: 443 }],
-            },
-          ],
-          egressRules: [],
-          enabled: true,
-        },
-      ] as KubernetesNetworkPolicy[],
-    }));
-  };
-
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-slate-950 text-slate-100">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -309,13 +218,6 @@ export const ContainerMasterChallenge: React.FC = () => {
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               {isAr ? 'المهام الدفاعية السبعة المطلوبة:' : 'The 7 Mandatory Defensive Criteria:'}
             </h2>
-
-            <button
-              onClick={completeAllDefenses}
-              className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
-            >
-              {isAr ? 'تطبيق كافة التحصينات دفعة واحدة' : 'Apply All Hardening Toggles'}
-            </button>
           </div>
 
           <div className="space-y-2.5">

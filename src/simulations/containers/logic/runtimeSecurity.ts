@@ -106,7 +106,7 @@ export function evaluateSyscallEvent(
 
     if (isMatch) {
       const runtimeEvent: RuntimeSecurityEvent = {
-        id: `falco-evt-${params.virtualTime}-${Math.floor(Math.random() * 1000)}`,
+        id: `falco-evt-${params.virtualTime}-${rule.id}-${params.podName}`,
         virtualTime: params.virtualTime,
         ruleId: rule.id,
         ruleName: rule.name,
