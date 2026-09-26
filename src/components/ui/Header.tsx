@@ -92,90 +92,97 @@ export const Header: React.FC = () => {
   if (isLabActive && activeLab) {
     const IconComponent = activeLab.icon;
     return (
-      <header className="h-12 border-b border-slate-800 bg-slate-950 px-4 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans">
-        {/* Compact Navigation Left */}
-        <div className="flex items-center gap-3">
+      <header className="h-10 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
+        {/* Zone 1: Contextual Lab Identity */}
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setActiveSimulation('explorer')}
-            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+            className="group flex items-center gap-1.5 transition-all"
+            title={language === 'ar' ? 'العودة للكون' : 'Back to Universe'}
           >
-            <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180 text-cyan-400" />
-            <span className="hidden sm:inline">{language === 'ar' ? 'الكون السيبراني' : 'Universe'}</span>
+            <div className="w-6 h-6 rounded bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:border-cyan-500/50 transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180 text-cyan-400" />
+            </div>
           </button>
 
-          <div className="h-4 w-px bg-slate-800 hidden sm:block" />
+          <div className="h-4 w-px bg-slate-800" />
 
-          {/* Active Lab Badge & Icon */}
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-slate-900 border border-slate-800 text-cyan-400 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
               <IconComponent className="w-3.5 h-3.5" />
             </div>
-            <div className="min-w-0">
-              <span className="text-xs font-bold text-white block truncate leading-tight">
+            <div className="min-w-0 flex flex-col">
+              <h1 className="text-[11px] font-bold text-white truncate leading-tight uppercase tracking-tight">
                 {language === 'ar' ? activeLab.nameAr : activeLab.nameEn}
-              </span>
-              <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block leading-none">
-                {activeLab.category}
-              </span>
+              </h1>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-mono text-cyan-500/70 uppercase tracking-widest leading-none">
+                  {activeLab.category}
+                </span>
+                <span className="text-[9px] text-slate-600 font-mono">/</span>
+                <span className="text-[9px] text-slate-500 font-mono truncate max-w-[100px]">
+                  ID: {activeSimulationId.toUpperCase()}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Compact Runtime Clock / Simulation Status Deck */}
-        <div className="hidden md:flex items-center gap-3 px-3 py-1 rounded-lg bg-slate-900/60 border border-slate-800/80">
-          <div className="flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-              clockStatus === 'running' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'
+        {/* Zone 2: Runtime Telemetry (Only Visible when relevant) */}
+        <div className="hidden md:flex items-center gap-4 px-3 py-1 rounded-full bg-slate-900/40 border border-slate-800/60 mx-4">
+          <div className="flex items-center gap-2">
+            <div className={`w-1.5 h-1.5 rounded-full ${
+              clockStatus === 'running' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-amber-500'
             }`} />
-            <span className="text-[10px] font-mono font-bold text-slate-300 uppercase">
-              {clockStatus === 'running' 
-                ? (language === 'ar' ? 'قيد التشغيل' : 'RUNNING') 
-                : (language === 'ar' ? 'موقوف مؤقتاً' : 'PAUSED')}
+            <span className="text-[10px] font-mono font-bold text-slate-400">
+              {clockStatus === 'running' ? 'LIVE' : 'HALTED'}
             </span>
           </div>
-          <div className="h-3 w-px bg-slate-800" />
-          <div className="text-[10px] font-mono text-slate-400">
-            {language === 'ar' ? 'الوقت الافتراضي:' : 'Virtual Time:'}{' '}
-            <span className="text-cyan-400 font-bold">T+{virtualTime}ms</span>
+          <div className="w-px h-3 bg-slate-800" />
+          <div className="flex items-center gap-1.5 font-mono text-[10px]">
+            <span className="text-slate-500">T+</span>
+            <span className="text-cyan-400 font-bold">{virtualTime}ms</span>
           </div>
-          <div className="h-3 w-px bg-slate-800" />
-          <div className="text-[10px] font-mono text-slate-400">
-            {language === 'ar' ? 'السرعة:' : 'Speed:'}{' '}
+          <div className="w-px h-3 bg-slate-800" />
+          <div className="flex items-center gap-1.5 font-mono text-[10px]">
+            <span className="text-slate-500">SPD</span>
             <span className="text-purple-400 font-bold">{clockSpeed}x</span>
           </div>
         </div>
 
-        {/* Action Controls Right */}
+        {/* Zone 3: Actions & Quick Switcher */}
         <div className="flex items-center gap-2">
-          {/* Quick Search palette trigger */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-colors flex items-center gap-1.5"
-            title="Search Palette (Cmd+K)"
+            className="flex items-center gap-1.5 h-7 px-2 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-700 text-slate-400 transition-all hover:text-white"
           >
-            <Search className="w-4 h-4 text-cyan-400" />
-            <span className="hidden lg:inline text-[11px] font-mono">⌘K</span>
+            <Search className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden lg:inline text-[10px] font-mono opacity-50 uppercase tracking-tighter">Command</span>
+            <kbd className="hidden lg:flex h-4 px-1 items-center rounded bg-slate-800 border border-slate-700 text-[9px] font-mono">⌘K</kbd>
           </button>
 
-          {/* Quick Labs Switcher */}
+          <div className="h-4 w-px bg-slate-800" />
+
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setLabsOpen((prev) => !prev)}
-              className="p-1.5 px-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-colors flex items-center gap-1.5 text-xs font-bold"
+              className={`h-7 px-2.5 rounded-lg border transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${
+                labsOpen ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-400' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+              }`}
             >
-              <Layers className="w-3.5 h-3.5 text-purple-400" />
-              <span className="hidden sm:inline">{language === 'ar' ? 'المختبرات' : 'Labs'}</span>
-              <ChevronDown className="w-3 h-3" />
+              <Layers className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{language === 'ar' ? 'التحويل' : 'Switch'}</span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${labsOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {labsOpen && (
-              <div className="absolute top-full right-0 rtl:right-auto rtl:left-0 mt-2 w-72 max-h-[60vh] overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-2.5 py-1.5 border-b border-slate-900 mb-1 flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase">
-                    {language === 'ar' ? 'انتقال سريع لمختبر آخر' : 'Quick Lab Switcher'}
+              <div className="absolute top-full right-0 rtl:right-auto rtl:left-0 mt-2 w-72 max-h-[70vh] overflow-hidden cyber-panel rounded-xl flex flex-col z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-2 border-b border-slate-900 bg-slate-900/30">
+                  <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest">
+                    {language === 'ar' ? 'مركز محاكاة المختبرات' : 'Lab Control Center'}
                   </span>
                 </div>
-                <div className="space-y-0.5">
+                <div className="overflow-y-auto p-1 space-y-0.5">
                   {labsList.map((lab) => {
                     const isSelected = activeSimulationId === lab.id;
                     const LabIcon = lab.icon;
@@ -186,12 +193,19 @@ export const Header: React.FC = () => {
                           setActiveSimulation(lab.id);
                           setLabsOpen(false);
                         }}
-                        className={`w-full p-2 rounded-lg flex items-center gap-2 text-left rtl:text-right transition-colors ${
-                          isSelected ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'hover:bg-slate-900 text-slate-300'
+                        className={`w-full p-2 rounded-lg flex items-center gap-3 text-left rtl:text-right transition-all group ${
+                          isSelected ? 'bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/20' : 'hover:bg-slate-900 text-slate-400 hover:text-slate-200'
                         }`}
                       >
-                        <LabIcon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                        <span className="text-xs truncate">{language === 'ar' ? lab.nameAr : lab.nameEn}</span>
+                        <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-cyan-500/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
+                          <LabIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] truncate uppercase tracking-tight">
+                            {language === 'ar' ? lab.nameAr : lab.nameEn}
+                          </div>
+                          <div className="text-[9px] font-mono text-slate-500 uppercase">{lab.category}</div>
+                        </div>
                       </button>
                     );
                   })}
@@ -202,12 +216,11 @@ export const Header: React.FC = () => {
 
           <div className="h-4 w-px bg-slate-800" />
 
-          {/* Bilingual Language Selector */}
           <button
             onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-            className="p-1.5 px-2.5 rounded-lg border border-slate-800 bg-slate-900 text-cyan-300 hover:text-white transition-colors text-xs font-bold"
+            className="h-7 w-7 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-white transition-all text-[10px] font-bold flex items-center justify-center uppercase"
           >
-            {language === 'ar' ? 'EN' : 'عربي'}
+            {language === 'ar' ? 'EN' : 'AR'}
           </button>
         </div>
       </header>
@@ -216,32 +229,38 @@ export const Header: React.FC = () => {
 
   // Standard Universal Header (Landing / Map Explorer views)
   return (
-    <header className="h-14 border-b border-slate-800 bg-slate-950 px-4 sm:px-6 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans">
-      <div className="flex items-center gap-4">
+    <header className="h-14 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
+      {/* Zone 1: Brand Wordmark */}
+      <div className="flex items-center gap-6">
         <button
           onClick={() => setActiveSimulation('landing')}
-          className="text-base font-bold tracking-tight text-white flex items-center gap-2 hover:text-cyan-400 transition-colors"
+          className="group flex items-center gap-2 transition-all"
         >
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 ring-4 ring-cyan-500/10" />
-          <span className="font-mono">OMEGA</span>
-          <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-850">
-            RANGE
-          </span>
+          <div className="w-8 h-8 rounded-xl bg-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-900/20 group-hover:scale-105 transition-transform">
+            <Shield className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-base font-bold tracking-tighter text-white leading-none">OMEGA</span>
+            <span className="text-[9px] font-mono text-cyan-500 uppercase tracking-[0.3em] leading-none mt-1">Cyber Range</span>
+          </div>
         </button>
 
-        <button
-          onClick={() => setIsSearchOpen(true)}
-          className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 text-xs transition-colors"
-        >
-          <Search className="w-3.5 h-3.5 text-cyan-400" />
-          <span>{language === 'ar' ? 'البحث الذكي والأوامر...' : 'Search & trigger commands...'}</span>
-          <kbd className="px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono">
-            ⌘K
-          </kbd>
-        </button>
+        <div className="hidden lg:flex items-center h-8 px-3 rounded-full bg-slate-900/50 border border-slate-800/80">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="flex items-center gap-3 text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            <Search className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-medium tracking-tight">
+              {language === 'ar' ? 'البحث الذكي والأوامر...' : 'Search intelligence...'}
+            </span>
+            <kbd className="flex h-4 px-1.5 items-center rounded bg-slate-800 border border-slate-700 text-[9px] font-mono text-slate-400">⌘K</kbd>
+          </button>
+        </div>
       </div>
 
-      <nav className="hidden lg:flex items-center gap-1 text-xs font-bold">
+      {/* Zone 2: Navigation Links */}
+      <nav className="hidden xl:flex items-center gap-1 p-1 bg-slate-900/40 rounded-xl border border-slate-900/60">
         {universeNav.map((item) => {
           const isActive = activeSimulationId === item.id;
           const NavIcon = item.icon;
@@ -249,50 +268,53 @@ export const Header: React.FC = () => {
             <button
               key={item.id}
               onClick={() => setActiveSimulation(item.id)}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              className={`px-4 py-1.5 rounded-lg flex items-center gap-2 transition-all text-xs font-bold uppercase tracking-wide whitespace-nowrap ${
                 isActive
-                  ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                  ? 'bg-cyan-500/10 text-cyan-400 shadow-inner'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900/60'
               }`}
             >
-              <NavIcon className="w-3.5 h-3.5 text-cyan-400/80" />
+              <NavIcon className="w-3.5 h-3.5" />
               <span>{language === 'ar' ? item.labelAr : item.labelEn}</span>
             </button>
           );
         })}
       </nav>
 
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-          className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 text-cyan-300 hover:text-white transition-colors flex items-center gap-1.5 whitespace-nowrap"
-        >
-          <Languages className="w-3.5 h-3.5 text-cyan-400" />
-          <span>{language === 'ar' ? 'English' : 'العربية'}</span>
-        </button>
-
-        <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+      {/* Zone 3: Global Actions */}
+      <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
           <button
             onClick={() => setMode('guided')}
-            className={`px-2.5 py-0.5 text-xs font-medium rounded transition-colors ${
+            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
               mode === 'guided'
-                ? 'bg-cyan-500 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20'
+                : 'text-slate-500 hover:text-slate-300'
             }`}
           >
             {t.modes.guided}
           </button>
           <button
             onClick={() => setMode('sandbox')}
-            className={`px-2.5 py-0.5 text-xs font-medium rounded transition-colors ${
+            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
               mode === 'sandbox'
-                ? 'bg-slate-700 text-white font-bold'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-500 hover:text-slate-300'
             }`}
           >
             {t.modes.sandbox}
           </button>
         </div>
+
+        <div className="h-5 w-px bg-slate-800 mx-1" />
+
+        <button
+          onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+          className="flex items-center gap-2 h-9 px-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-300 hover:text-white transition-all text-xs font-bold"
+        >
+          <Languages className="w-4 h-4 text-cyan-400" />
+          <span className="uppercase tracking-widest">{language === 'ar' ? 'EN' : 'عربي'}</span>
+        </button>
       </div>
     </header>
   );

@@ -62,11 +62,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const whatChanged = useSimulationStore((s) => s.whatChanged);
   const setWhatChanged = useSimulationStore((s) => s.setWhatChanged);
   const selectedEntity = useSimulationStore((s) => s.selectedEntity);
+  const virtualTime = useSimulationStore((s) => s.virtualTime);
 
   const t = translations[language];
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+
+  // Smart Panel Logic: Auto-open inspector on selection
+  React.useEffect(() => {
+    if (selectedEntity && !rightOpen) {
+      setRightOpen(true);
+    }
+  }, [selectedEntity]);
 
   const layers: Array<{
     id: 'network' | 'application' | 'identity' | 'security' | 'logs' | 'infrastructure';
@@ -82,121 +90,98 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3rem)] overflow-hidden bg-slate-950 select-none font-sans">
-      {/* 1. OMEGA V4 Technical Workspace Sub-header */}
-      <div className="h-10 border-b border-slate-900 bg-slate-950 px-4 flex items-center justify-between shrink-0 z-20">
-        {/* Left: Breadcrumbs & Lab Name */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setActiveSimulation('explorer')}
-            className="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors uppercase font-bold flex items-center gap-1"
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span>{language === 'ar' ? 'الكون السيبراني' : 'Cyber Universe'}</span>
-          </button>
-          <span className="text-slate-800 font-mono text-xs">/</span>
-          {domainName && (
-            <>
-              <span className="text-[10px] font-mono text-slate-500 hidden sm:inline truncate max-w-[140px]">
-                {domainName}
-              </span>
-              <span className="text-slate-800 font-mono text-xs hidden sm:inline">/</span>
-            </>
-          )}
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-            <h1 className="text-[11px] font-bold text-slate-200 tracking-wide uppercase font-mono truncate max-w-[180px] sm:max-w-[280px]">
-              {title}
-            </h1>
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 select-none font-sans">
+      {/* 1. Technical Toolbar (Consolidated) */}
+      <div className="h-8 border-b border-slate-900 bg-slate-900/20 px-4 flex items-center justify-between shrink-0 z-20">
+        {/* Left: Domain Context Indicator */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-[9px] font-mono text-slate-500 uppercase tracking-widest">
+            <Sliders className="w-3 h-3 text-cyan-500" />
+            <span className="hidden sm:inline">{language === 'ar' ? 'نمط العمل:' : 'MODE:'}</span>
+            <span className="text-slate-300 font-bold">{domainName || 'GENERAL'}</span>
+          </div>
+          
+          <div className="h-3 w-px bg-slate-800" />
+
+          {/* Layer Switcher - Compact Segmented Control */}
+          <div className="flex items-center gap-1 p-0.5 bg-slate-950 rounded-md border border-slate-800/60">
+            {layers.map((l) => {
+              const isSelected = activeWorkspaceLayer === l.id;
+              return (
+                <button
+                  key={l.id}
+                  onClick={() => setActiveWorkspaceLayer(l.id)}
+                  className={`px-2 py-0.5 text-[8px] font-mono rounded transition-all uppercase ${
+                    isSelected
+                      ? 'bg-cyan-600 text-white font-bold shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                      : 'text-slate-600 hover:text-slate-400'
+                  }`}
+                >
+                  {language === 'ar' ? l.nameAr : l.nameEn}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Center: System Layer Mode Switcher */}
-        <div className="hidden lg:flex items-center bg-slate-900/60 border border-slate-850 rounded-lg p-0.5">
-          {layers.map((l) => {
-            const isSelected = activeWorkspaceLayer === l.id;
-            return (
-              <button
-                key={l.id}
-                onClick={() => setActiveWorkspaceLayer(l.id)}
-                className={`px-2 py-0.5 text-[9px] font-mono rounded transition-colors ${
-                  isSelected
-                    ? 'bg-cyan-500 text-slate-950 font-bold'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                {language === 'ar' ? l.nameAr : l.nameEn}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right: Panel toggle controls */}
-        <div className="flex items-center gap-1">
+        {/* Right: Smart Panel Toggles */}
+        <div className="flex items-center gap-1.5">
           {challenge && (
             <button
               onClick={() => setLeftOpen((prev) => !prev)}
-              className={`p-1 px-2 rounded-lg text-xs flex items-center gap-1 border transition-colors ${
+              className={`h-6 px-2 rounded border transition-all flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-tighter ${
                 leftOpen
-                  ? 'bg-slate-900 border-slate-800 text-cyan-300 font-bold'
-                  : 'bg-slate-950 border-slate-900 text-slate-500 hover:text-slate-300'
+                  ? 'bg-slate-800 border-slate-700 text-cyan-400 font-bold'
+                  : 'bg-transparent border-transparent text-slate-600 hover:text-slate-400'
               }`}
-              title={t.workspace.objectives}
             >
-              <PanelLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[10px] font-mono">{t.workspace.objectives}</span>
+              <PanelLeft className="w-3 h-3" />
+              <span className="hidden sm:inline">Objectives</span>
             </button>
           )}
 
           <button
             onClick={() => setRightOpen((prev) => !prev)}
-            className={`p-1 px-2 rounded-lg text-xs flex items-center gap-1 border transition-colors ${
+            className={`h-6 px-2 rounded border transition-all flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-tighter ${
               rightOpen
-                ? 'bg-slate-900 border-slate-800 text-cyan-300 font-bold'
-                : 'bg-slate-950 border-slate-900 text-slate-500 hover:text-slate-300'
+                ? 'bg-slate-800 border-slate-700 text-cyan-400 font-bold'
+                : 'bg-transparent border-transparent text-slate-600 hover:text-slate-400'
             }`}
-            title={t.workspace.inspector}
           >
-            <PanelRight className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-[10px] font-mono">{t.workspace.inspector}</span>
+            <PanelRight className="w-3 h-3" />
+            <span className="hidden sm:inline">Inspector</span>
           </button>
         </div>
       </div>
 
-      {/* Contextual Status Strip */}
-      <div className="h-7 border-b border-slate-900 bg-slate-950/60 px-4 flex items-center justify-between text-[10px] text-slate-500 font-mono select-none shrink-0 overflow-x-auto">
-        <div className="flex items-center gap-3 whitespace-nowrap">
-          <div>
-            <span className="text-slate-600 uppercase font-bold">{language === 'ar' ? 'السيناريو:' : 'SCENARIO:'}</span>{' '}
-            <span className="text-slate-300">{subtitle || title}</span>
+      {/* 2. Passive Awareness Strip (High Precision) */}
+      <div className="h-6 border-b border-slate-900 bg-slate-950/40 px-4 flex items-center justify-between text-[9px] text-slate-500 font-mono select-none shrink-0 overflow-x-auto whitespace-nowrap">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50 border border-emerald-500" />
+            <span className="text-slate-600 uppercase font-bold">STATE:</span>
+            <span className="text-emerald-500 uppercase font-bold">MONITORED</span>
           </div>
-          <div className="h-2 w-px bg-slate-800" />
-          {challenge && (
-            <div>
-              <span className="text-slate-600 uppercase font-bold">{language === 'ar' ? 'الهدف:' : 'OBJECTIVE:'}</span>{' '}
-              <span className="text-slate-400 truncate max-w-[150px] sm:max-w-[300px]">
-                {challenge.mission}
-              </span>
-            </div>
-          )}
+          <div className="w-px h-2 bg-slate-800" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-600 uppercase font-bold">TARGET:</span>
+            <span className="text-slate-300 font-bold uppercase truncate max-w-[200px]">
+              {selectedEntity ? `${selectedEntity.type}#${selectedEntity.id}` : 'NULL_POINTER'}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-3 whitespace-nowrap ms-4">
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="text-slate-400 uppercase font-bold">{language === 'ar' ? 'الحالة السيبرانية:' : 'SECURE STATE:'}</span>{' '}
-            <span className="text-slate-300 font-bold uppercase">{selectedEntity ? 'INSPECTING' : 'MONITORED'}</span>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <Zap className="w-3 h-3 text-purple-500" />
+            <span className="text-slate-600 font-bold">EVENT_BUS:</span>
+            <span className="text-purple-400 font-bold">LISTENING</span>
           </div>
-          {selectedEntity && (
-            <>
-              <div className="h-2 w-px bg-slate-800" />
-              <div>
-                <span className="text-cyan-400 font-bold">
-                  {language === 'ar' ? 'تحديد النشاط:' : 'ACTIVE TRACE:'}{' '}
-                  {selectedEntity.type.toUpperCase()}({selectedEntity.id})
-                </span>
-              </div>
-            </>
-          )}
+          <div className="w-px h-2 bg-slate-800" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-600 font-bold">SESSION:</span>
+            <span className="text-slate-400 font-bold">{(virtualTime / 1000).toFixed(2)}s</span>
+          </div>
         </div>
       </div>
 

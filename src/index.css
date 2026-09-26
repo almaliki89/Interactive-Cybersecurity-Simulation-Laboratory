@@ -3,6 +3,17 @@
 @theme {
   --font-sans: 'IBM Plex Sans Arabic', 'Readex Pro', 'Noto Sans Arabic', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* OMEGA Semantic Palette */
+  --color-omega-primary: #06b6d4; /* Cyan 500 */
+  --color-omega-success: #10b981; /* Emerald 500 */
+  --color-omega-warning: #f59e0b; /* Amber 500 */
+  --color-omega-danger: #ef4444; /* Red 500 */
+  
+  --color-omega-bg: #020617; /* Slate 950 */
+  --color-omega-surface: #0f172a; /* Slate 900 */
+  --color-omega-border: #1e293b; /* Slate 800 */
+  --color-omega-muted: #64748b; /* Slate 500 */
 }
 
 @layer base {
@@ -11,11 +22,20 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: var(--color-omega-bg);
+    color: #f8fafc;
   }
 
   body {
     font-family: var(--font-sans);
     line-height: 1.6;
+    @apply antialiased;
+  }
+
+  /* Monospace Telemetry defaults */
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+    @apply tabular-nums;
   }
 
   /* Ensure natural Arabic script rendering with zero tracking */
@@ -30,17 +50,31 @@
 
   /* Custom scrollbar for technical simulation logs and inspectors */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
   ::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.6);
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(51, 65, 85, 0.7);
-    border-radius: 3px;
+    background: var(--color-omega-border);
+    border-radius: 99px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 116, 139, 0.9);
+    background: var(--color-omega-muted);
+  }
+}
+
+@layer components {
+  .cyber-panel {
+    @apply bg-slate-950/50 backdrop-blur-md border border-slate-900 shadow-2xl;
+  }
+  
+  .cyber-button-primary {
+    @apply px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-all active:scale-95 font-bold text-xs uppercase tracking-wider;
+  }
+
+  .cyber-input {
+    @apply bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all;
   }
 }

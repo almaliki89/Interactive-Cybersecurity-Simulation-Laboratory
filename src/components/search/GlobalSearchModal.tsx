@@ -37,7 +37,7 @@ export const GlobalSearchModal: React.FC = () => {
   const setMode = useSimulationStore((s) => s.setMode);
   const setActiveSimulation = useSimulationStore((s) => s.setActiveSimulation);
   const setSelectedWorldId = useSimulationStore((s) => s.setSelectedWorldId);
-  const selectEntity = useSimulationStore((s) => s.selectEntity);
+  const activeSimulationId = useSimulationStore((s) => s.activeSimulationId);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -78,7 +78,7 @@ export const GlobalSearchModal: React.FC = () => {
           c.nameEn.toLowerCase().includes(query)
       )
     );
-  });
+  }).slice(0, 5); // Limit to top 5 for speed
 
   // Filter Glossary Terms
   const matchingTerms = GLOSSARY_TERMS.filter((t) => {
@@ -89,70 +89,70 @@ export const GlobalSearchModal: React.FC = () => {
       t.definitionAr.toLowerCase().includes(query) ||
       t.definitionEn.toLowerCase().includes(query)
     );
-  });
+  }).slice(0, 3);
 
   const commandsList = [
     {
       id: 'open_range',
       icon: Compass,
       labelAr: 'فتح الميدان الشامل (Cyber Range)',
-      labelEn: 'Open Cyber Range',
+      labelEn: 'Enter Cyber Range [World 60]',
       action: () => setActiveSimulation('range'),
     },
     {
       id: 'open_soc',
       icon: Activity,
       labelAr: 'فتح مركز مراقبة العمليات SOC',
-      labelEn: 'Open SOC Workstation',
+      labelEn: 'Switch to SOC Station',
       action: () => setActiveSimulation('siem'),
     },
     {
       id: 'open_forensics',
       icon: Shield,
       labelAr: 'فتح معمل التحقيق الجنائي الرقمي',
-      labelEn: 'Open Forensics Lab',
+      labelEn: 'Enter Forensics Lab',
       action: () => setActiveSimulation('threat_hunting'),
     },
     {
       id: 'reset_sim',
       icon: RotateCcw,
       labelAr: 'إعادة ضبط المحاكاة الحالية',
-      labelEn: 'Reset Simulation Runtime',
+      labelEn: 'Hot Reset Runtime',
       action: () => globalSimulationRuntime.reset(),
     },
     {
       id: 'pause_sim',
       icon: Pause,
       labelAr: 'إيقاف المحاكاة مؤقتاً',
-      labelEn: 'Pause Simulation',
+      labelEn: 'Pause Execution Flow',
       action: () => globalSimulationRuntime.pause(),
     },
     {
       id: 'resume_sim',
       icon: Play,
       labelAr: 'استئناف تشغيل المحاكاة',
-      labelEn: 'Resume Simulation',
+      labelEn: 'Resume Execution Flow',
       action: () => globalSimulationRuntime.resume(),
     },
     {
       id: 'step_sim',
       icon: StepForward,
-      labelAr: 'تنفيذ خطوة زمنية في المحاكاة',
-      labelEn: 'Step Simulation Forward',
+      labelAr: 'تقدم خطوة واحدة',
+      labelEn: 'Step Forward [150ms]',
       action: () => globalSimulationRuntime.step(150),
     },
     {
       id: 'toggle_lang',
       icon: Languages,
       labelAr: 'تبديل اللغة (English / العربية)',
-      labelEn: 'Toggle Language (English / Arabic)',
+      labelEn: 'Toggle Interface Language',
       action: () => setLanguage(language === 'ar' ? 'en' : 'ar'),
     },
     {
       id: 'toggle_mode',
       icon: Sliders,
       labelAr: 'تبديل الوضع (موجّه / استكشاف حر)',
-      labelEn: 'Toggle Mode (Guided / Sandbox)',
+      labelEn: 'Toggle Operation Mode',
       action: () => setMode(mode === 'guided' ? 'sandbox' : 'guided'),
     },
   ];
@@ -190,13 +190,16 @@ export const GlobalSearchModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
+    <div 
+      className="fixed inset-0 z-50 flex items-start justify-center pt-24 p-4 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={() => setIsSearchOpen(false)}
+    >
       <div
-        className="w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+        className="w-full max-w-xl cyber-panel border-slate-800/80 rounded-2xl overflow-hidden flex flex-col max-h-[70vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-slate-950/60">
+        <div className="p-4 border-b border-slate-900 flex items-center gap-4 bg-slate-900/40">
           <Search className="w-5 h-5 text-cyan-400 shrink-0" />
           <input
             ref={inputRef}
@@ -205,33 +208,25 @@ export const GlobalSearchModal: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               language === 'ar'
-                ? 'اكتب أمراً أو ابحث عن مفهوم سيبراني (مثلاً: DNS, SIEM, pause, reset)...'
-                : 'Type a command or search concepts (e.g. DNS, SIEM, pause, reset)...'
+                ? 'اكتب أمراً أو ابحث عن مفهوم سيبراني...'
+                : 'Execute command or search intelligence...'
             }
-            className="w-full bg-transparent border-0 text-white placeholder-slate-500 text-sm focus:outline-hidden focus:ring-0"
+            className="w-full bg-transparent border-0 text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-0 font-mono uppercase tracking-tight"
           />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="p-1 text-slate-400 hover:text-white rounded"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-          <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-800 border border-slate-700 rounded">
-            ESC
-          </kbd>
+          <div className="flex items-center gap-1">
+            <kbd className="hidden sm:flex h-5 px-1.5 items-center rounded bg-slate-800 border border-slate-700 text-[9px] font-mono text-slate-500 uppercase">ESC</kbd>
+          </div>
         </div>
 
         {/* Results Container */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
           {/* Quick Shortcuts / Commands Section */}
           {matchingCommands.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
-                {language === 'ar' ? 'الأوامر والعمليات الفورية' : 'System Commands'}
+            <div className="mb-4">
+              <span className="px-3 py-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-[0.2em] block">
+                {language === 'ar' ? 'الأوامر والعمليات الفورية' : 'SYSTEM_COMMANDS'}
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 px-1">
                 {matchingCommands.map((cmd) => {
                   const CmdIcon = cmd.icon;
                   return (
@@ -241,13 +236,13 @@ export const GlobalSearchModal: React.FC = () => {
                         cmd.action();
                         setIsSearchOpen(false);
                       }}
-                      className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-cyan-500/60 hover:bg-slate-800/40 flex items-center gap-3 text-left rtl:text-right transition-all group"
+                      className="p-2.5 rounded-lg border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 flex items-center gap-3 text-left rtl:text-right transition-all group"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-900 text-cyan-400 flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 group-hover:border-cyan-500/50 text-slate-400 group-hover:text-cyan-400 flex items-center justify-center shrink-0 transition-colors">
                         <CmdIcon className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs font-bold text-slate-200 block group-hover:text-cyan-300 truncate">
+                        <span className="text-[11px] font-bold text-slate-300 block group-hover:text-white truncate uppercase tracking-tight">
                           {language === 'ar' ? cmd.labelAr : cmd.labelEn}
                         </span>
                       </div>
@@ -260,31 +255,31 @@ export const GlobalSearchModal: React.FC = () => {
 
           {/* Matching Worlds */}
           {matchingWorlds.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
-                {language === 'ar' ? `المختبرات والعوالم (${matchingWorlds.length})` : `Worlds & Labs (${matchingWorlds.length})`}
+            <div className="mb-4">
+              <span className="px-3 py-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-[0.2em] block">
+                {language === 'ar' ? `المختبرات والعوالم (${matchingWorlds.length})` : `LABS_AND_WORLDS (${matchingWorlds.length})`}
               </span>
-              <div className="space-y-1.5">
+              <div className="space-y-1 px-1">
                 {matchingWorlds.map((world) => (
                   <button
                     key={world.id}
                     onClick={() => handleSelectWorld(world.id)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950/40 border border-slate-800 hover:border-cyan-500/60 hover:bg-slate-800/40 flex items-center justify-between text-left rtl:text-right transition-colors group"
+                    className="w-full p-2.5 rounded-lg border border-transparent hover:border-cyan-500/30 hover:bg-cyan-500/5 flex items-center justify-between text-left rtl:text-right transition-all group"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-800 text-cyan-300">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <span className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-slate-900 border border-slate-800 text-cyan-500/70 group-hover:text-cyan-400 group-hover:border-cyan-500/40 transition-colors">
                         W{world.id.toString().padStart(2, '0')}
                       </span>
-                      <div>
-                        <span className="text-xs font-bold text-white block group-hover:text-cyan-300">
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-bold text-slate-200 block group-hover:text-white uppercase tracking-tight truncate">
                           {language === 'ar' ? world.titleAr : world.titleEn}
                         </span>
-                        <span className="text-[11px] text-slate-400 truncate max-w-md block">
+                        <span className="text-[9px] text-slate-500 font-mono uppercase tracking-tighter truncate block mt-0.5">
                           {language === 'ar' ? world.subtitleAr : world.subtitleEn}
                         </span>
                       </div>
                     </div>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 shrink-0">
+                    <span className="text-[8px] uppercase font-mono px-2 py-0.5 rounded border border-slate-800 text-slate-600 group-hover:text-slate-400 shrink-0">
                       {world.difficulty}
                     </span>
                   </button>
@@ -295,26 +290,26 @@ export const GlobalSearchModal: React.FC = () => {
 
           {/* Matching Glossary Terms */}
           {matchingTerms.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
-                {language === 'ar' ? `المصطلحات المعجمية (${matchingTerms.length})` : `Glossary Terms (${matchingTerms.length})`}
+            <div>
+              <span className="px-3 py-1.5 text-[10px] font-mono font-bold text-slate-600 uppercase tracking-[0.2em] block">
+                {language === 'ar' ? `المصطلحات المعجمية (${matchingTerms.length})` : `CYBER_INTELLIGENCE (${matchingTerms.length})`}
               </span>
-              <div className="space-y-1.5">
+              <div className="space-y-1 px-1">
                 {matchingTerms.map((term) => (
                   <div
                     key={term.id}
                     onClick={() => handleSelectWorld(term.relatedWorldId)}
-                    className="p-2.5 rounded-xl bg-slate-950/40 border border-slate-800 hover:border-purple-500/60 hover:bg-slate-800/40 cursor-pointer transition-colors"
+                    className="p-3 rounded-lg border border-transparent hover:border-purple-500/30 hover:bg-purple-500/5 cursor-pointer transition-all group"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-purple-300">
-                        {language === 'ar' ? term.termAr : term.termEn} ({language === 'ar' ? term.termEn : term.termAr})
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-purple-400 uppercase tracking-tight">
+                        {language === 'ar' ? term.termAr : term.termEn}
                       </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-800">
+                      <span className="text-[8px] font-mono px-1.5 py-0.5 rounded border border-purple-900/50 text-purple-400/70 uppercase">
                         {term.category}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                    <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2 font-sans italic">
                       {language === 'ar' ? term.definitionAr : term.definitionEn}
                     </p>
                   </div>
@@ -322,36 +317,19 @@ export const GlobalSearchModal: React.FC = () => {
               </div>
             </div>
           )}
-
-          {/* No results */}
-          {query && matchingWorlds.length === 0 && matchingTerms.length === 0 && matchingCommands.length === 0 && (
-            <div className="py-12 text-center text-slate-500">
-              <p className="text-sm">
-                {language === 'ar'
-                  ? `لم يتم العثور على نتائج تطابق "${searchQuery}"`
-                  : `No cybersecurity items found matching "${searchQuery}"`}
-              </p>
-              <p className="text-xs mt-1">
-                {language === 'ar'
-                  ? 'جرب البحث عن كلمات مثل: TCP, Firewall, pause, reset'
-                  : 'Try searching for keywords like: TCP, Firewall, pause, reset'}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Keyboard Shortcuts Helper Panel inside command palette */}
-        <div className="px-4 py-2 border-t border-slate-800/80 bg-slate-950/50 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-slate-500 font-mono">
-          <div><kbd className="px-1 py-0.2 rounded bg-slate-800 border border-slate-700">Space</kbd> Play / Pause</div>
-          <div><kbd className="px-1 py-0.2 rounded bg-slate-800 border border-slate-700">R</kbd> Reset</div>
-          <div><kbd className="px-1 py-0.2 rounded bg-slate-800 border border-slate-700">→</kbd> Step</div>
-          <div><kbd className="px-1 py-0.2 rounded bg-slate-800 border border-slate-700">Ctrl+K</kbd> Open Palette</div>
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 bg-slate-950 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>{language === 'ar' ? 'انقر على أي عنصر للانتقال الفوري أو لتنفيذ الأمر' : 'Click any result to trigger immediately'}</span>
-          <span className="font-mono text-cyan-400">60 Worlds Connected</span>
+        <div className="px-4 py-3 bg-slate-900/60 border-t border-slate-900 flex items-center justify-between text-[9px] font-mono text-slate-500 uppercase tracking-widest">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+              60 Worlds Active
+            </span>
+            <span className="text-slate-800">/</span>
+            <span>OS: OMEGA_V15.3</span>
+          </div>
+          <span className="text-cyan-500/50">READY_FOR_INPUT</span>
         </div>
       </div>
     </div>
