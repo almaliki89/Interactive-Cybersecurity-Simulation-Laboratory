@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Languages,
   Sliders,
+  Sparkles,
 } from 'lucide-react';
 
 export const GlobalSearchModal: React.FC = () => {

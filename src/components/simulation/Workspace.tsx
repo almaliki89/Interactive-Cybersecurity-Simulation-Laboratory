@@ -12,6 +12,7 @@ import {
   Sliders,
   Compass,
   ArrowRight,
+  ArrowLeft,
   Eye,
   Activity,
   HelpCircle,
