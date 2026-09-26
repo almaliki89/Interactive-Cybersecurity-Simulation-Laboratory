@@ -88,233 +88,179 @@ export const Header: React.FC = () => {
   const activeLab = labsList.find((l) => l.id === activeSimulationId) || 
     (activeSimulationId === 'devsecops' ? { nameAr: 'أمن سلاسل التوريد والـ DevSecOps', nameEn: 'Software Supply Chain & DevSecOps', icon: Workflow, category: 'E. Cloud Systems' } : null);
 
-  // Compact Contextual Header inside simulation / labs
-  if (isLabActive && activeLab) {
-    const IconComponent = activeLab.icon;
-    return (
-      <header className="h-10 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
-        {/* Zone 1: Contextual Lab Identity */}
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={() => setActiveSimulation('explorer')}
-            className="group flex items-center gap-1.5 transition-all"
-            title={language === 'ar' ? 'العودة للكون' : 'Back to Universe'}
-          >
-            <div className="w-6 h-6 rounded bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:border-cyan-500/50 transition-colors">
-              <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180 text-cyan-400" />
-            </div>
-          </button>
-
-          <div className="h-4 w-px bg-slate-800" />
-
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-              <IconComponent className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0 flex flex-col">
-              <h1 className="text-[11px] font-bold text-white truncate leading-tight uppercase tracking-tight">
-                {language === 'ar' ? activeLab.nameAr : activeLab.nameEn}
-              </h1>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-mono text-cyan-500/70 uppercase tracking-widest leading-none">
-                  {activeLab.category}
+  // Unified Three-Zone Header (Consolidated Phase 1C)
+  return (
+    <header className="h-12 border-b border-slate-900 bg-slate-950 px-4 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
+      {/* Zone 1: Identity / Context */}
+      <div className="flex items-center gap-3 min-w-[240px]">
+        {isLabActive && activeLab ? (
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setActiveSimulation('explorer')}
+              className="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 transition-all shadow-sm"
+              title={language === 'ar' ? 'العودة للكون' : 'Back to Universe'}
+            >
+              <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+            </button>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                {React.createElement(activeLab.icon, { className: 'w-4 h-4' })}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] font-bold text-white uppercase tracking-tight truncate leading-tight">
+                  {language === 'ar' ? activeLab.nameAr : activeLab.nameEn}
                 </span>
-                <span className="text-[9px] text-slate-600 font-mono">/</span>
-                <span className="text-[9px] text-slate-500 font-mono truncate max-w-[100px]">
-                  ID: {activeSimulationId.toUpperCase()}
+                <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest leading-none">
+                  {activeLab.category}
                 </span>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Zone 2: Runtime Telemetry (Only Visible when relevant) */}
-        <div className="hidden md:flex items-center gap-4 px-3 py-1 rounded-full bg-slate-900/40 border border-slate-800/60 mx-4">
-          <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${
-              clockStatus === 'running' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-amber-500'
-            }`} />
-            <span className="text-[10px] font-mono font-bold text-slate-400">
-              {clockStatus === 'running' ? 'LIVE' : 'HALTED'}
-            </span>
-          </div>
-          <div className="w-px h-3 bg-slate-800" />
-          <div className="flex items-center gap-1.5 font-mono text-[10px]">
-            <span className="text-slate-500">T+</span>
-            <span className="text-cyan-400 font-bold">{virtualTime}ms</span>
-          </div>
-          <div className="w-px h-3 bg-slate-800" />
-          <div className="flex items-center gap-1.5 font-mono text-[10px]">
-            <span className="text-slate-500">SPD</span>
-            <span className="text-purple-400 font-bold">{clockSpeed}x</span>
-          </div>
-        </div>
-
-        {/* Zone 3: Actions & Quick Switcher */}
-        <div className="flex items-center gap-2">
+        ) : (
           <button
-            onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-1.5 h-7 px-2 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-700 text-slate-400 transition-all hover:text-white"
+            onClick={() => setActiveSimulation('landing')}
+            className="flex items-center gap-3 hover:opacity-80 transition-all group"
           >
-            <Search className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden lg:inline text-[10px] font-mono opacity-50 uppercase tracking-tighter">Command</span>
-            <kbd className="hidden lg:flex h-4 px-1 items-center rounded bg-slate-800 border border-slate-700 text-[9px] font-mono">⌘K</kbd>
+            <div className="w-7 h-7 rounded-lg bg-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-900/20 group-hover:scale-105 transition-transform">
+              <Shield className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold tracking-tighter text-white leading-none">OMEGA</span>
+              <span className="text-[8px] font-mono text-cyan-500 uppercase tracking-[0.2em] leading-none mt-1">Cyber Range</span>
+            </div>
           </button>
+        )}
+      </div>
 
-          <div className="h-4 w-px bg-slate-800" />
+      {/* Zone 2: Navigation / Telemetry (Center) */}
+      <div className="hidden md:flex flex-1 justify-center px-4">
+        {isLabActive ? (
+          <div className="flex items-center gap-5 px-5 py-1 rounded-full bg-slate-900/40 border border-slate-800/60 shadow-inner">
+            <div className="flex items-center gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${
+                clockStatus === 'running' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-amber-500'
+              }`} />
+              <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">
+                {clockStatus === 'running' ? 'Active' : 'Halted'}
+              </span>
+            </div>
+            <div className="w-px h-3 bg-slate-800" />
+            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums">
+              <span className="text-slate-500 font-bold tracking-tighter">TIME</span>
+              <span className="text-cyan-400 font-bold">T+{virtualTime}ms</span>
+            </div>
+            <div className="w-px h-3 bg-slate-800" />
+            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums">
+              <span className="text-slate-500 font-bold tracking-tighter">SPEED</span>
+              <span className="text-purple-400 font-bold">{clockSpeed}x</span>
+            </div>
+          </div>
+        ) : (
+          <nav className="flex items-center gap-1 p-0.5 bg-slate-900/30 rounded-xl border border-slate-900/50">
+            {universeNav.map((item) => {
+              const isActive = activeSimulationId === item.id;
+              const NavIcon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveSimulation(item.id)}
+                  className={`px-4 py-1.5 rounded-lg flex items-center gap-2 transition-all whitespace-nowrap text-[11px] font-bold uppercase tracking-wide ${
+                    isActive
+                      ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/10 shadow-sm'
+                      : 'text-slate-500 hover:text-white hover:bg-slate-900/60'
+                  }`}
+                >
+                  <NavIcon className="w-3.5 h-3.5" />
+                  <span>{language === 'ar' ? item.labelAr : item.labelEn}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
+      </div>
 
+      {/* Zone 3: Actions (Right) */}
+      <div className="flex items-center gap-2.5 min-w-[240px] justify-end">
+        <button
+          onClick={() => setIsSearchOpen(true)}
+          className="h-8 px-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all flex items-center gap-2 group"
+          title="Search / Commands (⌘K)"
+        >
+          <Search className="w-4 h-4" />
+          <div className="hidden lg:flex items-center gap-1">
+             <span className="text-[9px] font-mono text-slate-600 uppercase tracking-tighter group-hover:text-slate-400">Command</span>
+             <kbd className="h-4 px-1.5 flex items-center rounded bg-slate-950 border border-slate-800 text-[9px] font-mono text-slate-500">⌘K</kbd>
+          </div>
+        </button>
+
+        {isLabActive && (
           <div className="relative" ref={dropdownRef}>
             <button
-              onClick={() => setLabsOpen((prev) => !prev)}
-              className={`h-7 px-2.5 rounded-lg border transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${
-                labsOpen ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-400' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+              onClick={() => setLabsOpen(!labsOpen)}
+              className={`h-8 px-3 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all border ${
+                labsOpen ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-400 shadow-sm' : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
               }`}
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{language === 'ar' ? 'التحويل' : 'Switch'}</span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${labsOpen ? 'rotate-180' : ''}`} />
+              <Layers className="w-4 h-4 text-purple-400" />
+              <span className="hidden sm:inline">{language === 'ar' ? 'المختبرات' : 'Switch Lab'}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${labsOpen ? 'rotate-180' : ''}`} />
             </button>
-
             {labsOpen && (
-              <div className="absolute top-full right-0 rtl:right-auto rtl:left-0 mt-2 w-72 max-h-[70vh] overflow-hidden cyber-panel rounded-xl flex flex-col z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3 py-2 border-b border-slate-900 bg-slate-900/30">
-                  <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest">
-                    {language === 'ar' ? 'مركز محاكاة المختبرات' : 'Lab Control Center'}
+              <div className="absolute top-full right-0 rtl:right-auto rtl:left-0 mt-2 w-72 max-h-[70vh] overflow-hidden bg-slate-950 border border-slate-800 rounded-xl shadow-2xl flex flex-col z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-2.5 border-b border-slate-900 bg-slate-900/20">
+                  <span className="text-[9px] font-mono font-bold text-cyan-400 uppercase tracking-[0.2em]">
+                    {language === 'ar' ? 'مركز التحكم بالمختبرات' : 'Lab Simulation Center'}
                   </span>
                 </div>
-                <div className="overflow-y-auto p-1 space-y-0.5">
-                  {labsList.map((lab) => {
-                    const isSelected = activeSimulationId === lab.id;
-                    const LabIcon = lab.icon;
-                    return (
-                      <button
-                        key={lab.id}
-                        onClick={() => {
-                          setActiveSimulation(lab.id);
-                          setLabsOpen(false);
-                        }}
-                        className={`w-full p-2 rounded-lg flex items-center gap-3 text-left rtl:text-right transition-all group ${
-                          isSelected ? 'bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/20' : 'hover:bg-slate-900 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        <div className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-cyan-500/20' : 'bg-slate-900 group-hover:bg-slate-800'}`}>
-                          <LabIcon className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[11px] truncate uppercase tracking-tight">
-                            {language === 'ar' ? lab.nameAr : lab.nameEn}
-                          </div>
-                          <div className="text-[9px] font-mono text-slate-500 uppercase">{lab.category}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="overflow-y-auto p-1.5 space-y-0.5 custom-scrollbar">
+                  {labsList.map((lab) => (
+                    <button
+                      key={lab.id}
+                      onClick={() => { setActiveSimulation(lab.id); setLabsOpen(false); }}
+                      className={`w-full p-2 rounded-lg flex items-center gap-3 text-left rtl:text-right transition-all group ${
+                        activeSimulationId === lab.id ? 'bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/10' : 'hover:bg-slate-900 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${activeSimulationId === lab.id ? 'bg-cyan-500/20' : 'bg-slate-950 border border-slate-900 group-hover:border-slate-700'}`}>
+                        {React.createElement(lab.icon, { className: 'w-4 h-4' })}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[11px] truncate uppercase tracking-tight">{language === 'ar' ? lab.nameAr : lab.nameEn}</div>
+                        <div className="text-[8px] font-mono text-slate-600 uppercase tracking-tighter">{lab.category}</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
           </div>
+        )}
 
-          <div className="h-4 w-px bg-slate-800" />
-
-          <button
-            onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-            className="h-7 w-7 rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-white transition-all text-[10px] font-bold flex items-center justify-center uppercase"
-          >
-            {language === 'ar' ? 'EN' : 'AR'}
-          </button>
-        </div>
-      </header>
-    );
-  }
-
-  // Standard Universal Header (Landing / Map Explorer views)
-  return (
-    <header className="h-14 border-b border-slate-900 bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
-      {/* Zone 1: Brand Wordmark */}
-      <div className="flex items-center gap-6">
-        <button
-          onClick={() => setActiveSimulation('landing')}
-          className="group flex items-center gap-2 transition-all"
-        >
-          <div className="w-8 h-8 rounded-xl bg-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-900/20 group-hover:scale-105 transition-transform">
-            <Shield className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-base font-bold tracking-tighter text-white leading-none">OMEGA</span>
-            <span className="text-[9px] font-mono text-cyan-500 uppercase tracking-[0.3em] leading-none mt-1">Cyber Range</span>
-          </div>
-        </button>
-
-        <div className="hidden lg:flex items-center h-8 px-3 rounded-full bg-slate-900/50 border border-slate-800/80">
-          <button
-            onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-3 text-slate-500 hover:text-slate-300 transition-colors"
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-medium tracking-tight">
-              {language === 'ar' ? 'البحث الذكي والأوامر...' : 'Search intelligence...'}
-            </span>
-            <kbd className="flex h-4 px-1.5 items-center rounded bg-slate-800 border border-slate-700 text-[9px] font-mono text-slate-400">⌘K</kbd>
-          </button>
-        </div>
-      </div>
-
-      {/* Zone 2: Navigation Links */}
-      <nav className="hidden xl:flex items-center gap-1 p-1 bg-slate-900/40 rounded-xl border border-slate-900/60">
-        {universeNav.map((item) => {
-          const isActive = activeSimulationId === item.id;
-          const NavIcon = item.icon;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveSimulation(item.id)}
-              className={`px-4 py-1.5 rounded-lg flex items-center gap-2 transition-all text-xs font-bold uppercase tracking-wide whitespace-nowrap ${
-                isActive
-                  ? 'bg-cyan-500/10 text-cyan-400 shadow-inner'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900/60'
-              }`}
-            >
-              <NavIcon className="w-3.5 h-3.5" />
-              <span>{language === 'ar' ? item.labelAr : item.labelEn}</span>
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Zone 3: Global Actions */}
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
-          <button
-            onClick={() => setMode('guided')}
-            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
-              mode === 'guided'
-                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            {t.modes.guided}
-          </button>
-          <button
-            onClick={() => setMode('sandbox')}
-            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all ${
-              mode === 'sandbox'
-                ? 'bg-slate-700 text-white'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            {t.modes.sandbox}
-          </button>
-        </div>
-
-        <div className="h-5 w-px bg-slate-800 mx-1" />
+        <div className="h-5 w-px bg-slate-800 hidden sm:block mx-1" />
 
         <button
           onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-          className="flex items-center gap-2 h-9 px-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-300 hover:text-white transition-all text-xs font-bold"
+          className="h-8 px-2.5 rounded-lg border border-slate-800 bg-slate-900 text-[10px] font-bold text-cyan-500 hover:text-white transition-all shadow-sm flex items-center justify-center min-w-[32px]"
         >
-          <Languages className="w-4 h-4 text-cyan-400" />
-          <span className="uppercase tracking-widest">{language === 'ar' ? 'EN' : 'عربي'}</span>
+          {language === 'ar' ? 'EN' : 'ع'}
         </button>
+
+        {!isLabActive && (
+          <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
+            <button
+              onClick={() => setMode('guided')}
+              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${mode === 'guided' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              {language === 'ar' ? 'موجه' : 'Guided'}
+            </button>
+            <button
+              onClick={() => setMode('sandbox')}
+              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${mode === 'sandbox' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              {language === 'ar' ? 'حر' : 'Sandbox'}
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

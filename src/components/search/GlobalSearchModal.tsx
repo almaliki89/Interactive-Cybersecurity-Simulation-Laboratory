@@ -111,7 +111,7 @@ export const GlobalSearchModal: React.FC = () => {
       icon: Shield,
       labelAr: 'فتح معمل التحقيق الجنائي الرقمي',
       labelEn: 'Enter Forensics Lab',
-      action: () => setActiveSimulation('threat_hunting'),
+      action: () => setActiveSimulation('forensics'),
     },
     {
       id: 'reset_sim',

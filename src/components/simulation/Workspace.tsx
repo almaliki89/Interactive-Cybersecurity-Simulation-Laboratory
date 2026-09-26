@@ -66,15 +66,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
   const t = translations[language];
 
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(!!challenge);
+  const [rightOpen, setRightOpen] = useState(!!selectedEntity);
 
   // Smart Panel Logic: Auto-open inspector on selection
   React.useEffect(() => {
-    if (selectedEntity && !rightOpen) {
+    if (selectedEntity) {
       setRightOpen(true);
     }
   }, [selectedEntity]);
+
+  // Sync left panel with challenge availability
+  React.useEffect(() => {
+    if (challenge) {
+      setLeftOpen(true);
+    }
+  }, [challenge]);
 
   const layers: Array<{
     id: 'network' | 'application' | 'identity' | 'security' | 'logs' | 'infrastructure';
