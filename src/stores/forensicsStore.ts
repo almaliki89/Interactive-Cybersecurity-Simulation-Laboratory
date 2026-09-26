@@ -29,6 +29,7 @@ interface ForensicsStoreState {
   deepLinkContext: {
     alertId?: string;
     eventId?: string;
+    eventIds?: string[];
     type?: string;
   } | null;
   setDeepLinkContext: (context: ForensicsStoreState['deepLinkContext']) => void;

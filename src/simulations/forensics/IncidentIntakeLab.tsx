@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
+import { useForensicsStore } from '../../stores/forensicsStore';
 import { createDefaultForensicsCase } from './logic/evidence';
-import { ShieldAlert, CheckCircle2, UserCheck, Server, FileText } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, UserCheck, Server, FileText, Link, X } from 'lucide-react';
 
 export const IncidentIntakeLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
+  
+  const deepLink = useForensicsStore((s) => s.deepLinkContext);
+  const setDeepLink = useForensicsStore((s) => s.setDeepLinkContext);
 
   const defaultCase = createDefaultForensicsCase(0);
   const [scopedHosts, setScopedHosts] = useState<string[]>(['FIN-WS-01']);
@@ -21,6 +25,37 @@ export const IncidentIntakeLab: React.FC = () => {
 
   return (
     <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto">
+      {/* Deep Link Context Banner */}
+      {deepLink && (
+        <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-between animate-in slide-in-from-top duration-300">
+           <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-900/50 flex items-center justify-center border border-indigo-500/50">
+                 <Link className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div>
+                 <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-widest">
+                    {isAr ? 'ارتباط نشط من مركز العمليات (SOC)' : 'Active SOC Handover Context'}
+                 </h4>
+                 <p className="text-[10px] text-indigo-400/80 font-mono mt-0.5">
+                    {isAr ? `تنبيه: ${deepLink.type} [${deepLink.alertId}]` : `Alert: ${deepLink.type} [${deepLink.alertId}]`}
+                 </p>
+                 {deepLink.eventIds && deepLink.eventIds.length > 0 && (
+                    <p className="text-[9px] text-indigo-500/70 font-mono mt-1">
+                       {isAr ? `الأحداث المرتبطة: ${deepLink.eventIds.length}` : `Linked Events: ${deepLink.eventIds.length}`} ({deepLink.eventIds.join(', ')})
+                    </p>
+                 )}
+              </div>
+           </div>
+           <button 
+             onClick={() => setDeepLink(null)}
+             className="p-1.5 rounded-lg hover:bg-indigo-500/20 text-indigo-400 transition-colors"
+             title={isAr ? 'مسح الارتباط' : 'Clear Context'}
+           >
+              <X className="w-4 h-4" />
+           </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2 text-rose-400 text-xs font-bold uppercase tracking-wider">

@@ -256,7 +256,8 @@ export const SocInvestigationWorkspace: React.FC<SocInvestigationWorkspaceProps>
                 onClick={() => {
                   setForensicsContext({
                     alertId: activeAlert.id,
-                    type: activeAlert.ruleNameEn
+                    type: activeAlert.ruleNameEn,
+                    eventIds: activeAlert.evidenceEventIds
                   });
                   setForensicsTab('intake'); // Default to intake for context
                   useSimulationStore.getState().setActiveSimulation('forensics');

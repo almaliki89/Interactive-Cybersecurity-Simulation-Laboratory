@@ -72,10 +72,24 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
   // 3. Filtering
   const filteredAlerts = React.useMemo(() => {
     return alerts.filter(a => {
+      // 1. Severity Filter
       if (filters.severity.length > 0 && !filters.severity.includes(a.severity)) return false;
+      
+      // 2. User Filter (check if any entity user matches)
+      if (filters.user.length > 0 && !a.entities.users.some(u => filters.user.includes(u))) return false;
+
+      // 3. World / Category / Outcome Filters (check if underlying evidence events match)
+      if (filters.sourceWorld.length > 0 || filters.category.length > 0 || filters.outcome.length > 0) {
+        const evidenceEvents = enrichedTelemetry.filter(e => a.evidenceEventIds.includes(e.id));
+        
+        if (filters.sourceWorld.length > 0 && !evidenceEvents.some(e => filters.sourceWorld.includes(e.sourceWorld))) return false;
+        if (filters.category.length > 0 && !evidenceEvents.some(e => filters.category.includes(e.category))) return false;
+        if (filters.outcome.length > 0 && !evidenceEvents.some(e => filters.outcome.includes(e.outcome || ''))) return false;
+      }
+      
       return true;
     });
-  }, [alerts, filters.severity]);
+  }, [alerts, filters, enrichedTelemetry]);
 
   const filteredEvents = React.useMemo(() => {
     return enrichedTelemetry.filter(e => {
