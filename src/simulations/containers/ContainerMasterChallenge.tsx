@@ -29,22 +29,6 @@ export const ContainerMasterChallenge: React.FC = () => {
   const [authTestLogs, setAuthTestLogs] = useState<string[]>([]);
   const [netTestLogs, setNetTestLogs] = useState<string[]>([]);
 
-  const applyHardenedState = () => {
-    const hardened = createHardenedKubernetesMasterState();
-    setMasterState(hardened);
-    setFlags({
-      imageSecuredWithNonRootAndDistroless: true,
-      dangerousCapabilitiesDropped: true,
-      hostSockAndPrivilegedDisabled: true,
-      rbacWildcardsAndExecEliminated: true,
-      defaultDenyNetworkPolicyEnforced: true,
-      etcdKmsEncryptionEnabled: true,
-      falcoRuntimeRulesActiveAndQuarantineVerified: true,
-      noStateTampering: true,
-    });
-    setTested(false);
-  };
-
   const applyVulnerableState = () => {
     const vuln = createDefaultKubernetesMasterState();
     setMasterState(vuln);
@@ -310,19 +294,12 @@ export const ContainerMasterChallenge: React.FC = () => {
 
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={applyHardenedState}
-                  title={isAr ? 'تطبيق التحصين الكامل' : 'Apply Full Hardening'}
-                  className="px-2.5 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-500/30 transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  <span>{isAr ? 'تحصين' : 'Harden'}</span>
-                </button>
-                <button
                   onClick={applyVulnerableState}
-                  title={isAr ? 'إعادة للكلاستر الشائع المليء بالثغرات' : 'Reset to Vulnerable Cluster'}
-                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                  title={isAr ? 'إعادة للوضع الافتراضي المشبع بالثغرات' : 'Reset to Default Vulnerable State'}
+                  className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-slate-700"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'إعادة ضبط' : 'Reset'}</span>
                 </button>
               </div>
             </div>

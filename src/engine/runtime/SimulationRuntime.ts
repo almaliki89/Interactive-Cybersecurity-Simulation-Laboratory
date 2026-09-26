@@ -16,6 +16,7 @@ export interface RuntimeState {
   connections: ConnectionLink[];
   packets: EnginePacket[];
   events: SimulationEvent[];
+  eventQueue?: ScheduledEvent[];
   logs: EngineLogEntry[];
   rules: Rule[];
   activeScenarioId: string | null;
@@ -35,6 +36,7 @@ export class SimulationRuntime {
   private nodes: SimulationNode[] = [];
   private connections: ConnectionLink[] = [];
   private unsubscribeClock: (() => void) | null = null;
+  private unsubscribeEvents: (() => void) | null = null;
   private stateChangeListeners: Set<(state: RuntimeState) => void> = new Set();
 
   constructor() {
@@ -48,6 +50,7 @@ export class SimulationRuntime {
     this.scenarios = new ScenarioEngine();
 
     this.initClockBinding();
+    this.initEventBinding();
   }
 
   private initClockBinding() {
@@ -56,24 +59,21 @@ export class SimulationRuntime {
     });
   }
 
+  private initEventBinding() {
+    this.unsubscribeEvents = this.events.on('*', (evt) => {
+      this.handleEventLog(evt);
+      this.replay.recordSnapshot(evt.virtualTime, this.getState(), evt.id);
+    });
+  }
+
   private tick(deltaTimeMs: number, virtualTime: number) {
     // 1. Process scheduled events that have reached their virtualTime
-    const newEvents = this.events.processUntil(virtualTime);
+    this.events.processUntil(virtualTime);
 
-    // 2. Automatically generate logs for significant events
-    newEvents.forEach((evt) => {
-      this.handleEventLog(evt);
-    });
-
-    // 3. Update packet progress and states
+    // 2. Update packet progress and states
     this.packets.updateAtVirtualTime(virtualTime);
 
-    // 4. Periodically capture replay snapshot at checkpoints or on events
-    if (newEvents.length > 0) {
-      this.replay.recordSnapshot(virtualTime, this.getState(), newEvents[0].id);
-    }
-
-    // 5. Notify state change listeners
+    // 3. Notify state change listeners
     this.notifyState();
   }
 
@@ -164,13 +164,10 @@ export class SimulationRuntime {
   }
 
   public dispatch(event: Omit<SimulationEvent, 'id' | 'virtualTime' | 'timestamp'> & { id?: string; timestamp?: number }): SimulationEvent {
-    const dispatched = this.events.dispatch({
+    return this.events.dispatch({
       ...event,
       virtualTime: this.clock.getVirtualTime(),
     });
-    this.handleEventLog(dispatched);
-    this.replay.recordSnapshot(this.clock.getVirtualTime(), this.getState(), dispatched.id);
-    return dispatched;
   }
 
   public schedule(event: ScheduledEvent): void {
@@ -211,7 +208,7 @@ export class SimulationRuntime {
       this.nodes = JSON.parse(JSON.stringify(snapshot.state.nodes));
       this.connections = JSON.parse(JSON.stringify(snapshot.state.connections));
       this.packets.restoreState(snapshot.state.packets);
-      this.events.restoreState(snapshot.state.events);
+      this.events.restoreState(snapshot.state.events, snapshot.state.eventQueue || []);
       this.logs.restoreState(snapshot.state.logs);
       this.rules.restoreState(snapshot.state.rules);
       if (snapshot.state.activeScenarioId) {
@@ -238,6 +235,7 @@ export class SimulationRuntime {
       connections: [...this.connections],
       packets: this.packets.getAllPackets(),
       events: this.events.getHistory(),
+      eventQueue: this.events.getQueue(),
       logs: this.logs.getLogs(),
       rules: this.rules.getRules(),
       activeScenarioId: this.scenarios.getActiveScenario()?.id ?? null,
@@ -248,6 +246,9 @@ export class SimulationRuntime {
   public destroy(): void {
     if (this.unsubscribeClock) {
       this.unsubscribeClock();
+    }
+    if (this.unsubscribeEvents) {
+      this.unsubscribeEvents();
     }
     this.clock.destroy();
     this.stateChangeListeners.clear();

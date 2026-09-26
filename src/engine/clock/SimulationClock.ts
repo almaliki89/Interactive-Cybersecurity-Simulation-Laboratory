@@ -82,7 +82,7 @@ export class SimulationClock {
       this.pause();
     }
     const delta = stepMs;
-    this.virtualTimeMs += delta;
+    this.virtualTimeMs = Math.round(this.virtualTimeMs) + delta;
     this.notify(delta, this.virtualTimeMs);
   }
 
