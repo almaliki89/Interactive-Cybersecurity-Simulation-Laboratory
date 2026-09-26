@@ -50,7 +50,8 @@ export type SimulationId =
   | 'ports_services'
   | 'nexora_master'
   | 'forensics'
-  | 'cloud';
+  | 'cloud'
+  | 'containers';
 
 export interface SelectedEntity {
   type: 'node' | 'packet' | 'rule' | 'log' | 'event' | 'connection' | 'world' | 'concept';

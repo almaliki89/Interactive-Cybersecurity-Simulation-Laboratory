@@ -763,7 +763,7 @@ export const WORLDS_REGISTRY: Record<number, WorldDefinition> = {
     descriptionAr: 'افحص حدود عزل الحاويات: اختبر التواصل بين حزم Pods في بيئة Kubernetes، وطبق سياسات الشبكة (Network Policies) لمنع التحرك الجانبي.',
     descriptionEn: 'Interactive Kubernetes cluster: enforce Pod-to-Pod network isolation policies and inspect container namespace boundaries.',
     difficulty: 'Advanced',
-    simulationType: 'cloud_containers',
+    simulationType: 'containers',
     iconName: 'Boxes',
     prerequisites: [5, 18],
     relatedWorlds: [5, 18, 21, 22],
