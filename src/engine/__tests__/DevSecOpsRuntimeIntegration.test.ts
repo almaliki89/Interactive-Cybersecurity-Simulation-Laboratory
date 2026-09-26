@@ -8,6 +8,7 @@ import { devSecOpsEventBridge } from '../../simulations/devsecops/runtime/DevSec
 import { SUPPLY_CHAIN_ATTACK_SCENARIO, loadDevSecOpsAttackScenario, CANONICAL_DEVSECOPS_TIMELINE } from '../../simulations/devsecops/runtime/DevSecOpsAttackScenario';
 import { SimulationRuntime } from '../runtime/SimulationRuntime';
 import { ForensicsEventBridge } from '../../simulations/forensics/runtime/ForensicsEventBridge';
+import { SocEventBridge } from '../../simulations/soc/runtime/SocEventBridge';
 
 describe('OMEGA V15 — DevSecOps Runtime & Telemetry Integration', () => {
   beforeEach(() => {
@@ -247,6 +248,135 @@ describe('OMEGA V15 — DevSecOps Runtime & Telemetry Integration', () => {
       }));
 
       expect(run1).toEqual(run2);
+    });
+  });
+
+  describe('Explicit DevSecOps -> SOC Pipeline Integration', () => {
+    it('successfully routes DEVSECOPS_PIPELINE_BYPASS_ATTEMPT to SOC telemetry and preserves all fields', () => {
+      const runtime = new SimulationRuntime();
+      const socBridge = new SocEventBridge(runtime);
+
+      runtime.schedule({
+        id: 'devsec-evt-1001',
+        at: 200,
+        type: 'DEVSECOPS_PIPELINE_BYPASS_ATTEMPT',
+        source: 'github.com/nexora/enterprise-platform',
+        target: 'ci-cd-pipeline.yml',
+        category: 'DEVSECOPS' as any,
+        severity: 'threat',
+        description: 'Bypass attempt detected',
+        payload: {
+          repository: 'github.com/nexora/enterprise-platform',
+          commitSha: 'bc83fd21a00e',
+          workflow: 'ci-cd-pipeline.yml',
+          artifact: 'nexora-enterprise-service',
+          artifactDigest: 'sha256:d57e1234567890abcdef',
+          actor: 'dev-malicious',
+          outcome: 'DENIED',
+          bypassGateAttempted: 'SAST_SCA_GATES'
+        }
+      } as any);
+
+      runtime.step(300);
+
+      const telemetry = socBridge.getTelemetry();
+      expect(telemetry.length).toBeGreaterThan(0);
+      const match = telemetry.find(t => t.rawEventId === 'devsec-evt-1001');
+      expect(match).toBeDefined();
+      
+      // Preservation Assertions
+      expect(match?.sourceWorld).toBe('DEVSECOPS');
+      expect(match?.eventType).toBe('DEVSECOPS_PIPELINE_BYPASS_ATTEMPT');
+      expect(match?.virtualTime).toBe(200);
+      expect(match?.host).toBe('github.com/nexora/enterprise-platform'); // host maps to repository
+      expect(match?.user).toBe('dev-malicious'); // user maps to actor
+      expect(match?.attributes?.commitSha).toBe('bc83fd21a00e');
+      expect(match?.attributes?.workflow).toBe('ci-cd-pipeline.yml');
+      expect(match?.attributes?.artifact).toBe('nexora-enterprise-service');
+      expect(match?.attributes?.artifactDigest).toBe('sha256:d57e1234567890abcdef');
+      expect(match?.attributes?.actor).toBe('dev-malicious');
+      expect(match?.rawEventId).toBe('devsec-evt-1001');
+      expect(match?.outcome).toBe('DENIED');
+
+      socBridge.destroy();
+    });
+  });
+
+  describe('Explicit DevSecOps -> SOC -> Forensics Integration', () => {
+    it('successfully processes DEVSECOPS_ARTIFACT_TAMPERED through SOC and produces verified Forensics evidence', () => {
+      const runtime = new SimulationRuntime();
+      const socBridge = new SocEventBridge(runtime);
+      const forensicBridge = new ForensicsEventBridge(runtime);
+
+      runtime.schedule({
+        id: 'devsec-evt-1002',
+        at: 400,
+        type: 'DEVSECOPS_ARTIFACT_TAMPERED',
+        source: 'github.com/nexora/enterprise-platform',
+        target: 'nexora-enterprise-service',
+        category: 'DEVSECOPS' as any,
+        severity: 'threat',
+        description: 'Unauthorized binary replacement suspected',
+        payload: {
+          repository: 'github.com/nexora/enterprise-platform',
+          commitSha: 'bc83fd21a00e',
+          workflow: 'ci-cd-pipeline.yml',
+          artifact: 'nexora-enterprise-service',
+          artifactDigest: 'sha256:tampered8899aabbccddeeff',
+          actor: 'attacker-supply-chain',
+          outcome: 'ANOMALY',
+          tamperDetected: true
+        }
+      } as any);
+
+      runtime.step(500);
+
+      // 1. SOC Telemetry assertions first
+      const telemetry = socBridge.getTelemetry();
+      expect(telemetry.length).toBeGreaterThan(0);
+      const socMatch = telemetry.find(t => t.rawEventId === 'devsec-evt-1002');
+      expect(socMatch).toBeDefined();
+      expect(socMatch?.sourceWorld).toBe('DEVSECOPS');
+      expect(socMatch?.eventType).toBe('DEVSECOPS_ARTIFACT_TAMPERED');
+      expect(socMatch?.virtualTime).toBe(400);
+      expect(socMatch?.host).toBe('github.com/nexora/enterprise-platform');
+      expect(socMatch?.user).toBe('attacker-supply-chain');
+      expect(socMatch?.attributes?.commitSha).toBe('bc83fd21a00e');
+      expect(socMatch?.attributes?.artifact).toBe('nexora-enterprise-service');
+      expect(socMatch?.attributes?.artifactDigest).toBe('sha256:tampered8899aabbccddeeff');
+      expect(socMatch?.attributes?.actor).toBe('attacker-supply-chain');
+      expect(socMatch?.rawEventId).toBe('devsec-evt-1002');
+
+      // 2. Forensics assertions second
+      const evidenceList = forensicBridge.getAcquiredEvidence();
+      expect(evidenceList.length).toBeGreaterThan(0);
+      const forensicsMatch = evidenceList.find(e => e.metadata.rawEventId === 'devsec-evt-1002');
+      expect(forensicsMatch).toBeDefined();
+      
+      expect(forensicsMatch?.id).toBe('EVD-DEVSECOPS_ARTIFACT_TAMPERED');
+      expect(forensicsMatch?.metadata?.sourceWorld).toBe('DEVSECOPS');
+      expect(forensicsMatch?.metadata?.repository).toBe('github.com/nexora/enterprise-platform');
+      expect(forensicsMatch?.metadata?.commitSha).toBe('bc83fd21a00e');
+      expect(forensicsMatch?.metadata?.artifact).toBe('nexora-enterprise-service');
+      expect(forensicsMatch?.metadata?.artifactDigest).toBe('sha256:tampered8899aabbccddeeff');
+      expect(forensicsMatch?.metadata?.actor).toBe('attacker-supply-chain');
+      expect(forensicsMatch?.metadata?.virtualTime).toBe(400);
+      expect(forensicsMatch?.metadata?.rawEventId).toBe('devsec-evt-1002');
+
+      // 3. Forensic Hash Integrity
+      expect(forensicsMatch?.integrityStatus).toBe('VERIFIED');
+      expect(forensicsMatch?.originalHash).toBeDefined();
+      expect(forensicsMatch?.originalHash).not.toBe('');
+      expect(forensicsMatch?.originalHash).toBe(forensicsMatch?.currentHash);
+
+      // 4. Reset & Isolation test
+      runtime.reset();
+      forensicBridge.reset();
+      expect(socBridge.getTelemetry().length).toBe(0);
+      expect(forensicBridge.getAcquiredEvidence().length).toBe(0);
+
+      socBridge.destroy();
+      forensicBridge.destroy();
     });
   });
 });

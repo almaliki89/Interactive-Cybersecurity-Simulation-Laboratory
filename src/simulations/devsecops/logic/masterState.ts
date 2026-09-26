@@ -919,7 +919,22 @@ export function validateDevSecOpsMasterChallenge(state: DevSecOpsMasterState): D
     failedChecks.push('Enforce all mandatory CI/CD security quality gates with zero bypass permissions');
   }
 
-  // 12. Explicit Anti-Cheat Violations
+  // 12. Active Verification Action Gates
+  const pipelinePassed = !!state.testedPipelinePassed;
+  const provenancePassed = !!state.testedProvenancePassed;
+  const artifactIntegrityPassed = !!state.testedArtifactIntegrityPassed;
+
+  if (!pipelinePassed) {
+    failedChecks.push('Run and pass the final secure CI/CD pipeline verification.');
+  }
+  if (!provenancePassed) {
+    failedChecks.push('Run and pass SLSA provenance verification.');
+  }
+  if (!artifactIntegrityPassed) {
+    failedChecks.push('Run and pass artifact cryptographic integrity verification.');
+  }
+
+  // 13. Explicit Anti-Cheat Violations
   // Violation A: Deleting/clearing findings to bypass
   if (state.sastFindings.length < 3) {
     antiCheatViolations.push('SAST findings array tampered or deleted. Vulnerabilities must be preserved and fully remediated.');
@@ -1001,7 +1016,7 @@ export function validateDevSecOpsMasterChallenge(state: DevSecOpsMasterState): D
     };
   }
 
-  const totalCriteria = 11;
+  const totalCriteria = 14;
   const completedCriteria = totalCriteria - failedChecks.length;
   const score = Math.round((completedCriteria / totalCriteria) * 100);
   const isPassed = completedCriteria === totalCriteria;

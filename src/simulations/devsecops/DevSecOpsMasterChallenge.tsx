@@ -22,6 +22,28 @@ export const DevSecOpsMasterChallenge: React.FC = () => {
 
   const [tested, setTested] = useState<boolean>(false);
 
+  const handleVerifyPipeline = () => {
+    const result = evaluateDevSecOpsPipeline(masterState);
+    const passed = !!(result.allowed && result.decision === 'ALLOW' && result.failedGates.length === 0);
+    setMasterState((s) => {
+      s.testedPipelinePassed = passed;
+    });
+  };
+
+  const handleVerifyProvenance = () => {
+    const result = validateBuildProvenance(masterState.slsaAttestation, masterState.artifactState);
+    setMasterState((s) => {
+      s.testedProvenancePassed = !!result.verified;
+    });
+  };
+
+  const handleVerifyArtifactIntegrity = () => {
+    const result = verifyArtifactIntegrity(masterState.artifactState, masterState.signatures[0], masterState.slsaAttestation);
+    setMasterState((s) => {
+      s.testedArtifactIntegrityPassed = !!result.verified;
+    });
+  };
+
   // Run comprehensive master validation directly on live state
   const evaluation = validateDevSecOpsMasterChallenge(masterState);
 
@@ -273,6 +295,109 @@ export const DevSecOpsMasterChallenge: React.FC = () => {
             <Trophy className="w-5 h-5" />
             <span>{isAr ? 'التحقق من حل التحدي واعتماد النتيجة تنظيمياً' : 'Verify & Submit Master DevSecOps Challenge'}</span>
           </button>
+        </div>
+
+        {/* Verification Actions Panel */}
+        <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
+          <div>
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              {isAr ? 'إجراءات التحقق الأمني المنهجية (العنصر النشط):' : 'Active Cryptographic Verification Actions:'}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              {isAr 
+                ? 'يجب تشغيل بوابات التحقق التفاعلية يدوياً بعد سد كافة الثغرات لتسجيل براءة المرور الأمنية.' 
+                : 'Interactive verification engines must be triggered manually to sign off on cryptographic attestations.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Pipeline Verification */}
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-white">
+                    {isAr ? '١. التحقق من خط الإنتاج' : '01. Pipeline Verification'}
+                  </span>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
+                    masterState.testedPipelinePassed 
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                      : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                  }`}>
+                    {masterState.testedPipelinePassed ? (isAr ? 'تم التحقق' : 'VERIFIED') : (isAr ? 'غير محقق' : 'UNVERIFIED')}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {isAr 
+                    ? 'يقوم بتشغيل خط الإنتاج بالكامل والتحقق من التزام كافة بوابات جودة الفحص والحماية الرقمية.' 
+                    : 'Runs the full secure CI/CD pipeline and asserts that all security quality gates are fully enforced with zero bypass.'}
+                </p>
+              </div>
+              <button
+                onClick={handleVerifyPipeline}
+                className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-colors cursor-pointer border border-slate-700"
+              >
+                {isAr ? 'تشغيل التحقق من خط الإنتاج' : 'Verify Secure Pipeline'}
+              </button>
+            </div>
+
+            {/* Provenance Verification */}
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-white">
+                    {isAr ? '٢. التحقق من منشأ SLSA' : '02. Provenance Verification'}
+                  </span>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
+                    masterState.testedProvenancePassed 
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                      : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                  }`}>
+                    {masterState.testedProvenancePassed ? (isAr ? 'تم التحقق' : 'VERIFIED') : (isAr ? 'غير محقق' : 'UNVERIFIED')}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {isAr 
+                    ? 'يقوم بمطابقة المنشأ مع مواصفات SLSA Level 3 والتحقق من هوية الباني المعتمد.' 
+                    : 'Validates built artifact origin against SLSA Level 3 metadata and asserts trusted Actions builder identity.'}
+                </p>
+              </div>
+              <button
+                onClick={handleVerifyProvenance}
+                className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-colors cursor-pointer border border-slate-700"
+              >
+                {isAr ? 'تشغيل التحقق من المنشأ' : 'Verify SLSA Provenance'}
+              </button>
+            </div>
+
+            {/* Artifact Integrity Verification */}
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-white">
+                    {isAr ? '٣. التحقق من سلامة الأداة' : '03. Artifact Integrity'}
+                  </span>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${
+                    masterState.testedArtifactIntegrityPassed 
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                      : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                  }`}>
+                    {masterState.testedArtifactIntegrityPassed ? (isAr ? 'تم التحقق' : 'VERIFIED') : (isAr ? 'غير محقق' : 'UNVERIFIED')}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {isAr 
+                    ? 'يتحقق تشفيرياً من سلامة بصمة المنتج وتوقيع Cosign وسجل Rekor للشفافية.' 
+                    : 'Cryptographically audits release artifact digest, Cosign signature keyless chain, and Rekor ledger proof.'}
+                </p>
+              </div>
+              <button
+                onClick={handleVerifyArtifactIntegrity}
+                className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-colors cursor-pointer border border-slate-700"
+              >
+                {isAr ? 'تشغيل التحقق من السلامة' : 'Verify Artifact Integrity'}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Evaluation Banner */}

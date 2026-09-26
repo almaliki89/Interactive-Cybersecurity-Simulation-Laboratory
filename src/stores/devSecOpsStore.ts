@@ -39,6 +39,31 @@ export const useDevSecOpsStore = create<DevSecOpsStoreState>((set) => ({
         antiCheatFlags: prev.masterState.antiCheatFlags ? { ...prev.masterState.antiCheatFlags } : undefined
       };
       updater(newState);
+
+      // Automatic Invalidation on State Changes
+      const oldState = prev.masterState;
+      const pipelineConfigChanged = JSON.stringify(newState.pipelineConfig) !== JSON.stringify(oldState.pipelineConfig);
+      const sastChanged = JSON.stringify(newState.sastFindings) !== JSON.stringify(oldState.sastFindings);
+      const scaChanged = JSON.stringify(newState.dependencies) !== JSON.stringify(oldState.dependencies);
+      const secretsChanged = JSON.stringify(newState.secretMatches) !== JSON.stringify(oldState.secretMatches);
+      const iacChanged = JSON.stringify(newState.terraformResources) !== JSON.stringify(oldState.terraformResources);
+      const containerChanged = JSON.stringify(newState.containerImages) !== JSON.stringify(oldState.containerImages);
+
+      if (pipelineConfigChanged || sastChanged || scaChanged || secretsChanged || iacChanged || containerChanged) {
+        newState.testedPipelinePassed = false;
+      }
+
+      const slsaChanged = JSON.stringify(newState.slsaAttestation) !== JSON.stringify(oldState.slsaAttestation);
+      if (slsaChanged) {
+        newState.testedProvenancePassed = false;
+      }
+
+      const artifactStateChanged = JSON.stringify(newState.artifactState) !== JSON.stringify(oldState.artifactState);
+      const signaturesChanged = JSON.stringify(newState.signatures) !== JSON.stringify(oldState.signatures);
+      if (artifactStateChanged || signaturesChanged) {
+        newState.testedArtifactIntegrityPassed = false;
+      }
+
       return { masterState: newState };
     }),
   resetMasterState: () => set({ masterState: createDefaultDevSecOpsMasterState() })
