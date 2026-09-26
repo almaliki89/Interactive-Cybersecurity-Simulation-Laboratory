@@ -49,7 +49,8 @@ export type SimulationId =
   | 'udp'
   | 'ports_services'
   | 'nexora_master'
-  | 'forensics';
+  | 'forensics'
+  | 'cloud';
 
 export interface SelectedEntity {
   type: 'node' | 'packet' | 'rule' | 'log' | 'event' | 'connection' | 'world' | 'concept';

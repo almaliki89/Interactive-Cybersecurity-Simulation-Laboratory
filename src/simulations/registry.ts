@@ -40,6 +40,9 @@ const AppSecSimulation = React.lazy(() =>
 const CloudContainerSimulation = React.lazy(() =>
   import('./cloud/CloudContainerSimulation').then((m) => ({ default: m.CloudContainerSimulation }))
 );
+const CloudSimulation = React.lazy(() =>
+  import('./cloud/CloudSimulation').then((m) => ({ default: m.CloudSimulation }))
+);
 const ThreatHuntingSimulation = React.lazy(() =>
   import('./threat/ThreatHuntingSimulation').then((m) => ({ default: m.ThreatHuntingSimulation }))
 );
@@ -295,10 +298,19 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
   },
   cloud_containers: {
     id: 'cloud_containers',
-    nameAr: 'أمن الحاويات وسحابة Kubernetes',
-    nameEn: 'Cloud & Container Isolation',
+    nameAr: 'عالم أمن الحوسبة السحابية (Nexora Cloud)',
+    nameEn: 'Cloud Security World',
     domain: 'cloud',
-    component: CloudContainerSimulation,
+    component: CloudSimulation,
+    worldId: 18,
+    category: 'lab',
+  },
+  cloud: {
+    id: 'cloud',
+    nameAr: 'عالم أمن الحوسبة السحابية (Nexora Cloud)',
+    nameEn: 'Cloud Security World',
+    domain: 'cloud',
+    component: CloudSimulation,
     worldId: 18,
     category: 'lab',
   },
