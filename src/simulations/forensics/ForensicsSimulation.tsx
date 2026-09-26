@@ -18,6 +18,8 @@ import { RecoveryValidationLab } from './RecoveryValidationLab';
 import { PostIncidentReviewLab } from './PostIncidentReviewLab';
 import { ForensicsMasterChallenge } from './ForensicsMasterChallenge';
 import { useForensicsStore, ForensicsLabId } from '../../stores/forensicsStore';
+import { normalizeRuntimeEvent } from '../soc/logic/normalization';
+import { createForensicEvidenceFromTelemetry } from './logic/evidence';
 import { FileSearch, Map, ArrowLeft } from 'lucide-react';
 
 export const ForensicsSimulation: React.FC = () => {
@@ -35,15 +37,23 @@ export const ForensicsSimulation: React.FC = () => {
       // Find the first event to auto-select its derived evidence
       const firstEventId = deepLink.eventIds[0];
       
-      // In a real scenario, we'd find the event in the simulation state
-      // and map it using createForensicEvidenceFromTelemetry.
-      // For now, we follow the ID pattern: EVD-{WORLD}-{ID}
       const rawEvent = runtimeEvents.find(e => e.id === firstEventId);
       if (rawEvent) {
-         // Construct evidence ID based on the logic in evidence.ts
-         const world = (rawEvent.category || 'NETWORK').toUpperCase();
-         const evidenceId = `EVD-${world}-${rawEvent.id}`;
-         setSelectedEvidenceId(evidenceId);
+         // Use the canonical pipeline: normalize -> create evidence -> get ID
+         const normalized = normalizeRuntimeEvent({
+           id: rawEvent.id,
+           type: rawEvent.type,
+           source: rawEvent.source,
+           target: rawEvent.target,
+           category: rawEvent.category,
+           severity: rawEvent.severity,
+           virtualTime: rawEvent.virtualTime,
+           description: rawEvent.description,
+           payload: (rawEvent.payload as any) || {}
+         });
+         
+         const evidence = createForensicEvidenceFromTelemetry(normalized);
+         setSelectedEvidenceId(evidence.id);
       }
     }
   }, [deepLink, runtimeEvents, setSelectedEvidenceId]);
