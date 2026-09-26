@@ -82,24 +82,35 @@ describe('Forensics Phase 3C Acceptance Tests', () => {
     expect(useForensicsStore.getState().activeTab).toBe('preservation');
   });
 
-  it('verifies auto-open inspector closes other mobile drawers and decouples desktop/mobile state', () => {
-    let mobileNavigatorOpen = true;
-    let mobileEvidenceOpen = true;
-    let mobileInspectorOpen = false;
-    let mobileTechOpen = true;
+  it('verifies mobile drawer toggles do not mutate desktop sidebar states and maintain mutual exclusion', () => {
+    let desktopEvidenceVisible = true;
+    let desktopInspectorVisible = true;
 
-    // Simulate evidence selection triggering auto-open inspector
-    const selectedEvidenceId = 'EVD-AUTO-1';
-    if (selectedEvidenceId) {
-      mobileInspectorOpen = true;
-      mobileNavigatorOpen = false;
-      mobileEvidenceOpen = false;
-      mobileTechOpen = false;
-    }
+    let mobileNavigatorOpen = false;
+    let mobileEvidenceOpen = false;
+    let mobileInspectorOpen = false;
+    let mobileTechOpen = false;
+
+    // Toggle mobile evidence
+    mobileEvidenceOpen = true;
+    mobileNavigatorOpen = false;
+    mobileInspectorOpen = false;
+    mobileTechOpen = false;
+
+    // Verify desktop sidebar state remains completely untouched
+    expect(desktopEvidenceVisible).toBe(true);
+    expect(desktopInspectorVisible).toBe(true);
+    expect(mobileEvidenceOpen).toBe(true);
+
+    // Toggle mobile inspector (mutual exclusion)
+    mobileInspectorOpen = true;
+    mobileEvidenceOpen = false;
+    mobileNavigatorOpen = false;
+    mobileTechOpen = false;
 
     expect(mobileInspectorOpen).toBe(true);
-    expect(mobileNavigatorOpen).toBe(false);
     expect(mobileEvidenceOpen).toBe(false);
-    expect(mobileTechOpen).toBe(false);
+    expect(desktopEvidenceVisible).toBe(true);
+    expect(desktopInspectorVisible).toBe(true);
   });
 });

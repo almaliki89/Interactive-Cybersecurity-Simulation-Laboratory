@@ -47,7 +47,6 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
     setMobileNavigatorOpen(false);
     setMobileInspectorOpen(false);
     setMobileTechOpen(false);
-    setEvidenceBoardVisible(!isEvidenceBoardVisible);
   };
 
   const toggleMobileInspector = () => {
@@ -55,7 +54,6 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
     setMobileNavigatorOpen(false);
     setMobileEvidenceOpen(false);
     setMobileTechOpen(false);
-    setInspectorVisible(!isInspectorVisible);
   };
 
   const toggleMobileTech = () => {
