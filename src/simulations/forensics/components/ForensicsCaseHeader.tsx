@@ -17,8 +17,7 @@ export const ForensicsCaseHeader: React.FC = () => {
   const virtualTime = useSimulationStore((s) => s.virtualTime);
   const deepLink = useForensicsStore((s) => s.deepLinkContext);
   const evidence = useForensicsStore((s) => s.evidence);
-  
-  const forensicsCase = createDefaultForensicsCase(0); 
+  const forensicsCase = useForensicsStore((s) => s.caseDetails);
 
   const hasIntegrityMismatch = evidence.some(ev => ev.integrityStatus === 'MISMATCH');
   const allVerified = evidence.length > 0 && evidence.every(ev => ev.integrityStatus === 'VERIFIED');

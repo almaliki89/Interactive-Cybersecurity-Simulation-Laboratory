@@ -61,11 +61,13 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
       {/* 3. Main Body */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left: Navigator */}
-        <ForensicsPhaseNavigator />
+        <div className="hidden sm:block">
+          <ForensicsPhaseNavigator />
+        </div>
 
         {/* Left-ish: Evidence Board (Collapsible) */}
         {isEvidenceBoardVisible && (
-          <div className="w-72 shrink-0 border-r border-slate-900 transition-all">
+          <div className="w-72 shrink-0 border-r border-slate-900 transition-all hidden md:block">
              <ForensicsEvidenceBoard />
           </div>
         )}
@@ -77,7 +79,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
 
         {/* Right: Inspector (Collapsible) */}
         {isInspectorVisible && (
-          <div className="w-80 shrink-0">
+          <div className="w-80 shrink-0 hidden lg:block">
              <ForensicsEvidenceInspector />
           </div>
         )}

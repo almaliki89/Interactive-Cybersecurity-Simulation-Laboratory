@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ForensicEvidence } from '../simulations/forensics/logic/evidence';
+import { ForensicEvidence, createDefaultForensicsCase, ForensicsCase } from '../simulations/forensics/logic/evidence';
 import { CustodyRecord } from '../simulations/forensics/logic/custody';
 
 export type ForensicsLabId = 
@@ -28,7 +28,7 @@ interface ForensicsStoreState {
   selectedEvidenceId: string | null;
   setSelectedEvidenceId: (id: string | null) => void;
 
-  // New: Collection of evidence resolved from deep links or acquisition
+  // Collection of evidence resolved from deep links or acquisition
   evidence: ForensicEvidence[];
   addEvidence: (ev: ForensicEvidence) => void;
   setEvidence: (evs: ForensicEvidence[]) => void;
@@ -37,6 +37,11 @@ interface ForensicsStoreState {
   custodyRecords: CustodyRecord[];
   addCustodyRecord: (record: CustodyRecord) => void;
   setCustodyRecords: (records: CustodyRecord[]) => void;
+
+  // Centralized Case State
+  caseDetails: ForensicsCase;
+  setCaseStatus: (status: ForensicsCase['status']) => void;
+  setCaseDetails: (details: ForensicsCase) => void;
   
   deepLinkContext: {
     alertId?: string;
@@ -65,6 +70,10 @@ export const useForensicsStore = create<ForensicsStoreState>((set) => ({
   custodyRecords: [],
   addCustodyRecord: (record) => set((s) => ({ custodyRecords: [...s.custodyRecords, record] })),
   setCustodyRecords: (custodyRecords) => set({ custodyRecords }),
+
+  caseDetails: createDefaultForensicsCase(0),
+  setCaseStatus: (status) => set((s) => ({ caseDetails: { ...s.caseDetails, status } })),
+  setCaseDetails: (caseDetails) => set({ caseDetails }),
   
   deepLinkContext: null,
   setDeepLinkContext: (deepLinkContext) => set({ deepLinkContext }),

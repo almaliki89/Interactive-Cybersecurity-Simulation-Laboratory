@@ -13,10 +13,10 @@ export const IncidentIntakeLab: React.FC = () => {
   const selectedEvidenceId = useForensicsStore((s) => s.selectedEvidenceId);
   const setSelectedEvidenceId = useForensicsStore((s) => s.setSelectedEvidenceId);
   const evidence = useForensicsStore((s) => s.evidence);
+  const defaultCase = useForensicsStore((s) => s.caseDetails);
+  const setCaseStatus = useForensicsStore((s) => s.setCaseStatus);
 
-  const defaultCase = createDefaultForensicsCase(0);
   const [scopedHosts, setScopedHosts] = useState<string[]>(['FIN-WS-01']);
-  const [caseStatus, setCaseStatus] = useState<string>('OPEN');
 
   const toggleHost = (host: string) => {
     if (scopedHosts.includes(host)) {
