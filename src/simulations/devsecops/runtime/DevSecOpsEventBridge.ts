@@ -32,11 +32,20 @@ export class DevSecOpsEventBridge {
       type: raw.eventType as any,
       source: raw.repository || 'ci-runner',
       target: raw.filePath || 'pipeline',
-      category: 'APPSEC' as any,
+      category: 'DEVSECOPS' as any,
       severity: raw.severity === 'threat' || raw.severity === 'critical' ? 'threat' : raw.severity === 'warn' ? 'warn' : 'info',
       virtualTime: raw.virtualTime,
-      description: `[DevSecOps Event]: ${raw.eventType} - ${raw.ruleId || 'Security Gate'}`,
-      payload: raw.attributes,
+      description: `[DevSecOps Event]: ${raw.eventType}`,
+      payload: {
+        ...raw.attributes,
+        repository: raw.repository,
+        commitSha: raw.commitSha,
+        workflow: raw.workflow,
+        artifact: raw.artifact,
+        artifactDigest: raw.artifactDigest,
+        actor: raw.actor,
+        outcome: raw.outcome,
+      },
     });
 
     return normalized;

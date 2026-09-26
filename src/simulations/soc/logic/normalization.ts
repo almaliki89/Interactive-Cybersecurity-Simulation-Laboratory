@@ -266,6 +266,7 @@ export function normalizeNetworkEvent(event: RawSimulationEvent): SecurityTeleme
 }
 
 import { normalizeCloudEvent } from '../../cloud/runtime/normalizeCloudEvent';
+import { normalizeDevSecOpsEvent } from '../../devsecops/runtime/normalizeDevSecOpsEvent';
 
 /**
  * Universal Event Normalizer routing into appropriate source pipeline
@@ -273,6 +274,18 @@ import { normalizeCloudEvent } from '../../cloud/runtime/normalizeCloudEvent';
 export function normalizeRuntimeEvent(event: RawSimulationEvent): SecurityTelemetryEvent {
   const type = event.type.toUpperCase();
   const category = (event.category || '').toUpperCase();
+
+  if (category === 'DEVSECOPS' || type.startsWith('DEVSECOPS_')) {
+    return normalizeDevSecOpsEvent({
+      id: event.id || `devsec-${event.virtualTime || 0}`,
+      eventType: event.type,
+      virtualTime: event.virtualTime ?? 0,
+      repository: event.source,
+      severity: event.severity === 'threat' || event.severity === 'critical' ? 'threat' : event.severity === 'warn' ? 'warn' : 'info',
+      outcome: (event.payload?.outcome as any) || 'SUCCESS',
+      attributes: event.payload,
+    });
+  }
 
   if (category === 'CLOUD' || type.startsWith('CLOUD_')) {
     return normalizeCloudEvent(event);

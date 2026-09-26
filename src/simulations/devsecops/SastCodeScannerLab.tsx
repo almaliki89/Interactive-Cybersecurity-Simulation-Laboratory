@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
-import { getInitialSastFindings, scanCodeForSastVulnerabilities } from './logic/sast';
+import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
+import { scanCodeForSastVulnerabilities } from './logic/sast';
 import { SastFinding } from './logic/types';
 import { FileCode, ShieldCheck, AlertTriangle, RefreshCw, CheckCircle2, Sparkles, Terminal } from 'lucide-react';
 
@@ -12,20 +13,33 @@ export const SastCodeScannerLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
 
-  const [findings, setFindings] = useState<SastFinding[]>(getInitialSastFindings());
+  const findings = useDevSecOpsStore((s) => s.masterState.sastFindings);
+  const setMasterState = useDevSecOpsStore((s) => s.setMasterState);
+  const resetMasterState = useDevSecOpsStore((s) => s.resetMasterState);
+
   const [selectedFindingId, setSelectedFindingId] = useState<string>('sast-001');
 
   const scan = scanCodeForSastVulnerabilities(findings);
   const selectedFinding = findings.find((f) => f.id === selectedFindingId) || findings[0];
 
   const remediateFinding = (id: string) => {
-    setFindings((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, remediated: true } : f))
-    );
+    setMasterState((state) => {
+      state.sastFindings = state.sastFindings.map((f) =>
+        f.id === id ? { ...f, remediated: true } : f
+      );
+    });
   };
 
   const remediateAll = () => {
-    setFindings((prev) => prev.map((f) => ({ ...f, remediated: true })));
+    setMasterState((state) => {
+      state.sastFindings = state.sastFindings.map((f) => ({ ...f, remediated: true }));
+    });
+  };
+
+  const resetLab = () => {
+    setMasterState((state) => {
+      state.sastFindings = state.sastFindings.map((f) => ({ ...f, remediated: false }));
+    });
   };
 
   return (
@@ -73,7 +87,7 @@ export const SastCodeScannerLab: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setFindings(getInitialSastFindings())}
+              onClick={resetLab}
               className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />

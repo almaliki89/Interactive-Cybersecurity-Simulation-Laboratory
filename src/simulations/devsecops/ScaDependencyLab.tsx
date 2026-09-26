@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
-import { getInitialDependencies, scanScaDependencies } from './logic/sca';
+import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
+import { scanScaDependencies } from './logic/sca';
 import { ScaDependency } from './logic/types';
 import { Box, ShieldCheck, AlertTriangle, RefreshCw, Sparkles, CheckCircle2 } from 'lucide-react';
 
@@ -12,18 +13,29 @@ export const ScaDependencyLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
 
-  const [dependencies, setDependencies] = useState<ScaDependency[]>(getInitialDependencies());
+  const dependencies = useDevSecOpsStore((s) => s.masterState.dependencies);
+  const setMasterState = useDevSecOpsStore((s) => s.setMasterState);
 
   const scan = scanScaDependencies(dependencies);
 
   const updatePackage = (id: string) => {
-    setDependencies((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, remediated: true, licenseCompliant: true } : d))
-    );
+    setMasterState((state) => {
+      state.dependencies = state.dependencies.map((d) =>
+        d.id === id ? { ...d, remediated: true, licenseCompliant: true } : d
+      );
+    });
   };
 
   const updateAll = () => {
-    setDependencies((prev) => prev.map((d) => ({ ...d, remediated: true, licenseCompliant: true })));
+    setMasterState((state) => {
+      state.dependencies = state.dependencies.map((d) => ({ ...d, remediated: true, licenseCompliant: true }));
+    });
+  };
+
+  const resetLab = () => {
+    setMasterState((state) => {
+      state.dependencies = state.dependencies.map((d) => ({ ...d, remediated: false, licenseCompliant: d.id === 'dep-axios' ? true : false }));
+    });
   };
 
   return (
@@ -71,7 +83,7 @@ export const ScaDependencyLab: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setDependencies(getInitialDependencies())}
+              onClick={resetLab}
               className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />

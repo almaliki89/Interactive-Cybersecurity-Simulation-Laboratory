@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
-import { getInitialSecretMatches, scanRepositorySecrets } from './logic/secretsScan';
+import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
+import { scanRepositorySecrets } from './logic/secretsScan';
 import { GitSecretMatch } from './logic/types';
 import { Key, ShieldCheck, AlertTriangle, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 
@@ -12,18 +13,29 @@ export const SecretScannerLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
 
-  const [matches, setMatches] = useState<GitSecretMatch[]>(getInitialSecretMatches());
+  const matches = useDevSecOpsStore((s) => s.masterState.secretMatches);
+  const setMasterState = useDevSecOpsStore((s) => s.setMasterState);
 
   const scan = scanRepositorySecrets(matches);
 
   const remediateSecret = (id: string) => {
-    setMatches((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, remediated: true, inCommitHistory: false } : m))
-    );
+    setMasterState((state) => {
+      state.secretMatches = state.secretMatches.map((m) =>
+        m.id === id ? { ...m, remediated: true, inCommitHistory: false } : m
+      );
+    });
   };
 
   const scrubAll = () => {
-    setMatches((prev) => prev.map((m) => ({ ...m, remediated: true, inCommitHistory: false })));
+    setMasterState((state) => {
+      state.secretMatches = state.secretMatches.map((m) => ({ ...m, remediated: true, inCommitHistory: false }));
+    });
+  };
+
+  const resetLab = () => {
+    setMasterState((state) => {
+      state.secretMatches = state.secretMatches.map((m) => ({ ...m, remediated: false, inCommitHistory: true }));
+    });
   };
 
   return (
@@ -71,7 +83,7 @@ export const SecretScannerLab: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setMatches(getInitialSecretMatches())}
+              onClick={resetLab}
               className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />

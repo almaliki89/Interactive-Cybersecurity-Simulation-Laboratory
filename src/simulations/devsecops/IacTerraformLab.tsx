@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
-import { getInitialTerraformResources, scanTerraformCode } from './logic/iacTerraform';
+import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
+import { scanTerraformCode } from './logic/iacTerraform';
 import { TerraformResource } from './logic/types';
 import { Workflow, ShieldCheck, AlertTriangle, RefreshCw, Sparkles, FileCode } from 'lucide-react';
 
@@ -12,22 +13,32 @@ export const IacTerraformLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
 
-  const [resources, setResources] = useState<TerraformResource[]>(getInitialTerraformResources());
+  const resources = useDevSecOpsStore((s) => s.masterState.terraformResources);
+  const setMasterState = useDevSecOpsStore((s) => s.setMasterState);
+
   const [selectedResourceId, setSelectedResourceId] = useState<string>('tf-sg-public-ssh');
 
   const scan = scanTerraformCode(resources);
   const selectedResource = resources.find((r) => r.id === selectedResourceId) || resources[0];
 
   const remediateResource = (id: string) => {
-    setResources((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, remediated: true, hasMisconfiguration: false } : r))
-    );
+    setMasterState((state) => {
+      state.terraformResources = state.terraformResources.map((r) =>
+        r.id === id ? { ...r, remediated: true, hasMisconfiguration: false } : r
+      );
+    });
   };
 
   const remediateAll = () => {
-    setResources((prev) =>
-      prev.map((r) => ({ ...r, remediated: true, hasMisconfiguration: false }))
-    );
+    setMasterState((state) => {
+      state.terraformResources = state.terraformResources.map((r) => ({ ...r, remediated: true, hasMisconfiguration: false }));
+    });
+  };
+
+  const resetLab = () => {
+    setMasterState((state) => {
+      state.terraformResources = state.terraformResources.map((r) => ({ ...r, remediated: false, hasMisconfiguration: true }));
+    });
   };
 
   return (
@@ -75,7 +86,7 @@ export const IacTerraformLab: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setResources(getInitialTerraformResources())}
+              onClick={resetLab}
               className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />

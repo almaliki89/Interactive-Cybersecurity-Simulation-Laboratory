@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
-import { getInitialDriftFindings } from './logic/drift';
+import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
 import { InfrastructureDriftFinding } from './logic/types';
 import { GitBranch, ShieldAlert, RefreshCw, CheckCircle2 } from 'lucide-react';
 
@@ -12,12 +12,21 @@ export const DriftDetectionLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
 
-  const [drifts, setDrifts] = useState<InfrastructureDriftFinding[]>(getInitialDriftFindings());
+  const drifts = useDevSecOpsStore((s) => s.masterState.driftFindings);
+  const setMasterState = useDevSecOpsStore((s) => s.setMasterState);
 
   const remediateDrift = (id: string) => {
-    setDrifts((prev) =>
-      prev.map((d) => (d.resourceId === id ? { ...d, autoRemediated: true } : d))
-    );
+    setMasterState((state) => {
+      state.driftFindings = state.driftFindings.map((d) =>
+        d.resourceId === id ? { ...d, autoRemediated: true } : d
+      );
+    });
+  };
+
+  const resetLab = () => {
+    setMasterState((state) => {
+      state.driftFindings = state.driftFindings.map((d) => ({ ...d, autoRemediated: false }));
+    });
   };
 
   return (
@@ -41,7 +50,7 @@ export const DriftDetectionLab: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setDrifts(getInitialDriftFindings())}
+            onClick={resetLab}
             className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
