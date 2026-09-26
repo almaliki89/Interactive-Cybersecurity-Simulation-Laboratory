@@ -29,6 +29,9 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
     if (selectedEvidenceId) {
       setInspectorVisible(true);
       setMobileInspectorOpen(true);
+      setMobileNavigatorOpen(false);
+      setMobileEvidenceOpen(false);
+      setMobileTechOpen(false);
     }
   }, [selectedEvidenceId]);
 
