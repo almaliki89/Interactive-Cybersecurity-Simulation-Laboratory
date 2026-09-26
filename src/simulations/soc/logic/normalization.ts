@@ -290,6 +290,42 @@ export function normalizeRuntimeEvent(event: RawSimulationEvent): SecurityTeleme
   if (category === 'CLOUD' || type.startsWith('CLOUD_')) {
     return normalizeCloudEvent(event);
   }
+  if (category === 'KUBERNETES' || type.startsWith('K8S_') || type.startsWith('KUBERNETES_')) {
+    const vTime = event.virtualTime ?? 0;
+    const payload = event.payload || {};
+    return {
+      id: `norm-k8s-${event.id || vTime}`,
+      sourceWorld: 'KUBERNETES',
+      eventType: event.type,
+      virtualTime: vTime,
+      host: String(payload.node || payload.host || 'K8S-NODE-01'),
+      user: String(payload.user || payload.serviceAccount || 'system:serviceaccount'),
+      resource: String(payload.resource || payload.pod || 'N/A'),
+      severity: (event.severity as any) || 'info',
+      category: event.category || TELEMETRY_CATEGORIES.AUDIT_LOG,
+      outcome: (payload.outcome as any) || 'SUCCESS',
+      rawEventId: event.id,
+      attributes: { ...payload, description: event.description },
+    };
+  }
+  if (category === 'FORENSICS' || type.startsWith('FORENSICS_') || type.startsWith('EVIDENCE_')) {
+    const vTime = event.virtualTime ?? 0;
+    const payload = event.payload || {};
+    return {
+      id: `norm-for-${event.id || vTime}`,
+      sourceWorld: 'FORENSICS',
+      eventType: event.type,
+      virtualTime: vTime,
+      host: String(payload.host || 'EVIDENCE-LAB'),
+      user: String(payload.analyst || 'analyst'),
+      resource: String(payload.artifact || payload.evidenceId || 'N/A'),
+      severity: (event.severity as any) || 'info',
+      category: event.category || TELEMETRY_CATEGORIES.AUDIT_LOG,
+      outcome: 'INFO',
+      rawEventId: event.id,
+      attributes: { ...payload, description: event.description },
+    };
+  }
   if (category === 'APPSEC' || type.startsWith('HTTP_') || type.startsWith('APP_')) {
     return normalizeAppSecEvent(event);
   }

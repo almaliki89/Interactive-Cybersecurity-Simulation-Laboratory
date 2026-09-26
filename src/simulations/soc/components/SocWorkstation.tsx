@@ -81,6 +81,8 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
     return enrichedTelemetry.filter(e => {
        if (filters.sourceWorld.length > 0 && !filters.sourceWorld.includes(e.sourceWorld)) return false;
        if (filters.category.length > 0 && !filters.category.includes(e.category)) return false;
+       if (filters.outcome.length > 0 && !filters.outcome.includes(e.outcome || '')) return false;
+       if (filters.user.length > 0 && !filters.user.includes(e.user || '')) return false;
        return true;
     });
   }, [enrichedTelemetry, filters]);

@@ -5,6 +5,7 @@ import { SecurityAlert } from '../logic/detection';
 import { TriagedAlertResult } from '../logic/triage';
 import { SecurityTelemetryEvent } from '../logic/telemetry';
 import { SeverityBadge, StatusBadge } from './SocBadges';
+import { useForensicsStore } from '../../../stores/forensicsStore';
 import { 
   ShieldAlert, 
   Activity, 
@@ -39,6 +40,9 @@ export const SocInvestigationWorkspace: React.FC<SocInvestigationWorkspaceProps>
   const updateAlertStatus = useSocStore((s) => s.updateAlertStatus);
   const setRawDrawerOpen = useSocStore((s) => s.setRawDrawerOpen);
   const setSelectedEventId = useSocStore((s) => s.setSelectedEventId);
+
+  const setForensicsTab = useForensicsStore((s) => s.setActiveTab);
+  const setForensicsContext = useForensicsStore((s) => s.setDeepLinkContext);
 
   if (!activeAlert) {
     return (
@@ -250,6 +254,11 @@ export const SocInvestigationWorkspace: React.FC<SocInvestigationWorkspaceProps>
               </div>
               <button 
                 onClick={() => {
+                  setForensicsContext({
+                    alertId: activeAlert.id,
+                    type: activeAlert.ruleNameEn
+                  });
+                  setForensicsTab('intake'); // Default to intake for context
                   useSimulationStore.getState().setActiveSimulation('forensics');
                 }}
                 className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all"

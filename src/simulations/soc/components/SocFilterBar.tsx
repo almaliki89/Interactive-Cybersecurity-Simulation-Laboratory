@@ -31,15 +31,27 @@ export const SocFilterBar: React.FC = () => {
          />
          <FilterDropdown 
            label={isAr ? 'المجال' : 'Source'} 
-           options={['NETWORK', 'IDENTITY', 'APPSEC', 'WINDOWS', 'LINUX', 'CLOUD', 'CONTAINERS', 'DEVSECOPS']} 
+           options={['NETWORK', 'IDENTITY', 'APPSEC', 'WINDOWS', 'LINUX', 'CLOUD', 'CONTAINERS', 'KUBERNETES', 'DEVSECOPS', 'FORENSICS']} 
            selected={filters.sourceWorld}
            onChange={(vals) => setFilter('sourceWorld', vals)}
          />
          <FilterDropdown 
            label={isAr ? 'الفئة' : 'Category'} 
-           options={['AUTHENTICATION', 'ACCESS_CONTROL', 'PROCESS_EXECUTION', 'NETWORK_CONNECTION', 'APPLICATION_DEFENSE']} 
+           options={['AUTHENTICATION', 'ACCESS_CONTROL', 'PROCESS_EXECUTION', 'NETWORK_CONNECTION', 'APPLICATION_DEFENSE', 'GROUP_MANAGEMENT', 'SECURITY_CONFIGURATION', 'AUDIT_LOG', 'FILE_INTEGRITY']} 
            selected={filters.category}
            onChange={(vals) => setFilter('category', vals)}
+         />
+         <FilterDropdown 
+           label={isAr ? 'النتيجة' : 'Outcome'} 
+           options={['SUCCESS', 'FAILURE', 'DENIED', 'ANOMALY', 'INFO']} 
+           selected={filters.outcome}
+           onChange={(vals) => setFilter('outcome', vals)}
+         />
+         <FilterDropdown 
+           label={isAr ? 'المستخدم' : 'User'} 
+           options={['SYSTEM', 'root', 'admin', 'analyst', 'developer', 'serviceaccount']} 
+           selected={filters.user}
+           onChange={(vals) => setFilter('user', vals)}
          />
       </div>
 

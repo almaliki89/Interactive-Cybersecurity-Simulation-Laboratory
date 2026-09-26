@@ -17,12 +17,14 @@ import { ContainmentEradicationLab } from './ContainmentEradicationLab';
 import { RecoveryValidationLab } from './RecoveryValidationLab';
 import { PostIncidentReviewLab } from './PostIncidentReviewLab';
 import { ForensicsMasterChallenge } from './ForensicsMasterChallenge';
+import { useForensicsStore, ForensicsLabId } from '../../stores/forensicsStore';
 import { FileSearch, Map, ArrowLeft } from 'lucide-react';
 
 export const ForensicsSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
-  const [activeTab, setActiveTab] = useState<string>('map');
+  const activeTab = useForensicsStore((s) => s.activeTab);
+  const setActiveTab = useForensicsStore((s) => s.setActiveTab);
 
   const renderActiveLab = () => {
     switch (activeTab) {
@@ -60,7 +62,7 @@ export const ForensicsSimulation: React.FC = () => {
         return <ForensicsMasterChallenge />;
       case 'map':
       default:
-        return <ForensicsWorldMap onSelectLab={(labId) => setActiveTab(labId)} />;
+        return <ForensicsWorldMap onSelectLab={(labId) => setActiveTab(labId as ForensicsLabId)} />;
     }
   };
 
@@ -104,7 +106,7 @@ export const ForensicsSimulation: React.FC = () => {
           ].map((t) => (
             <button
               key={t.id}
-              onClick={() => setActiveTab(t.id)}
+              onClick={() => setActiveTab(t.id as ForensicsLabId)}
               className={`px-2.5 py-1 rounded-lg font-mono font-bold transition-all whitespace-nowrap ${
                 activeTab === t.id
                   ? 'bg-cyan-600 text-white shadow-md'
