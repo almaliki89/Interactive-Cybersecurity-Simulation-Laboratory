@@ -10,11 +10,14 @@
 import { SimulationRuntime, globalSimulationRuntime } from '../../../engine/runtime/SimulationRuntime';
 import { CloudAuditLogEntry } from '../logic/logging';
 import { CloudDetectionAlert, evaluateCloudDetections } from '../logic/detection';
+import { SecurityTelemetryEvent } from '../../soc/logic/telemetry';
+import { normalizeCloudEvent } from './normalizeCloudEvent';
 
 export class CloudEventBridge {
   private runtime: SimulationRuntime;
   private auditLogs: CloudAuditLogEntry[] = [];
   private detections: CloudDetectionAlert[] = [];
+  private socTelemetryEvents: SecurityTelemetryEvent[] = [];
   private listeners: Set<(logs: CloudAuditLogEntry[], alerts: CloudDetectionAlert[]) => void> = new Set();
   private unsubscribeRuntime: (() => void) | null = null;
 
@@ -32,26 +35,43 @@ export class CloudEventBridge {
   public reset() {
     this.auditLogs = [];
     this.detections = [];
+    this.socTelemetryEvents = [];
     this.notifyListeners();
   }
 
   public syncFromRuntimeEvents(events: unknown[]) {
     if (!events || events.length === 0) {
-      if (this.auditLogs.length > 0 || this.detections.length > 0) {
+      if (this.auditLogs.length > 0 || this.detections.length > 0 || this.socTelemetryEvents.length > 0) {
         this.auditLogs = [];
         this.detections = [];
+        this.socTelemetryEvents = [];
         this.notifyListeners();
       }
       return;
     }
 
     const newLogs: CloudAuditLogEntry[] = [];
+    const newSocEvents: SecurityTelemetryEvent[] = [];
 
     events.forEach((rawEvt: any, idx) => {
       const vTime = rawEvt.virtualTime ?? rawEvt.at ?? 0;
       const type = String(rawEvt.type || '');
       const source = String(rawEvt.source || '203.0.113.88');
       const payload = rawEvt.payload || {};
+
+      // Normalize into SOC telemetry pipeline
+      const socEvt = normalizeCloudEvent({
+        id: rawEvt.id || `cloud-evt-${vTime}-${idx}`,
+        type,
+        source,
+        target: rawEvt.target,
+        category: rawEvt.category || 'CLOUD',
+        severity: rawEvt.severity,
+        virtualTime: vTime,
+        description: rawEvt.description,
+        payload,
+      });
+      newSocEvents.push(socEvt);
 
       if (type === 'CLOUD_IMDS_CREDENTIAL_THEFT') {
         newLogs.push({
@@ -121,6 +141,7 @@ export class CloudEventBridge {
 
     this.auditLogs = newLogs;
     this.detections = evaluateCloudDetections(newLogs);
+    this.socTelemetryEvents = newSocEvents;
     this.notifyListeners();
   }
 
@@ -130,6 +151,10 @@ export class CloudEventBridge {
 
   public getDetections(): CloudDetectionAlert[] {
     return [...this.detections];
+  }
+
+  public getSocTelemetryEvents(): SecurityTelemetryEvent[] {
+    return [...this.socTelemetryEvents];
   }
 
   public subscribe(listener: (logs: CloudAuditLogEntry[], alerts: CloudDetectionAlert[]) => void): () => void {

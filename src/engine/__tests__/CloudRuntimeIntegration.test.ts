@@ -14,6 +14,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SimulationRuntime } from '../runtime/SimulationRuntime';
 import { CloudEventBridge } from '../../simulations/cloud/runtime/CloudEventBridge';
 import { loadCloudAttackScenario } from '../../simulations/cloud/runtime/CloudAttackScenario';
+import { SocEventBridge } from '../../simulations/soc/runtime/SocEventBridge';
+import { normalizeCloudEvent } from '../../simulations/cloud/runtime/normalizeCloudEvent';
+import { TELEMETRY_CATEGORIES } from '../../simulations/soc/logic/telemetry';
 
 describe('Cloud Runtime Integration & Deterministic Replay', () => {
   let runtime: SimulationRuntime;
@@ -134,5 +137,68 @@ describe('Cloud Runtime Integration & Deterministic Replay', () => {
 
     expect(pass1Logs).toEqual(pass2Logs);
     expect(pass1Detections).toEqual(pass2Detections);
+  });
+
+  it('integrates Cloud events seamlessly into the existing SOC telemetry normalization and enrichment pipeline', () => {
+    const socBridge = new SocEventBridge(runtime);
+    loadCloudAttackScenario(runtime, { startVirtualTime: 0 });
+
+    runtime.step(1500);
+
+    // Verify CloudEventBridge produces SecurityTelemetryEvent objects
+    const cloudSocEvents = bridge.getSocTelemetryEvents();
+    expect(cloudSocEvents.length).toBeGreaterThan(0);
+    expect(cloudSocEvents.every((e) => e.sourceWorld === 'CLOUD')).toBe(true);
+
+    // Verify existing SOC Event Bridge consumes and enriches cloud events
+    const socTelemetry = socBridge.getTelemetry();
+    expect(socTelemetry.length).toBeGreaterThan(0);
+    const cloudInSoc = socTelemetry.filter((e) => e.sourceWorld === 'CLOUD');
+    expect(cloudInSoc.length).toBeGreaterThan(0);
+
+    // Verify MITRE / normalization mapping
+    const imdsEvent = cloudInSoc.find((e) => e.eventType === 'CLOUD_IMDS_CREDENTIAL_THEFT');
+    expect(imdsEvent).toBeDefined();
+    expect(imdsEvent?.category).toBe(TELEMETRY_CATEGORIES.CREDENTIAL_ACCESS);
+    expect(imdsEvent?.outcome).toBe('ANOMALY');
+
+    const exfilEvent = cloudInSoc.find((e) => e.eventType === 'CLOUD_DATA_EXFILTRATION');
+    expect(exfilEvent).toBeDefined();
+    expect(exfilEvent?.category).toBe(TELEMETRY_CATEGORIES.FILE_INTEGRITY);
+    expect(exfilEvent?.outcome).toBe('ANOMALY');
+
+    socBridge.destroy();
+  });
+
+  it('normalizes all required cloud security event types into SOC schema', () => {
+    const requiredEventTypes = [
+      'CLOUD_AUTH_FAILURE',
+      'CLOUD_AUTH_SUCCESS',
+      'CLOUD_ROLE_ASSUMED',
+      'CLOUD_SECURITY_GROUP_CHANGED',
+      'CLOUD_STORAGE_ACCESS',
+      'CLOUD_SECRET_ACCESS',
+      'CLOUD_AUDIT_DISABLED',
+      'CLOUD_CROSS_RESOURCE_ACCESS',
+      'CLOUD_DATA_EXFILTRATION',
+    ];
+
+    for (const eventType of requiredEventTypes) {
+      const normalized = normalizeCloudEvent({
+        id: `test-${eventType}`,
+        type: eventType,
+        source: '203.0.113.10',
+        target: 'cloud-resource',
+        virtualTime: 100,
+        payload: { user: 'test-user', resource: 'test-resource' },
+      });
+
+      expect(normalized.sourceWorld).toBe('CLOUD');
+      expect(normalized.eventType).toBe(eventType);
+      expect(normalized.category).toBeDefined();
+      expect(normalized.severity).toBeDefined();
+      expect(normalized.outcome).toBeDefined();
+      expect(normalized.user).toBe('test-user');
+    }
   });
 });

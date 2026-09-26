@@ -265,6 +265,8 @@ export function normalizeNetworkEvent(event: RawSimulationEvent): SecurityTeleme
   };
 }
 
+import { normalizeCloudEvent } from '../../cloud/runtime/normalizeCloudEvent';
+
 /**
  * Universal Event Normalizer routing into appropriate source pipeline
  */
@@ -272,6 +274,9 @@ export function normalizeRuntimeEvent(event: RawSimulationEvent): SecurityTeleme
   const type = event.type.toUpperCase();
   const category = (event.category || '').toUpperCase();
 
+  if (category === 'CLOUD' || type.startsWith('CLOUD_')) {
+    return normalizeCloudEvent(event);
+  }
   if (category === 'APPSEC' || type.startsWith('HTTP_') || type.startsWith('APP_')) {
     return normalizeAppSecEvent(event);
   }

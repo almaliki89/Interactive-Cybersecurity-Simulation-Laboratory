@@ -36,7 +36,11 @@ import {
 import {
   createDefaultProductionVpc,
   evaluateSubnetEgressRoute,
+  evaluateCloudReachability,
 } from '../../simulations/cloud/logic/network';
+import {
+  validateCloudArchitecture,
+} from '../../simulations/cloud/logic/architecture';
 import {
   createDefaultSecurityGroups,
   createDefaultNacl,
@@ -512,5 +516,349 @@ describe('10. Cloud Misconfiguration Scanner (CSPM) & Master Challenge', () => {
     expect(val.isPassed).toBe(true);
     expect(val.cspmBenchmark.grade).toBe('A');
     expect(val.failedChecks.length).toBe(0);
+  });
+});
+
+describe('11. Unified Cloud Reachability Engine (8 Scenarios)', () => {
+  it('Scenario 1: Internet -> Public Load Balancer: ALLOW on 443/80', () => {
+    const res = evaluateCloudReachability({
+      source: { ip: '198.51.100.5', isInternet: true },
+      destination: { ip: '10.100.1.10', workloadType: 'PUBLIC_ALB' },
+      protocol: 'TCP',
+      port: 443,
+    });
+    expect(res.reachable).toBe(true);
+    expect(res.matchedRoute).toContain('IGW');
+  });
+
+  it('Scenario 2: Internet -> Application VM: DENY (App tier private)', () => {
+    const res = evaluateCloudReachability({
+      source: { ip: '198.51.100.5', isInternet: true },
+      destination: { ip: '10.100.10.45', workloadType: 'APP_VM' },
+      protocol: 'TCP',
+      port: 80,
+    });
+    expect(res.reachable).toBe(false);
+    expect(res.reasonEn).toContain('private subnet');
+  });
+
+  it('Scenario 3: Internet -> Database: DENY (Zero internet route)', () => {
+    const res = evaluateCloudReachability({
+      source: { ip: '198.51.100.5', isInternet: true },
+      destination: { ip: '10.100.20.15', workloadType: 'DATABASE' },
+      protocol: 'TCP',
+      port: 5432,
+    });
+    expect(res.reachable).toBe(false);
+    expect(res.reasonEn).toContain('Isolated database tier');
+  });
+
+  it('Scenario 4: Application Tier -> Database: ALLOW on 5432', () => {
+    const res = evaluateCloudReachability({
+      source: { ip: '10.100.10.45', subnetId: 'sub-private-app-1a', securityGroupIds: ['sg-prod-app-workload'] },
+      destination: { ip: '10.100.20.15', workloadType: 'DATABASE' },
+      protocol: 'TCP',
+      port: 5432,
+    });
+    expect(res.reachable).toBe(true);
+    expect(res.matchedRoute).toContain('LOCAL');
+  });
+
+  it('Scenario 5: Unrelated Subnet -> Database: DENY', () => {
+    const res = evaluateCloudReachability({
+      source: { ip: '10.100.50.12', subnetId: 'sub-unrelated-dev', securityGroupIds: ['sg-dev-random'] },
+      destination: { ip: '10.100.20.15', workloadType: 'DATABASE' },
+      protocol: 'TCP',
+      port: 5432,
+    });
+    expect(res.reachable).toBe(false);
+    expect(res.reasonEn).toContain('unauthorized subnets');
+  });
+
+  it('Scenario 6: Database -> Internet: DENY (No 0.0.0.0/0 route)', () => {
+    const res = evaluateCloudReachability({
+      source: { ip: '10.100.20.15', subnetId: 'sub-isolated-db-1a' },
+      destination: { ip: '198.51.100.5', isInternet: true },
+      protocol: 'TCP',
+      port: 443,
+    });
+    expect(res.reachable).toBe(false);
+    expect(res.reasonEn).toContain('no default 0.0.0.0/0');
+  });
+
+  it('Scenario 7: Admin/VPN Network -> Management Interface: ALLOW', () => {
+    const res = evaluateCloudReachability({
+      source: { ip: '10.100.250.5', isAdminVpn: true },
+      destination: { ip: '10.100.1.50', workloadType: 'MANAGEMENT_INTERFACE' },
+      protocol: 'TCP',
+      port: 22,
+    });
+    expect(res.reachable).toBe(true);
+    expect(res.matchedSecurityGroupRule).toContain('sgr-mgmt-from-vpn');
+  });
+
+  it('Scenario 8: 0.0.0.0/0 -> SSH: FAIL SECURITY VALIDATION', () => {
+    const res = evaluateCloudReachability({
+      source: { ip: '0.0.0.0/0', isInternet: true },
+      destination: { ip: '10.100.10.45', workloadType: 'APP_VM' },
+      protocol: 'TCP',
+      port: 22,
+    });
+    expect(res.reachable).toBe(false);
+    expect(res.reasonEn).toContain('Open SSH from 0.0.0.0/0 violates cloud security baseline');
+  });
+});
+
+describe('12. Real Cloud Architecture Validator', () => {
+  const defaultSgs = createDefaultSecurityGroups();
+
+  it('passes when architecture adheres to reference secure production design', () => {
+    const secureState: CloudInfrastructureState = {
+      buckets: createDefaultStorageBuckets().map((b) => ({
+        ...b,
+        isPubliclyExposed: false,
+        publicAccessBlock: {
+          blockPublicAcls: true,
+          ignorePublicAcls: true,
+          blockPublicPolicy: true,
+          restrictPublicBuckets: true,
+        },
+        encryption: { ...b.encryption, enabled: true },
+      })),
+      securityGroups: [defaultSgs.webAlbSg, defaultSgs.appWorkloadSg, defaultSgs.dbTierSg],
+      principals: createDefaultCloudIdentities().principals,
+      policies: ALL_PRESET_POLICIES.filter((p) => !p.isWildcardAdmin),
+      computeInstances: createDefaultComputeInstances().map((i) =>
+        enforceImdsv2OnInstance({
+          ...i,
+          vulnerabilities: i.vulnerabilities.map((v) => ({ ...v, isPatched: true })),
+        })
+      ),
+      trailConfig: {
+        ...createDefaultTrailConfig(),
+        isLogging: true,
+        enableLogFileValidation: true,
+        isMultiRegionTrail: true,
+      },
+      rootHasActiveAccessKey: false,
+    };
+
+    const arch = validateCloudArchitecture(secureState);
+    expect(arch.passed).toBe(true);
+    expect(arch.businessContinuityPassed).toBe(true);
+    expect(arch.failedChecks.length).toBe(0);
+  });
+
+  it('fails architecture validation when open SSH security group is present', () => {
+    const flawedState: CloudInfrastructureState = {
+      buckets: createDefaultStorageBuckets(),
+      securityGroups: [defaultSgs.webAlbSg, defaultSgs.vulnerableOpenSshSg],
+      principals: createDefaultCloudIdentities().principals,
+      policies: ALL_PRESET_POLICIES,
+      computeInstances: createDefaultComputeInstances(),
+      trailConfig: createDefaultTrailConfig(),
+      rootHasActiveAccessKey: false,
+    };
+
+    const arch = validateCloudArchitecture(flawedState);
+    expect(arch.passed).toBe(false);
+    expect(arch.failedChecks.some((f) => f.includes('Network Perimeter Management Segmentation'))).toBe(true);
+  });
+
+  it('fails architecture validation when database is not isolated', () => {
+    const flawedState: CloudInfrastructureState = {
+      buckets: createDefaultStorageBuckets(),
+      securityGroups: [defaultSgs.webAlbSg],
+      principals: createDefaultCloudIdentities().principals,
+      policies: ALL_PRESET_POLICIES,
+      computeInstances: [
+        {
+          ...createDefaultComputeInstances()[0],
+          id: 'inst-db-postgres-01',
+          subnetId: 'sub-public-web-1a', // Placed in public subnet!
+          publicIp: '203.0.113.88',
+        },
+      ],
+      trailConfig: createDefaultTrailConfig(),
+      rootHasActiveAccessKey: false,
+    };
+
+    const arch = validateCloudArchitecture(flawedState);
+    expect(arch.passed).toBe(false);
+    expect(arch.failedChecks.some((f) => f.includes('Isolated Database Tier'))).toBe(true);
+  });
+});
+
+describe('13. Cloud Anti-Cheat System & Exploit Guard', () => {
+  const defaultSgs = createDefaultSecurityGroups();
+
+  const getBaseHardenedState = (): CloudMasterChallengeState => {
+    const completedIncident = createDefaultCloudIncident();
+    completedIncident.playbookActions.forEach((a) => (a.isExecuted = true));
+    completedIncident.currentStage = 'RESOLVED';
+
+    return {
+      infraState: {
+        buckets: createDefaultStorageBuckets().map((b) => ({
+          ...b,
+          isPubliclyExposed: false,
+          publicAccessBlock: {
+            blockPublicAcls: true,
+            ignorePublicAcls: true,
+            blockPublicPolicy: true,
+            restrictPublicBuckets: true,
+          },
+          encryption: { ...b.encryption, enabled: true },
+          accessLogging: { enabled: true, targetBucket: 'nexora-central-audit-logs-immutable' },
+        })),
+        securityGroups: [defaultSgs.webAlbSg, defaultSgs.appWorkloadSg, defaultSgs.dbTierSg],
+        principals: createDefaultCloudIdentities().principals,
+        policies: ALL_PRESET_POLICIES.filter((p) => !p.isWildcardAdmin),
+        computeInstances: createDefaultComputeInstances().map((i) =>
+          enforceImdsv2OnInstance({
+            ...i,
+            vulnerabilities: i.vulnerabilities.map((v) => ({ ...v, isPatched: true })),
+          })
+        ),
+        trailConfig: {
+          ...createDefaultTrailConfig(),
+          isLogging: true,
+          enableLogFileValidation: true,
+          isMultiRegionTrail: true,
+        },
+        rootHasActiveAccessKey: false,
+      },
+      incidentCase: completedIncident,
+      appliedRemediations: new Set(['S3_BPA', 'CLOSE_SSH', 'ENFORCE_IMDSV2', 'ENABLE_TRAIL', 'DELETE_ROOT_KEY']),
+      testedAuthorizationsPassed: true,
+    };
+  };
+
+  it('detects and fails on trivial status mutation (marking bucket non-public without BPA)', () => {
+    const state = getBaseHardenedState();
+    // Tamper: bucket is marked non-public, but BPA flags are set to false!
+    state.infraState.buckets = state.infraState.buckets.map((b) =>
+      b.name === 'nexora-analytics-raw-bucket'
+        ? {
+            ...b,
+            isPubliclyExposed: false,
+            publicAccessBlock: {
+              blockPublicAcls: false,
+              ignorePublicAcls: false,
+              blockPublicPolicy: false,
+              restrictPublicBuckets: false,
+            },
+          }
+        : b
+    );
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations.length).toBeGreaterThan(0);
+    expect(val.antiCheatViolations.some((v) => v.includes('without activating Block Public Access'))).toBe(true);
+  });
+
+  it('detects and fails on marking incident resolved without executed containment/eradication', () => {
+    const state = getBaseHardenedState();
+    // Cheating attempt: currentStage set to RESOLVED, but containment actions are unexecuted
+    state.incidentCase.currentStage = 'RESOLVED';
+    state.incidentCase.playbookActions.forEach((a) => {
+      if (a.requiredForStage === 'CONTAINMENT') a.isExecuted = false;
+    });
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations.some((v) => v.includes('without actually executing containment'))).toBe(true);
+  });
+
+  it('detects and fails on disabling audit logging to hide alerts', () => {
+    const state = getBaseHardenedState();
+    // Tamper: logging disabled
+    state.infraState.trailConfig.isLogging = false;
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations.some((v) => v.includes('Central audit logging is disabled'))).toBe(true);
+  });
+
+  it('detects and fails when anti-cheat flags are tripped', () => {
+    const state = getBaseHardenedState();
+    state.antiCheatFlags = {
+      reachabilityBypassed: true,
+      postureScoreFalsified: true,
+    };
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations.some((v) => v.includes('reachability boundary'))).toBe(true);
+    expect(val.antiCheatViolations.some((v) => v.includes('Falsified CSPM posture'))).toBe(true);
+  });
+});
+
+describe('14. Business Continuity Validation', () => {
+  const defaultSgs = createDefaultSecurityGroups();
+
+  const getValidState = (): CloudMasterChallengeState => {
+    const completedIncident = createDefaultCloudIncident();
+    completedIncident.playbookActions.forEach((a) => (a.isExecuted = true));
+    completedIncident.currentStage = 'RESOLVED';
+
+    return {
+      infraState: {
+        buckets: createDefaultStorageBuckets().map((b) => ({
+          ...b,
+          isPubliclyExposed: false,
+          publicAccessBlock: {
+            blockPublicAcls: true,
+            ignorePublicAcls: true,
+            blockPublicPolicy: true,
+            restrictPublicBuckets: true,
+          },
+          encryption: { ...b.encryption, enabled: true },
+          accessLogging: { enabled: true, targetBucket: 'nexora-central-audit-logs-immutable' },
+        })),
+        securityGroups: [defaultSgs.webAlbSg, defaultSgs.appWorkloadSg, defaultSgs.dbTierSg],
+        principals: createDefaultCloudIdentities().principals,
+        policies: ALL_PRESET_POLICIES.filter((p) => !p.isWildcardAdmin),
+        computeInstances: createDefaultComputeInstances().map((i) =>
+          enforceImdsv2OnInstance({
+            ...i,
+            vulnerabilities: i.vulnerabilities.map((v) => ({ ...v, isPatched: true })),
+          })
+        ),
+        trailConfig: {
+          ...createDefaultTrailConfig(),
+          isLogging: true,
+          enableLogFileValidation: true,
+          isMultiRegionTrail: true,
+        },
+        rootHasActiveAccessKey: false,
+      },
+      incidentCase: completedIncident,
+      appliedRemediations: new Set(['S3_BPA', 'CLOSE_SSH', 'ENFORCE_IMDSV2', 'ENABLE_TRAIL', 'DELETE_ROOT_KEY']),
+      testedAuthorizationsPassed: true,
+    };
+  };
+
+  it('fails master challenge if customer portal reachability is broken', () => {
+    const state = getValidState();
+    // Over-hardening: remove all ingress rules from web ALB
+    state.infraState.securityGroups = state.infraState.securityGroups.map((sg) =>
+      sg.id === 'sg-prod-web-alb' ? { ...sg, ingressRules: [] } : sg
+    );
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.failedChecks.some((f) => f.includes('Customer Portal'))).toBe(true);
+  });
+
+  it('fails master challenge if authorized role assumptions fail', () => {
+    const state = getValidState();
+    state.testedAuthorizationsPassed = false; // Broken role assumption!
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.businessContinuityPassed).toBe(false);
+    expect(val.failedChecks.some((f) => f.includes('Authorized legitimate role assumption'))).toBe(true);
   });
 });

@@ -3,7 +3,7 @@
  * Fully deterministic - no Date.now, Math.random, or local timers.
  */
 
-export type TelemetrySourceWorld = 'NETWORK' | 'LINUX' | 'WINDOWS' | 'IDENTITY' | 'APPSEC';
+export type TelemetrySourceWorld = 'NETWORK' | 'LINUX' | 'WINDOWS' | 'IDENTITY' | 'APPSEC' | 'CLOUD';
 
 export type TelemetrySeverity = 'info' | 'warn' | 'threat' | 'critical';
 
@@ -105,4 +105,8 @@ export const TELEMETRY_CATEGORIES = {
   APPLICATION_DEFENSE: 'APPLICATION_DEFENSE',
   SECURITY_CONFIGURATION: 'SECURITY_CONFIGURATION',
   DATABASE_QUERY: 'DATABASE_QUERY',
+  PRIVILEGE_ESCALATION: 'PRIVILEGE_ESCALATION',
+  FILE_INTEGRITY: 'FILE_INTEGRITY',
+  CREDENTIAL_ACCESS: 'CREDENTIAL_ACCESS',
+  AUDIT_LOG: 'AUDIT_LOG',
 } as const;

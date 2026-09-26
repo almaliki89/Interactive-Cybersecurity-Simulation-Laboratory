@@ -47,6 +47,11 @@ export interface CloudStorageBucket {
   objects: CloudStorageObject[];
   tags: Record<string, string>;
   isPubliclyExposed: boolean;
+  accessLogging?: {
+    enabled: boolean;
+    targetBucket?: string;
+    targetPrefix?: string;
+  };
 }
 
 export function evaluateBucketPublicExposure(bucket: CloudStorageBucket): {
@@ -123,6 +128,11 @@ export function createDefaultStorageBuckets(accountId = 'acc-prod-003'): CloudSt
       enforceTls: true,
     },
     isPubliclyExposed: false,
+    accessLogging: {
+      enabled: true,
+      targetBucket: 'nexora-central-audit-logs-immutable',
+      targetPrefix: 's3-access-logs/finance/',
+    },
     tags: { Classification: 'Restricted', Compliance: 'SOX' },
     objects: [
       {
@@ -185,6 +195,9 @@ export function createDefaultStorageBuckets(accountId = 'acc-prod-003'): CloudSt
       enforceTls: false,
     },
     isPubliclyExposed: true,
+    accessLogging: {
+      enabled: false,
+    },
     tags: { Environment: 'Staging' },
     objects: [
       {
@@ -220,6 +233,11 @@ export function createDefaultStorageBuckets(accountId = 'acc-prod-003'): CloudSt
       enforceTls: true,
     },
     isPubliclyExposed: false,
+    accessLogging: {
+      enabled: true,
+      targetBucket: 'nexora-central-audit-logs-immutable',
+      targetPrefix: 's3-access-logs/audit/',
+    },
     tags: { Classification: 'AuditLogs', Retention: '7Years' },
     objects: [],
   };

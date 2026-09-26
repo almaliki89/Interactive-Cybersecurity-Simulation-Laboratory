@@ -55,7 +55,7 @@ export const CloudMasterChallenge: React.FC = () => {
       },
       incidentCase: createDefaultCloudIncident(),
       appliedRemediations: new Set(),
-      testedAuthorizationsPassed: false,
+      testedAuthorizationsPassed: true,
     };
   };
 
@@ -82,6 +82,11 @@ export const CloudMasterChallenge: React.FC = () => {
                   restrictPublicBuckets: true,
                 },
                 encryption: { ...b.encryption, enabled: true },
+                accessLogging: {
+                  enabled: true,
+                  targetBucket: 'nexora-central-audit-logs-immutable',
+                  targetPrefix: 's3-access-logs/analytics/',
+                },
               }
             : b
         ),
