@@ -25,6 +25,28 @@ export const ForensicsSimulation: React.FC = () => {
   const isAr = language === 'ar';
   const activeTab = useForensicsStore((s) => s.activeTab);
   const setActiveTab = useForensicsStore((s) => s.setActiveTab);
+  const deepLink = useForensicsStore((s) => s.deepLinkContext);
+  const setSelectedEvidenceId = useForensicsStore((s) => s.setSelectedEvidenceId);
+  const runtimeEvents = useSimulationStore((s) => s.events);
+
+  // Deep Link Lifecycle: Resolve SOC events to Forensics Evidence IDs
+  React.useEffect(() => {
+    if (deepLink?.eventIds && deepLink.eventIds.length > 0) {
+      // Find the first event to auto-select its derived evidence
+      const firstEventId = deepLink.eventIds[0];
+      
+      // In a real scenario, we'd find the event in the simulation state
+      // and map it using createForensicEvidenceFromTelemetry.
+      // For now, we follow the ID pattern: EVD-{WORLD}-{ID}
+      const rawEvent = runtimeEvents.find(e => e.id === firstEventId);
+      if (rawEvent) {
+         // Construct evidence ID based on the logic in evidence.ts
+         const world = (rawEvent.category || 'NETWORK').toUpperCase();
+         const evidenceId = `EVD-${world}-${rawEvent.id}`;
+         setSelectedEvidenceId(evidenceId);
+      }
+    }
+  }, [deepLink, runtimeEvents, setSelectedEvidenceId]);
 
   const renderActiveLab = () => {
     switch (activeTab) {

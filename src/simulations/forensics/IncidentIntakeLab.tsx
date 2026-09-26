@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { useForensicsStore } from '../../stores/forensicsStore';
 import { createDefaultForensicsCase } from './logic/evidence';
-import { ShieldAlert, CheckCircle2, UserCheck, Server, FileText, Link, X } from 'lucide-react';
+import { normalizeRuntimeEvent } from '../soc/logic/normalization';
+import { createForensicEvidenceFromTelemetry } from './logic/evidence';
+import { ShieldAlert, CheckCircle2, UserCheck, Server, FileText, Link, X, Database, Info } from 'lucide-react';
 
 export const IncidentIntakeLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -10,6 +12,31 @@ export const IncidentIntakeLab: React.FC = () => {
   
   const deepLink = useForensicsStore((s) => s.deepLinkContext);
   const setDeepLink = useForensicsStore((s) => s.setDeepLinkContext);
+  const selectedEvidenceId = useForensicsStore((s) => s.selectedEvidenceId);
+  const setSelectedEvidenceId = useForensicsStore((s) => s.setSelectedEvidenceId);
+  
+  const runtimeEvents = useSimulationStore((s) => s.events);
+
+  // Resolve SOC events to concrete ForensicEvidence objects
+  const resolvedEvidence = React.useMemo(() => {
+    if (!deepLink?.eventIds) return [];
+    return deepLink.eventIds.map(id => {
+      const raw = runtimeEvents.find(e => e.id === id);
+      if (!raw) return null;
+      const normalized = normalizeRuntimeEvent({
+        id: raw.id,
+        type: raw.type,
+        source: raw.source,
+        target: raw.target,
+        category: raw.category,
+        severity: raw.severity,
+        virtualTime: raw.virtualTime,
+        description: raw.description,
+        payload: (raw.payload as any) || {}
+      });
+      return createForensicEvidenceFromTelemetry(normalized);
+    }).filter(Boolean);
+  }, [deepLink, runtimeEvents]);
 
   const defaultCase = createDefaultForensicsCase(0);
   const [scopedHosts, setScopedHosts] = useState<string[]>(['FIN-WS-01']);
@@ -41,11 +68,34 @@ export const IncidentIntakeLab: React.FC = () => {
                  </p>
                  {deepLink.eventIds && deepLink.eventIds.length > 0 && (
                     <p className="text-[9px] text-indigo-500/70 font-mono mt-1">
-                       {isAr ? `الأحداث المرتبطة: ${deepLink.eventIds.length}` : `Linked Events: ${deepLink.eventIds.length}`} ({deepLink.eventIds.join(', ')})
+                       {isAr ? `الأحداث المرتبطة: ${deepLink.eventIds.length}` : `Linked Events: ${deepLink.eventIds.length}`}
                     </p>
                  )}
               </div>
            </div>
+
+           {resolvedEvidence.length > 0 && (
+             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                {resolvedEvidence.map((ev, idx) => ev && (
+                  <button
+                    key={ev.id}
+                    onClick={() => setSelectedEvidenceId(ev.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap ${
+                      selectedEvidenceId === ev.id
+                        ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-900/40'
+                        : 'bg-indigo-950/40 border-indigo-800/40 text-indigo-300 hover:border-indigo-600'
+                    }`}
+                  >
+                     <Database className="w-3.5 h-3.5" />
+                     <div className="flex flex-col items-start">
+                        <span className="text-[10px] font-bold uppercase tracking-tighter">Evidence {idx + 1}</span>
+                        <span className="text-[8px] font-mono opacity-60 uppercase">{ev.id}</span>
+                     </div>
+                  </button>
+                ))}
+             </div>
+           )}
+
            <button 
              onClick={() => setDeepLink(null)}
              className="p-1.5 rounded-lg hover:bg-indigo-500/20 text-indigo-400 transition-colors"
