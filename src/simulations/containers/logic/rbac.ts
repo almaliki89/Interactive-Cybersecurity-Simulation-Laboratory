@@ -3,7 +3,7 @@
  * Evaluates cluster permissions, detects dangerous wildcards (*), pods/exec abuse, and privilege escalation paths.
  */
 
-import { KubernetesRole, KubernetesRoleBinding } from './types';
+import { KubernetesRole, KubernetesRoleBinding, RbacPolicyRule, RbacVerb } from './types';
 
 export interface DangerousRbacFinding {
   roleName: string;
@@ -15,6 +15,106 @@ export interface DangerousRbacFinding {
   explanationEn: string;
   escalationVectorAr: string;
   escalationVectorEn: string;
+}
+
+export interface AuthorizationSubject {
+  kind: 'User' | 'Group' | 'ServiceAccount';
+  name: string;
+  namespace?: string;
+}
+
+export interface AuthorizationEvaluationParams {
+  subject: AuthorizationSubject;
+  verb: RbacVerb | string;
+  resource: string;
+  namespace: string;
+  roles: KubernetesRole[];
+  bindings: KubernetesRoleBinding[];
+}
+
+export interface AuthorizationEvaluationResult {
+  allowed: boolean;
+  matchedRole?: KubernetesRole;
+  matchedBinding?: KubernetesRoleBinding;
+  matchedRule?: RbacPolicyRule;
+  decision: 'ALLOW' | 'DENY';
+  reasonEn: string;
+  reasonAr: string;
+}
+
+export function evaluateKubernetesAuthorization(
+  params: AuthorizationEvaluationParams
+): AuthorizationEvaluationResult {
+  const { subject, verb, resource, namespace, roles, bindings } = params;
+
+  for (const binding of bindings) {
+    // 1. Check if binding matches the subject
+    const matchesSubject = binding.subjects.some((sub) => {
+      if (sub.kind !== subject.kind || sub.name !== subject.name) {
+        return false;
+      }
+      if (sub.kind === 'ServiceAccount') {
+        const subNs = sub.namespace || 'default';
+        const paramNs = subject.namespace || 'default';
+        if (subNs !== paramNs) return false;
+      }
+      return true;
+    });
+
+    if (!matchesSubject) continue;
+
+    // 2. Check binding scope / namespace match
+    if (!binding.isClusterRoleBinding) {
+      // RoleBinding applies ONLY within binding.namespace
+      if (binding.namespace !== namespace) {
+        continue;
+      }
+    }
+
+    // 3. Find referenced role
+    const matchingRole = roles.find((r) => {
+      if (binding.isClusterRoleBinding) {
+        return r.isClusterRole && r.name === binding.roleRefName;
+      } else {
+        // RoleBinding can point to Role in binding.namespace OR ClusterRole
+        if (r.isClusterRole) {
+          return r.name === binding.roleRefName;
+        } else {
+          return r.namespace === binding.namespace && r.name === binding.roleRefName;
+        }
+      }
+    });
+
+    if (!matchingRole) continue;
+
+    // 4. Check rules in matchingRole
+    for (const rule of matchingRole.rules) {
+      const verbMatched = rule.verbs.includes('*') || rule.verbs.includes(verb as any);
+      const resourceMatched =
+        rule.resources.includes('*') ||
+        rule.resources.includes(resource) ||
+        (resource.includes('/') && rule.resources.includes(resource.split('/')[0]));
+
+      if (verbMatched && resourceMatched) {
+        return {
+          allowed: true,
+          matchedRole: matchingRole,
+          matchedBinding: binding,
+          matchedRule: rule,
+          decision: 'ALLOW',
+          reasonEn: `Access allowed by role "${matchingRole.name}" via binding "${binding.name}" in namespace "${binding.namespace || 'cluster-wide'}".`,
+          reasonAr: `الاتصال مصرح به بواسطة الدور "${matchingRole.name}" عبر الربط "${binding.name}" في النطاق "${binding.namespace || 'على مستوى الكلاستر'}".`,
+        };
+      }
+    }
+  }
+
+  return {
+    allowed: false,
+    decision: 'DENY',
+    reasonEn: `Access denied: No matching RBAC RoleBinding or ClusterRoleBinding grants "${verb}" on "${resource}" in namespace "${namespace}" for subject "${subject.kind}:${subject.name}".`,
+    reasonAr: `تم رفض الوصول: لا يوجد دور RBAC يمنح صلاحية "${verb}" على المورد "${resource}" في نطاق الأسماء "${namespace}" للمستخدم/الخدمة "${subject.kind}:${subject.name}".`,
+  };
 }
 
 export function getInitialClusterRoles(): { roles: KubernetesRole[]; bindings: KubernetesRoleBinding[] } {

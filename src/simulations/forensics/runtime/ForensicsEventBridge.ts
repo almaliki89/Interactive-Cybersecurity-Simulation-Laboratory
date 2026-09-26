@@ -164,6 +164,42 @@ export class ForensicsEventBridge {
         }
       }
 
+      if (
+        type.startsWith('K8S_') ||
+        rawEvt.category === 'KUBERNETES' ||
+        rawEvt.sourceWorld === 'KUBERNETES'
+      ) {
+        const rawId = rawEvt.id || `k8s-${vTime}-${type}`;
+        const id = `EVD-${type}`;
+        if (!this.evidenceMap.has(id)) {
+          const payload = {
+            sourceWorld: 'KUBERNETES',
+            eventType: type,
+            virtualTime: vTime,
+            namespace: rawEvt.payload?.namespace || rawEvt.target || 'finance',
+            pod: rawEvt.payload?.pod || rawEvt.source || 'frontend-service-67b8-x1',
+            serviceAccount: rawEvt.payload?.serviceAccount || rawEvt.user || 'frontend-sa',
+            sourceIp: rawEvt.payload?.sourceIp || rawEvt.sourceIp || '10.244.1.12',
+            resource: rawEvt.payload?.resource || rawEvt.resource || 'secret/finance-db-credentials',
+            rawEventId: rawId,
+            ...rawEvt.payload,
+          };
+          const hash = calculateEvidenceHash(payload);
+          this.evidenceMap.set(id, {
+            id,
+            type: 'LOG_EXPORT',
+            sourceHost: `k8s-pod:${payload.namespace}/${payload.pod}`,
+            sourceUser: payload.serviceAccount,
+            acquiredAtVirtualTime: vTime,
+            originalHash: hash,
+            currentHash: hash,
+            preserved: true,
+            integrityStatus: 'VERIFIED',
+            metadata: payload,
+          });
+        }
+      }
+
       if (type === 'CLOUD_DATA_EXFILTRATION' || type === 'CLOUD_IMDS_CREDENTIAL_THEFT' || type === 'CLOUD_STORAGE_ACCESS') {
         const rawId = rawEvt.id || `cloud-${vTime}-${type}`;
         const id = `EVD-${type}`;

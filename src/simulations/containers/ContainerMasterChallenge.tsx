@@ -6,9 +6,12 @@
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { getInitialContainerAntiCheatFlags, evaluateContainerMasterChallenge } from './logic/antiCheat';
-import { ContainerAntiCheatFlags } from './logic/types';
+import { createDefaultKubernetesMasterState, validateKubernetesMasterChallenge } from './logic/masterState';
+import { ContainerAntiCheatFlags, KubernetesMasterState, KubernetesNetworkPolicy } from './logic/types';
 import { containerEventBridge } from './runtime/ContainerEventBridge';
-import { Terminal, ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, Trophy, Sparkles, ArrowRight } from 'lucide-react';
+import { evaluateKubernetesAuthorization } from './logic/rbac';
+import { evaluatePodNetworkReachability } from './logic/networkPolicies';
+import { Terminal, ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, Trophy, Sparkles, ArrowRight, Play } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const ContainerMasterChallenge: React.FC = () => {
@@ -17,21 +20,122 @@ export const ContainerMasterChallenge: React.FC = () => {
   const isAr = language === 'ar';
 
   const [flags, setFlags] = useState<ContainerAntiCheatFlags>(getInitialContainerAntiCheatFlags());
+  const [masterState, setMasterState] = useState<KubernetesMasterState>(createDefaultKubernetesMasterState());
   const [tested, setTested] = useState<boolean>(false);
+  const [authTestLogs, setAuthTestLogs] = useState<string[]>([]);
+  const [netTestLogs, setNetTestLogs] = useState<string[]>([]);
 
   const toggleFlag = (key: keyof ContainerAntiCheatFlags) => {
-    setFlags((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      return next;
+    setFlags((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const runAuthorizationTests = () => {
+    const logs: string[] = [];
+    logs.push('[Test 1] frontend-sa -> get pods in frontend...');
+    const test1 = evaluateKubernetesAuthorization({
+      subject: { kind: 'ServiceAccount', name: 'frontend-sa', namespace: 'frontend' },
+      verb: 'get',
+      resource: 'pods',
+      namespace: 'frontend',
+      roles: masterState.roles,
+      bindings: masterState.bindings,
     });
+    logs.push(`Result: ${test1.decision} - ${test1.reasonEn}`);
+
+    logs.push('[Test 2] frontend-sa -> get secrets in finance...');
+    const test2 = evaluateKubernetesAuthorization({
+      subject: { kind: 'ServiceAccount', name: 'frontend-sa', namespace: 'frontend' },
+      verb: 'get',
+      resource: 'secrets',
+      namespace: 'finance',
+      roles: masterState.roles,
+      bindings: masterState.bindings,
+    });
+    logs.push(`Result: ${test2.decision} - ${test2.reasonEn}`);
+
+    logs.push('[Test 3] backend-sa -> get configmaps in backend...');
+    const test3 = evaluateKubernetesAuthorization({
+      subject: { kind: 'ServiceAccount', name: 'backend-sa', namespace: 'backend' },
+      verb: 'get',
+      resource: 'configmaps',
+      namespace: 'backend',
+      roles: masterState.roles,
+      bindings: masterState.bindings,
+    });
+    logs.push(`Result: ${test3.decision} - ${test3.reasonEn}`);
+
+    logs.push('[Test 4] random-sa -> delete deployments in finance...');
+    const test4 = evaluateKubernetesAuthorization({
+      subject: { kind: 'ServiceAccount', name: 'random-sa', namespace: 'random' },
+      verb: 'delete',
+      resource: 'deployments',
+      namespace: 'finance',
+      roles: masterState.roles,
+      bindings: masterState.bindings,
+    });
+    logs.push(`Result: ${test4.decision} - ${test4.reasonEn}`);
+
+    const allPassed = test1.allowed && !test2.allowed && test3.allowed && !test4.allowed;
+    logs.push(allPassed ? '✅ All RBAC Authorization tests PASSED!' : '❌ RBAC Authorization tests FAILED!');
+
+    setAuthTestLogs(logs);
+    if (allPassed) {
+      setMasterState((prev) => ({ ...prev, testedAuthorizationsPassed: true }));
+    }
+  };
+
+  const runNetworkPathTests = () => {
+    const logs: string[] = [];
+    logs.push('[Path 1] Internet -> frontend (port 443)...');
+    const p1 = evaluatePodNetworkReachability(
+      {
+        srcPod: { name: 'internet', namespace: 'external', labels: {} },
+        dstPod: { name: 'frontend', namespace: 'frontend', labels: { app: 'frontend' } },
+        dstPort: 443,
+        isExternal: true,
+      },
+      masterState.networkPolicies
+    );
+    logs.push(`Result: ${p1.reachable ? 'ALLOWED' : 'DENIED'}`);
+
+    logs.push('[Path 2] frontend -> backend (port 443)...');
+    const p2 = evaluatePodNetworkReachability(
+      {
+        srcPod: { name: 'frontend', namespace: 'frontend', labels: { app: 'frontend' } },
+        dstPod: { name: 'backend', namespace: 'backend', labels: { app: 'backend' } },
+        dstPort: 443,
+      },
+      masterState.networkPolicies
+    );
+    logs.push(`Result: ${p2.reachable ? 'ALLOWED' : 'DENIED'}`);
+
+    logs.push('[Path 3] frontend -> finance-db (port 5432)...');
+    const p3 = evaluatePodNetworkReachability(
+      {
+        srcPod: { name: 'frontend', namespace: 'frontend', labels: { app: 'frontend' } },
+        dstPod: { name: 'finance-db', namespace: 'finance', labels: { app: 'finance-db' } },
+        dstPort: 5432,
+      },
+      masterState.networkPolicies
+    );
+    logs.push(`Result: ${p3.reachable ? 'ALLOWED' : 'BLOCKED'}`);
+
+    const pathsPassed = p1.reachable && p2.reachable && !p3.reachable;
+    logs.push(pathsPassed ? '✅ All Network Reachability tests PASSED!' : '❌ Network Path tests FAILED!');
+
+    setNetTestLogs(logs);
+    if (pathsPassed) {
+      setMasterState((prev) => ({ ...prev, testedNetworkPathsPassed: true }));
+    }
   };
 
   const evaluation = evaluateContainerMasterChallenge(flags);
+  const masterVal = validateKubernetesMasterChallenge(masterState);
 
   const runChallengeVerification = () => {
     setTested(true);
 
-    if (evaluation.isMastered) {
+    if (masterVal.isPassed) {
       confetti({
         particleCount: 120,
         spread: 80,
@@ -63,7 +167,86 @@ export const ContainerMasterChallenge: React.FC = () => {
       defaultDenyNetworkPolicyEnforced: true,
       etcdKmsEncryptionEnabled: true,
       falcoRuntimeRulesActiveAndQuarantineVerified: true,
+      noStateTampering: true,
     });
+
+    // Clean master state to pass architecture & gates
+    setMasterState((prev) => ({
+      ...prev,
+      testedAuthorizationsPassed: true,
+      testedNetworkPathsPassed: true,
+      auditConfig: { enabled: true, policyLevel: 'RequestResponse', logPath: '/var/log/kube-audit.log' },
+      secrets: prev.secrets.map((s) => ({ ...s, encryptedAtRest: true })),
+      images: prev.images.map((img) => ({
+        ...img,
+        isSignedCosign: true,
+        runsAsUser: 'appuser',
+        layers: img.layers.map((l) => ({ ...l, vulnerabilities: [] })),
+      })),
+      pods: prev.pods.map((p) => ({
+        ...p,
+        securityContext: {
+          ...p.securityContext,
+          privileged: false,
+          runAsNonRoot: true,
+          runAsUser: 10001,
+          allowPrivilegeEscalation: false,
+          capabilitiesAdd: [],
+        },
+        volumeMounts: [],
+      })),
+      roles: [
+        {
+          id: 'role-restricted',
+          name: 'frontend-pod-reader',
+          namespace: 'frontend',
+          isClusterRole: false,
+          rules: [{ apiGroups: [''], resources: ['pods'], verbs: ['get', 'list'] }],
+        },
+      ],
+      bindings: [
+        {
+          id: 'bind-restricted',
+          name: 'frontend-pod-reader-binding',
+          namespace: 'frontend',
+          isClusterRoleBinding: false,
+          roleRefName: 'frontend-pod-reader',
+          subjects: [{ kind: 'ServiceAccount', name: 'frontend-sa', namespace: 'frontend' }],
+        },
+      ],
+      networkPolicies: [
+        {
+          id: 'default-deny-ingress',
+          name: 'default-deny-all',
+          namespace: 'finance',
+          podSelector: {} as Record<string, string>,
+          policyTypes: ['Ingress', 'Egress'],
+          ingressRules: [
+            {
+              from: [{ podSelector: { app: 'backend' } }],
+              ports: [{ protocol: 'TCP', port: 8080 }],
+            },
+          ],
+          egressRules: [],
+          enabled: true,
+        },
+        {
+          id: 'allow-frontend-backend',
+          name: 'allow-frontend-to-backend',
+          namespace: 'backend',
+          podSelector: { app: 'backend' } as Record<string, string>,
+          policyTypes: ['Ingress'],
+          ingressRules: [
+            {
+              from: [{ podSelector: { app: 'frontend' } }],
+              ports: [{ protocol: 'TCP', port: 443 }],
+            },
+          ],
+          egressRules: [],
+          enabled: true,
+        },
+      ] as KubernetesNetworkPolicy[],
+    }));
   };
 
   return (
@@ -222,6 +405,59 @@ export const ContainerMasterChallenge: React.FC = () => {
             <Trophy className="w-5 h-5" />
             <span>{isAr ? 'التحقق من حل التحدي واعتماد النتيجة' : 'Verify & Submit Master Defense Challenge'}</span>
           </button>
+        </div>
+
+        {/* Interactive Engine Test Suites */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <span>{isAr ? 'حزمة اختبارات المحرك لمصادقة RBAC' : 'RBAC Authorization Engine Suite'}</span>
+              </h3>
+              <button
+                onClick={runAuthorizationTests}
+                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-bold border border-cyan-500/30 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>{isAr ? 'تشغيل الاختبارات' : 'Run RBAC Suite'}</span>
+              </button>
+            </div>
+            {authTestLogs.length > 0 && (
+              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] space-y-1 text-slate-300 max-h-40 overflow-y-auto">
+                {authTestLogs.map((log, i) => (
+                  <div key={i} className={log.includes('PASSED') ? 'text-emerald-400' : log.includes('FAILED') ? 'text-rose-400' : ''}>
+                    {log}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>{isAr ? 'حزمة اختبارات مسارات سياسات الشبكة' : 'NetworkPolicy Reachability Matrix Suite'}</span>
+              </h3>
+              <button
+                onClick={runNetworkPathTests}
+                className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-500/30 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>{isAr ? 'تشغيل الاختبارات' : 'Run Network Suite'}</span>
+              </button>
+            </div>
+            {netTestLogs.length > 0 && (
+              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] space-y-1 text-slate-300 max-h-40 overflow-y-auto">
+                {netTestLogs.map((log, i) => (
+                  <div key={i} className={log.includes('PASSED') ? 'text-emerald-400' : log.includes('FAILED') ? 'text-rose-400' : ''}>
+                    {log}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Evaluation Banner */}

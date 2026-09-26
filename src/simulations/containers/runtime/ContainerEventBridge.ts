@@ -5,6 +5,8 @@
 
 import { globalSimulationRuntime, SimulationRuntime } from '../../../engine/runtime/SimulationRuntime';
 import { SecurityTelemetryEvent } from '../../soc/logic/telemetry';
+import { globalSocEventBridge } from '../../soc/runtime/SocEventBridge';
+import { globalForensicsEventBridge } from '../../forensics/runtime/ForensicsEventBridge';
 import { normalizeContainerEvent, RawContainerEvent } from './normalizeContainerEvent';
 
 export class ContainerEventBridge {
@@ -26,6 +28,30 @@ export class ContainerEventBridge {
   public emitEvent(raw: RawContainerEvent): SecurityTelemetryEvent {
     const normalized = normalizeContainerEvent(raw);
     this.ingestedEvents.push(normalized);
+
+    // Ingest into SOC SIEM pipeline
+    globalSocEventBridge.ingestEvent(normalized);
+
+    // Ingest into Forensics evidence stream
+    globalForensicsEventBridge.syncEvidenceFromEvents([
+      {
+        id: normalized.rawEventId || normalized.id,
+        type: normalized.eventType,
+        virtualTime: normalized.virtualTime,
+        source: normalized.resource || normalized.host,
+        target: normalized.attributes.namespace,
+        category: normalized.category,
+        severity: normalized.severity,
+        payload: {
+          ...normalized.attributes,
+          sourceWorld: normalized.sourceWorld,
+          serviceAccount: normalized.attributes.serviceAccount || normalized.user,
+          pod: normalized.attributes.pod || normalized.resource,
+          sourceIp: normalized.sourceIp,
+          resource: normalized.resource,
+        },
+      },
+    ]);
 
     this.runtime.events.dispatch({
       id: raw.id,

@@ -27,6 +27,12 @@ export class SocEventBridge {
     });
   }
 
+  public ingestEvent(event: SecurityTelemetryEvent) {
+    const enriched = enrichTelemetryEvent(event);
+    this.normalizedEvents.push(enriched);
+    this.notifyListeners();
+  }
+
   public syncFromRuntimeEvents(events: SimulationEvent[]) {
     const enrichedList = events.map((rawEvt) => {
       const normalized = normalizeRuntimeEvent({

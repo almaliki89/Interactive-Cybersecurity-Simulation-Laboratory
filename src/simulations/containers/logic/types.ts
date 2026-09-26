@@ -232,4 +232,43 @@ export interface ContainerAntiCheatFlags {
   defaultDenyNetworkPolicyEnforced: boolean;
   etcdKmsEncryptionEnabled: boolean;
   falcoRuntimeRulesActiveAndQuarantineVerified: boolean;
+  noStateTampering?: boolean;
+}
+
+export interface KubernetesNamespace {
+  name: string;
+  labels: Record<string, string>;
+  status: 'Active' | 'Terminating';
+}
+
+export interface KubernetesServiceAccount {
+  name: string;
+  namespace: string;
+  automountServiceAccountToken: boolean;
+}
+
+export interface AuditConfig {
+  enabled: boolean;
+  policyLevel: 'None' | 'Metadata' | 'Request' | 'RequestResponse';
+  logPath: string;
+  tampered?: boolean;
+}
+
+export interface KubernetesMasterState {
+  images: ContainerImage[];
+  pods: KubernetesPod[];
+  namespaces: KubernetesNamespace[];
+  serviceAccounts: KubernetesServiceAccount[];
+  roles: KubernetesRole[];
+  bindings: KubernetesRoleBinding[];
+  networkPolicies: KubernetesNetworkPolicy[];
+  secrets: KubernetesSecret[];
+  admissionPolicies: import('./admission').AdmissionPolicyRule[];
+  auditConfig: AuditConfig;
+  controlPlaneConfig?: ControlPlaneConfig;
+  architecture?: unknown;
+  incident?: unknown;
+  testedAuthorizationsPassed: boolean;
+  testedNetworkPathsPassed: boolean;
+  antiCheatFlags?: ContainerAntiCheatFlags;
 }
