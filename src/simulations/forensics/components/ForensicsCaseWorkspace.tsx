@@ -12,17 +12,55 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
   
+  // Desktop sidebar states
   const [isEvidenceBoardVisible, setEvidenceBoardVisible] = useState(true);
   const [isInspectorVisible, setInspectorVisible] = useState(true);
-  const [isDrawerOpen, setDrawerOpen] = useState(false);
-  const [isNavigatorDrawerOpen, setNavigatorDrawerOpen] = useState(false);
+  
+  // Separate Mobile Drawer States (Default Closed, mutual exclusion to prevent stacking)
+  const [isMobileNavigatorOpen, setMobileNavigatorOpen] = useState(false);
+  const [isMobileEvidenceOpen, setMobileEvidenceOpen] = useState(false);
+  const [isMobileInspectorOpen, setMobileInspectorOpen] = useState(false);
+  const [isMobileTechOpen, setMobileTechOpen] = useState(false);
   
   const selectedEvidenceId = useForensicsStore((s) => s.selectedEvidenceId);
 
   // Auto-show inspector when evidence is selected
   useEffect(() => {
-    if (selectedEvidenceId) setInspectorVisible(true);
+    if (selectedEvidenceId) {
+      setInspectorVisible(true);
+      setMobileInspectorOpen(true);
+    }
   }, [selectedEvidenceId]);
+
+  const toggleMobileNavigator = () => {
+    setMobileNavigatorOpen(!isMobileNavigatorOpen);
+    setMobileEvidenceOpen(false);
+    setMobileInspectorOpen(false);
+    setMobileTechOpen(false);
+  };
+
+  const toggleMobileEvidence = () => {
+    setMobileEvidenceOpen(!isMobileEvidenceOpen);
+    setMobileNavigatorOpen(false);
+    setMobileInspectorOpen(false);
+    setMobileTechOpen(false);
+    setEvidenceBoardVisible(!isEvidenceBoardVisible);
+  };
+
+  const toggleMobileInspector = () => {
+    setMobileInspectorOpen(!isMobileInspectorOpen);
+    setMobileNavigatorOpen(false);
+    setMobileEvidenceOpen(false);
+    setMobileTechOpen(false);
+    setInspectorVisible(!isInspectorVisible);
+  };
+
+  const toggleMobileTech = () => {
+    setMobileTechOpen(!isMobileTechOpen);
+    setMobileNavigatorOpen(false);
+    setMobileEvidenceOpen(false);
+    setMobileInspectorOpen(false);
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-black select-none">
@@ -33,21 +71,21 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
       <div className="h-10 border-b border-slate-900 bg-slate-950 px-4 flex items-center justify-between shrink-0 z-10">
          <div className="flex items-center gap-2">
             <button 
-              onClick={() => setNavigatorDrawerOpen(!isNavigatorDrawerOpen)}
+              onClick={toggleMobileNavigator}
               className="sm:hidden p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-white transition-colors"
               title={isAr ? 'قائمة المراحل' : 'Toggle Phases'}
             >
                <Menu className="w-3.5 h-3.5" />
             </button>
             <button 
-              onClick={() => setEvidenceBoardVisible(!isEvidenceBoardVisible)}
+              onClick={toggleMobileEvidence}
               className={`p-2 rounded-lg transition-colors ${isEvidenceBoardVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
               title={isAr ? 'تبديل لوحة الأدلة' : 'Toggle Evidence Board'}
             >
                <Database className="w-3.5 h-3.5" />
             </button>
             <button 
-              onClick={() => setInspectorVisible(!isInspectorVisible)}
+              onClick={toggleMobileInspector}
               className={`p-2 rounded-lg transition-colors ${isInspectorVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
               title={isAr ? 'تبديل المعاين' : 'Toggle Inspector'}
             >
@@ -57,8 +95,8 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
 
          <div className="flex items-center gap-2">
             <button 
-              onClick={() => setDrawerOpen(!isDrawerOpen)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${isDrawerOpen ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
+              onClick={toggleMobileTech}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${isMobileTechOpen ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
             >
                <PanelBottom className="w-3.5 h-3.5" />
                <span className="text-[10px] font-bold uppercase tracking-widest">{isAr ? 'البيانات التقنية' : 'TECH_DATA'}</span>
@@ -74,11 +112,11 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
         </div>
 
         {/* Mobile Navigator Drawer Overlay */}
-        {isNavigatorDrawerOpen && (
+        {isMobileNavigatorOpen && (
           <div className="absolute inset-0 z-40 bg-black/80 flex sm:hidden">
             <div className="w-64 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
               <button 
-                onClick={() => setNavigatorDrawerOpen(false)}
+                onClick={() => setMobileNavigatorOpen(false)}
                 className="absolute top-3 right-3 p-1 text-slate-400 hover:text-white"
               >
                 <X className="w-4 h-4" />
@@ -87,34 +125,33 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
                 <ForensicsPhaseNavigator />
               </div>
             </div>
-            <div className="flex-1" onClick={() => setNavigatorDrawerOpen(false)} />
+            <div className="flex-1" onClick={() => setMobileNavigatorOpen(false)} />
           </div>
         )}
 
         {/* Left-ish: Evidence Board (Collapsible Desktop / Drawer Mobile) */}
         {isEvidenceBoardVisible && (
-          <>
-            {/* Desktop Sidebar */}
-            <div className="w-72 shrink-0 border-r border-slate-900 transition-all hidden md:block">
-               <ForensicsEvidenceBoard />
-            </div>
+          <div className="w-72 shrink-0 border-r border-slate-900 transition-all hidden md:block">
+             <ForensicsEvidenceBoard />
+          </div>
+        )}
 
-            {/* Mobile/Tablet Drawer Overlay */}
-            <div className="absolute inset-0 z-40 bg-black/80 flex md:hidden">
-              <div className="w-72 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
-                <button 
-                  onClick={() => setEvidenceBoardVisible(false)}
-                  className="absolute top-3 right-3 p-1 text-slate-400 hover:text-white z-10"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <div className="flex-1 overflow-y-auto pt-6">
-                  <ForensicsEvidenceBoard />
-                </div>
+        {/* Mobile Evidence Drawer Overlay */}
+        {isMobileEvidenceOpen && (
+          <div className="absolute inset-0 z-40 bg-black/80 flex md:hidden">
+            <div className="w-72 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
+              <button 
+                onClick={() => setMobileEvidenceOpen(false)}
+                className="absolute top-3 right-3 p-1 text-slate-400 hover:text-white z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex-1 overflow-y-auto pt-6">
+                <ForensicsEvidenceBoard />
               </div>
-              <div className="flex-1" onClick={() => setEvidenceBoardVisible(false)} />
             </div>
-          </>
+            <div className="flex-1" onClick={() => setMobileEvidenceOpen(false)} />
+          </div>
         )}
 
         {/* Center: Content Workspace */}
@@ -122,34 +159,33 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
            {children}
         </div>
 
-        {/* Right: Inspector (Collapsible Desktop / Drawer Mobile/Tablet) */}
+        {/* Right: Inspector (Collapsible Desktop) */}
         {isInspectorVisible && (
-          <>
-            {/* Desktop Sidebar */}
-            <div className="w-80 shrink-0 hidden lg:block border-l border-slate-900">
-               <ForensicsEvidenceInspector />
-            </div>
-
-            {/* Mobile/Tablet Drawer Overlay */}
-            <div className="absolute inset-0 z-40 bg-black/80 flex lg:hidden justify-end">
-              <div className="flex-1" onClick={() => setInspectorVisible(false)} />
-              <div className="w-80 bg-slate-950 h-full border-l border-slate-800 flex flex-col relative">
-                <button 
-                  onClick={() => setInspectorVisible(false)}
-                  className="absolute top-3 left-3 p-1 text-slate-400 hover:text-white z-10"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <div className="flex-1 overflow-y-auto pt-6">
-                  <ForensicsEvidenceInspector />
-                </div>
-              </div>
-            </div>
-          </>
+          <div className="w-80 shrink-0 hidden lg:block border-l border-slate-900">
+             <ForensicsEvidenceInspector />
+          </div>
         )}
 
-        {/* Bottom Drawer Overlay */}
-        <ForensicsTechnicalDrawer isOpen={isDrawerOpen} onClose={() => setDrawerOpen(false)} />
+        {/* Mobile/Tablet Inspector Drawer Overlay */}
+        {isMobileInspectorOpen && (
+          <div className="absolute inset-0 z-40 bg-black/80 flex lg:hidden justify-end">
+            <div className="flex-1" onClick={() => setMobileInspectorOpen(false)} />
+            <div className="w-80 bg-slate-950 h-full border-l border-slate-800 flex flex-col relative">
+              <button 
+                onClick={() => setMobileInspectorOpen(false)}
+                className="absolute top-3 left-3 p-1 text-slate-400 hover:text-white z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex-1 overflow-y-auto pt-6">
+                <ForensicsEvidenceInspector />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom Technical Drawer Overlay */}
+        <ForensicsTechnicalDrawer isOpen={isMobileTechOpen} onClose={() => setMobileTechOpen(false)} />
       </div>
     </div>
   );
