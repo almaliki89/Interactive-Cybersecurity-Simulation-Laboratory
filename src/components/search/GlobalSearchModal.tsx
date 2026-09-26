@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSimulationStore, SimulationId } from '../../stores/simulationStore';
 import { MACRO_DOMAINS, WORLDS_REGISTRY, LEARNING_PATHS } from '../../data/universeData';
 import { GLOSSARY_TERMS } from '../../data/glossaryData';
+import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import {
   Search,
   X,
@@ -17,6 +18,12 @@ import {
   BookOpen,
   CheckCircle2,
   FolderGit2,
+  Play,
+  Pause,
+  StepForward,
+  RotateCcw,
+  Languages,
+  Sliders,
 } from 'lucide-react';
 
 export const GlobalSearchModal: React.FC = () => {
@@ -25,6 +32,9 @@ export const GlobalSearchModal: React.FC = () => {
   const searchQuery = useSimulationStore((s) => s.searchQuery);
   const setSearchQuery = useSimulationStore((s) => s.setSearchQuery);
   const language = useSimulationStore((s) => s.language);
+  const setLanguage = useSimulationStore((s) => s.setLanguage);
+  const mode = useSimulationStore((s) => s.mode);
+  const setMode = useSimulationStore((s) => s.setMode);
   const setActiveSimulation = useSimulationStore((s) => s.setActiveSimulation);
   const setSelectedWorldId = useSimulationStore((s) => s.setSelectedWorldId);
   const selectEntity = useSimulationStore((s) => s.selectEntity);
@@ -63,7 +73,7 @@ export const GlobalSearchModal: React.FC = () => {
       w.descriptionAr.toLowerCase().includes(query) ||
       w.descriptionEn.toLowerCase().includes(query) ||
       w.concepts.some(
-        (c) =>
+         (c) =>
           c.nameAr.toLowerCase().includes(query) ||
           c.nameEn.toLowerCase().includes(query)
       )
@@ -81,14 +91,77 @@ export const GlobalSearchModal: React.FC = () => {
     );
   });
 
-  // Filter Learning Paths
-  const matchingPaths = LEARNING_PATHS.filter((p) => {
-    if (!query) return false;
+  const commandsList = [
+    {
+      id: 'open_range',
+      icon: Compass,
+      labelAr: 'فتح الميدان الشامل (Cyber Range)',
+      labelEn: 'Open Cyber Range',
+      action: () => setActiveSimulation('range'),
+    },
+    {
+      id: 'open_soc',
+      icon: Activity,
+      labelAr: 'فتح مركز مراقبة العمليات SOC',
+      labelEn: 'Open SOC Workstation',
+      action: () => setActiveSimulation('siem'),
+    },
+    {
+      id: 'open_forensics',
+      icon: Shield,
+      labelAr: 'فتح معمل التحقيق الجنائي الرقمي',
+      labelEn: 'Open Forensics Lab',
+      action: () => setActiveSimulation('threat_hunting'),
+    },
+    {
+      id: 'reset_sim',
+      icon: RotateCcw,
+      labelAr: 'إعادة ضبط المحاكاة الحالية',
+      labelEn: 'Reset Simulation Runtime',
+      action: () => globalSimulationRuntime.reset(),
+    },
+    {
+      id: 'pause_sim',
+      icon: Pause,
+      labelAr: 'إيقاف المحاكاة مؤقتاً',
+      labelEn: 'Pause Simulation',
+      action: () => globalSimulationRuntime.pause(),
+    },
+    {
+      id: 'resume_sim',
+      icon: Play,
+      labelAr: 'استئناف تشغيل المحاكاة',
+      labelEn: 'Resume Simulation',
+      action: () => globalSimulationRuntime.resume(),
+    },
+    {
+      id: 'step_sim',
+      icon: StepForward,
+      labelAr: 'تنفيذ خطوة زمنية في المحاكاة',
+      labelEn: 'Step Simulation Forward',
+      action: () => globalSimulationRuntime.step(150),
+    },
+    {
+      id: 'toggle_lang',
+      icon: Languages,
+      labelAr: 'تبديل اللغة (English / العربية)',
+      labelEn: 'Toggle Language (English / Arabic)',
+      action: () => setLanguage(language === 'ar' ? 'en' : 'ar'),
+    },
+    {
+      id: 'toggle_mode',
+      icon: Sliders,
+      labelAr: 'تبديل الوضع (موجّه / استكشاف حر)',
+      labelEn: 'Toggle Mode (Guided / Sandbox)',
+      action: () => setMode(mode === 'guided' ? 'sandbox' : 'guided'),
+    },
+  ];
+
+  const matchingCommands = commandsList.filter((cmd) => {
+    if (!query) return true;
     return (
-      p.titleAr.toLowerCase().includes(query) ||
-      p.titleEn.toLowerCase().includes(query) ||
-      p.roleAr.toLowerCase().includes(query) ||
-      p.roleEn.toLowerCase().includes(query)
+      cmd.labelEn.toLowerCase().includes(query) ||
+      cmd.labelAr.toLowerCase().includes(query)
     );
   });
 
@@ -132,8 +205,8 @@ export const GlobalSearchModal: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               language === 'ar'
-                ? 'ابحث عن أي مفهوم، بروتوكول، ثغرة، مختبر محاكاة، أو مصطلح سيبراني (مثلاً: DNS, Kerberos, SIEM, CIA)...'
-                : 'Search concepts, protocols, labs, worlds, or cybersecurity terms (e.g. DNS, Kerberos, SIEM, CIA)...'
+                ? 'اكتب أمراً أو ابحث عن مفهوم سيبراني (مثلاً: DNS, SIEM, pause, reset)...'
+                : 'Type a command or search concepts (e.g. DNS, SIEM, pause, reset)...'
             }
             className="w-full bg-transparent border-0 text-white placeholder-slate-500 text-sm focus:outline-hidden focus:ring-0"
           />
@@ -152,52 +225,35 @@ export const GlobalSearchModal: React.FC = () => {
 
         {/* Results Container */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Quick Shortcuts if query is empty */}
-          {!query && (
-            <div className="space-y-3">
+          {/* Quick Shortcuts / Commands Section */}
+          {matchingCommands.length > 0 && (
+            <div className="space-y-2">
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
-                {language === 'ar' ? 'الوجهات الرئيسية والميادين' : 'Quick Destinations & Labs'}
+                {language === 'ar' ? 'الأوامر والعمليات الفورية' : 'System Commands'}
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    setActiveSimulation('range');
-                    setIsSearchOpen(false);
-                  }}
-                  className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-cyan-500/60 hover:bg-slate-800/50 flex items-center gap-3 text-left rtl:text-right transition-all group"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-cyan-950/80 border border-cyan-800 text-cyan-400 flex items-center justify-center shrink-0">
-                    <Compass className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block group-hover:text-cyan-300">
-                      {language === 'ar' ? 'الميدان السيبراني الشامل (World 60)' : 'Integrated Cyber Range'}
-                    </span>
-                    <span className="text-[11px] text-slate-400 block">
-                      {language === 'ar' ? 'محاكاة المنظومة الرقمية كاملة بـ 5 طبقات' : 'Full multi-layer living enterprise simulation'}
-                    </span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setActiveSimulation('explorer');
-                    setIsSearchOpen(false);
-                  }}
-                  className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-indigo-500/60 hover:bg-slate-800/50 flex items-center gap-3 text-left rtl:text-right transition-all group"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-indigo-950/80 border border-indigo-800 text-indigo-400 flex items-center justify-center shrink-0">
-                    <Globe className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block group-hover:text-indigo-300">
-                      {language === 'ar' ? 'مستكشف العوالم السيبرانية الـ 60' : '60 Cyber Worlds Universe'}
-                    </span>
-                    <span className="text-[11px] text-slate-400 block">
-                      {language === 'ar' ? '10 نطاقات شاملة لجميع تخصصات الأمن' : '10 Macro Domains with progressive discovery'}
-                    </span>
-                  </div>
-                </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {matchingCommands.map((cmd) => {
+                  const CmdIcon = cmd.icon;
+                  return (
+                    <button
+                      key={cmd.id}
+                      onClick={() => {
+                        cmd.action();
+                        setIsSearchOpen(false);
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-cyan-500/60 hover:bg-slate-800/40 flex items-center gap-3 text-left rtl:text-right transition-all group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-cyan-950/50 border border-cyan-900 text-cyan-400 flex items-center justify-center shrink-0">
+                        <CmdIcon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-slate-200 block group-hover:text-cyan-300 truncate">
+                          {language === 'ar' ? cmd.labelAr : cmd.labelEn}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -268,7 +324,7 @@ export const GlobalSearchModal: React.FC = () => {
           )}
 
           {/* No results */}
-          {query && matchingWorlds.length === 0 && matchingTerms.length === 0 && matchingPaths.length === 0 && (
+          {query && matchingWorlds.length === 0 && matchingTerms.length === 0 && matchingCommands.length === 0 && (
             <div className="py-12 text-center text-slate-500">
               <p className="text-sm">
                 {language === 'ar'
@@ -277,16 +333,24 @@ export const GlobalSearchModal: React.FC = () => {
               </p>
               <p className="text-xs mt-1">
                 {language === 'ar'
-                  ? 'جرب البحث عن كلمات مثل: TCP, Firewall, Kerberos, SIEM, DAC, Zero Trust'
-                  : 'Try searching for keywords like: TCP, Firewall, Kerberos, SIEM, DAC, Zero Trust'}
+                  ? 'جرب البحث عن كلمات مثل: TCP, Firewall, pause, reset'
+                  : 'Try searching for keywords like: TCP, Firewall, pause, reset'}
               </p>
             </div>
           )}
         </div>
 
+        {/* Keyboard Shortcuts Helper Panel inside command palette */}
+        <div className="px-4 py-2 border-t border-slate-800/80 bg-slate-950/50 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-slate-500 font-mono">
+          <div><kbd className="px-1 py-0.2 rounded bg-slate-800 border border-slate-700">Space</kbd> Play / Pause</div>
+          <div><kbd className="px-1 py-0.2 rounded bg-slate-800 border border-slate-700">R</kbd> Reset</div>
+          <div><kbd className="px-1 py-0.2 rounded bg-slate-800 border border-slate-700">→</kbd> Step</div>
+          <div><kbd className="px-1 py-0.2 rounded bg-slate-800 border border-slate-700">Ctrl+K</kbd> Open Palette</div>
+        </div>
+
         {/* Footer */}
-        <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>{language === 'ar' ? 'انقر على أي عنصر للانتقال الفوري إلى مختبره التفاعلي' : 'Click any result to jump to its interactive simulator'}</span>
+        <div className="px-4 py-2 bg-slate-950 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+          <span>{language === 'ar' ? 'انقر على أي عنصر للانتقال الفوري أو لتنفيذ الأمر' : 'Click any result to trigger immediately'}</span>
           <span className="font-mono text-cyan-400">60 Worlds Connected</span>
         </div>
       </div>
