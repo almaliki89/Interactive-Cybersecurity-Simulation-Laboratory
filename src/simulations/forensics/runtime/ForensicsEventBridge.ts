@@ -228,6 +228,42 @@ export class ForensicsEventBridge {
           });
         }
       }
+
+      if (
+        type.startsWith('DEVSECOPS_') ||
+        rawEvt.category === 'DEVSECOPS' ||
+        rawEvt.sourceWorld === 'DEVSECOPS'
+      ) {
+        const rawId = rawEvt.id || `devsec-${vTime}-${type}`;
+        const id = `EVD-${type}`;
+        if (!this.evidenceMap.has(id)) {
+          const payload = {
+            sourceWorld: 'DEVSECOPS',
+            eventType: type,
+            virtualTime: vTime,
+            repository: rawEvt.payload?.repository || rawEvt.source || 'github.com/nexora/enterprise-platform',
+            commitSha: rawEvt.payload?.commitSha || 'a1b2c3d4e5f6',
+            artifact: rawEvt.payload?.artifact || 'nexora-enterprise-service',
+            artifactDigest: rawEvt.payload?.artifactDigest || 'sha256:d57e1234567890abcdef',
+            actor: rawEvt.payload?.actor || rawEvt.user || 'ci-cd-runner',
+            rawEventId: rawId,
+            ...rawEvt.payload,
+          };
+          const hash = calculateEvidenceHash(payload);
+          this.evidenceMap.set(id, {
+            id,
+            type: 'LOG_EXPORT',
+            sourceHost: payload.repository,
+            sourceUser: payload.actor,
+            acquiredAtVirtualTime: vTime,
+            originalHash: hash,
+            currentHash: hash,
+            preserved: true,
+            integrityStatus: 'VERIFIED',
+            metadata: payload,
+          });
+        }
+      }
     });
 
     this.notifyListeners();

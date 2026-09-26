@@ -66,117 +66,6 @@ export const DevSecOpsMasterChallenge: React.FC = () => {
     }
   };
 
-  const completeAllDefenses = () => {
-    // Hardens the entire masterState to completely secure baseline state!
-    setMasterState((state) => {
-      // 1. SAST
-      state.sastFindings = state.sastFindings.map((f) => ({ ...f, remediated: true }));
-      // 2. SCA
-      state.dependencies = state.dependencies.map((d) => ({ ...d, remediated: true, licenseCompliant: true }));
-      // 3. Secrets Scan
-      state.secretMatches = state.secretMatches.map((m) => ({ ...m, remediated: true, inCommitHistory: false }));
-      // 4. IaC Terraform
-      state.terraformResources = state.terraformResources.map((r) => ({ ...r, remediated: true, hasMisconfiguration: false }));
-      // 5. Container Images
-      state.containerImages[0] = {
-        imageName: 'nexora-enterprise-service',
-        tag: 'v1.4.2',
-        digest: 'sha256:d57e1234567890abcdef',
-        vulnerabilitiesCount: 0,
-        signed: true,
-        trustedRegistry: true,
-        embeddedSecretsCount: 0,
-        sbomVerified: true,
-        hasCriticalVulns: false
-      };
-      // 6. SBOM Components
-      state.sbomComponents = [
-        {
-          id: 'sbom-react',
-          name: 'react',
-          version: '19.0.1',
-          purl: 'pkg:npm/react@19.0.1',
-          type: 'framework',
-          license: 'MIT',
-          supplier: 'Meta Open Source',
-          hashes: [{ algo: 'SHA-256', digest: '9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d' }]
-        },
-        {
-          id: 'sbom-express',
-          name: 'express',
-          version: '4.21.2',
-          purl: 'pkg:npm/express@4.21.2',
-          type: 'library',
-          license: 'MIT',
-          supplier: 'OpenJS Foundation',
-          hashes: [{ algo: 'SHA-256', digest: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d' }]
-        },
-        {
-          id: 'sbom-distroless',
-          name: 'gcr.io/distroless/static-debian12',
-          version: 'nonroot',
-          purl: 'pkg:oci/distroless-static@sha256:881f3a2b1c0d9e8f7a6b5c4d3e2f1a0b',
-          type: 'container',
-          license: 'Apache-2.0',
-          supplier: 'Google Container Registry',
-          hashes: [{ algo: 'SHA-256', digest: '881f3a2b1c0d9e8f7a6b5c4d3e2f1a0b' }]
-        }
-      ];
-      // 7. SLSA
-      state.slsaAttestation = {
-        slsaLevel: 3,
-        builderId: 'https://github.com/actions/runner',
-        buildType: 'https://slsa.dev/provenance/v1',
-        materials: [
-          { uri: 'git+https://github.com/nexora/enterprise-platform', digest: 'sha256:7f9a28b61a3d90fcb3b811883b276709...' }
-        ],
-        isSignedRekorLog: true,
-        verified: true
-      };
-      // 8. Signatures
-      state.signatures[0] = {
-        artifactName: 'nexora-enterprise-service',
-        digest: 'sha256:d57e1234567890abcdef',
-        signed: true,
-        signature: 'sig-prod-fa88193aa77ff01b',
-        signerIdentity: 'github.com/nexora/enterprise-platform/.github/workflows/ci-cd-pipeline.yml@refs/heads/main',
-        certificateIssuer: 'https://token.actions.githubusercontent.com',
-        rekorEntry: 'rekor-uuid-7711-aa99',
-        verified: true
-      };
-      // 9. Pipeline config
-      state.pipelineConfig = {
-        id: 'pipe-production-build',
-        name: 'Production DevSecOps Deployment Pipeline',
-        repository: 'github.com/nexora/enterprise-platform',
-        branch: 'main',
-        requireSastGate: true,
-        requireScaGate: true,
-        requireSecretScanGate: true,
-        requireIacScanGate: true,
-        requireContainerScanGate: true,
-        requireCosignSignatureGate: true,
-        allowBypassOnFailure: false,
-      };
-      // 10. Drift
-      state.driftFindings = state.driftFindings.map((d) => ({ ...d, autoRemediated: true }));
-      // 11. Compliance
-      state.complianceState = {
-        pciDssCompliant: true,
-        soc2Compliant: true,
-        iso27001Compliant: true,
-        failedControls: []
-      };
-      // 12. Artifact Integrity
-      state.artifactState.tampered = false;
-      state.artifactState.digest = 'sha256:d57e1234567890abcdef';
-
-      state.testedPipelinePassed = true;
-      state.testedProvenancePassed = true;
-      state.testedArtifactIntegrityPassed = true;
-    });
-  };
-
   // Diagnostic flags derived from current state to render checklist colors dynamically
   const sastRemediated = masterState.sastFindings.filter(f => !f.remediated && (f.severity === 'CRITICAL' || f.severity === 'HIGH')).length === 0;
   const scaRemediated = masterState.dependencies.filter(d => !d.remediated && (d.severity === 'CRITICAL' || d.severity === 'HIGH' || d.isTyposquatting || !d.licenseCompliant)).length === 0;
@@ -252,14 +141,6 @@ export const DevSecOpsMasterChallenge: React.FC = () => {
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               {isAr ? 'التحصينات والضوابط السبعة للتحدي الشامل:' : 'Required Hardening Criteria Checklist:'}
             </h2>
-
-            <button
-              onClick={completeAllDefenses}
-              className="text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>{isAr ? 'تفعيل وتصحيح كافة المختبرات آليًا' : 'Auto-Solve and Harden All Labs'}</span>
-            </button>
           </div>
 
           <div className="grid grid-cols-1 gap-2.5">

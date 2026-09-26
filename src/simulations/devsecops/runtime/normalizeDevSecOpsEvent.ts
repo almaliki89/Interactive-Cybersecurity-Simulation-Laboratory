@@ -30,7 +30,7 @@ export function normalizeDevSecOpsEvent(raw: RawDevSecOpsEvent): SecurityTelemet
   const workflow = raw.workflow || (attrs.workflow as string) || 'ci-cd-pipeline.yml';
   const artifact = raw.artifact || (attrs.artifact as string) || 'nexora-enterprise-service';
   const artifactDigest = raw.artifactDigest || (attrs.artifactDigest as string) || 'sha256:d57e1234567890abcdef';
-  const actor = raw.actor || (attrs.actor as string) || 'ci-cd-runner';
+  const actor = raw.actor || (attrs.actor as string) || (attrs.committer as string) || 'ci-cd-runner';
 
   return {
     id: `telemetry-devsecops-${raw.id}`,

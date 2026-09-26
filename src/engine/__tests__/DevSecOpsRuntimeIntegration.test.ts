@@ -12,7 +12,7 @@ describe('OMEGA V15 — DevSecOps Runtime & Telemetry Integration', () => {
     devSecOpsEventBridge.reset();
   });
 
-  it('normalizes DevSecOps security events with sourceWorld APPSEC', () => {
+  it('normalizes DevSecOps security events with sourceWorld DEVSECOPS', () => {
     const raw = {
       id: 'dso-sast-001',
       eventType: 'SAST_FINDING' as const,
@@ -28,7 +28,7 @@ describe('OMEGA V15 — DevSecOps Runtime & Telemetry Integration', () => {
     };
 
     const normalized = normalizeDevSecOpsEvent(raw);
-    expect(normalized.sourceWorld).toBe('APPSEC');
+    expect(normalized.sourceWorld).toBe('DEVSECOPS');
     expect(normalized.eventType).toBe('SAST_FINDING');
     expect(normalized.virtualTime).toBe(500);
     expect(normalized.host).toBe('github.com/nexora/enterprise-platform');
@@ -52,7 +52,7 @@ describe('OMEGA V15 — DevSecOps Runtime & Telemetry Integration', () => {
     const ingested = devSecOpsEventBridge.getIngestedEvents();
     expect(ingested.length).toBeGreaterThan(0);
     const last = ingested[ingested.length - 1];
-    expect(last.sourceWorld).toBe('APPSEC');
+    expect(last.sourceWorld).toBe('DEVSECOPS');
     expect(last.eventType).toBe('PIPELINE_GATE_TRIGGERED');
   });
 
