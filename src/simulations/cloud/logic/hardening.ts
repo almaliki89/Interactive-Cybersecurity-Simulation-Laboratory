@@ -9,11 +9,17 @@
  */
 
 import { CloudInfrastructureState, scanCloudMisconfigurations } from './misconfigurations';
-import { CloudIncidentCase, evaluateIncidentProgress } from './incidents';
+import { CloudIncidentCase, evaluateIncidentProgress, createDefaultCloudIncident } from './incidents';
 import { evaluateCloudReachability } from './network';
 import { validateCloudArchitecture } from './architecture';
 import { CloudSecret } from './secrets';
 import { CloudRole } from './roles';
+import { createDefaultStorageBuckets } from './storage';
+import { createDefaultSecurityGroups } from './securityGroups';
+import { createDefaultCloudIdentities } from './identity';
+import { ALL_PRESET_POLICIES } from './policies';
+import { createDefaultComputeInstances } from './compute';
+import { createDefaultTrailConfig } from './logging';
 
 export interface SecurityPillarScore {
   pillarNameEn: string;
@@ -43,6 +49,14 @@ export interface CloudAntiCheatFlags {
   postureScoreFalsified?: boolean;
   loggingTamperedToHideAlerts?: boolean;
   architectureValidatorBypassed?: boolean;
+
+  deleteProductionResources?: boolean;
+  disableApplication?: boolean;
+  grantEveryoneAdmin?: boolean;
+  disableAllIdentities?: boolean;
+  makeAllStorageInaccessible?: boolean;
+  removeAllNetworkConnectivity?: boolean;
+  blockAllInboundTraffic?: boolean;
 }
 
 export interface CloudMasterChallengeState {
@@ -55,6 +69,28 @@ export interface CloudMasterChallengeState {
   antiCheatFlags?: CloudAntiCheatFlags;
   reachabilityVerified?: boolean;
   businessContinuityVerified?: boolean;
+}
+
+/**
+ * Creates the initial, unsolved Cloud Master Challenge state.
+ * testedAuthorizationsPassed begins false.
+ */
+export function createDefaultCloudMasterChallengeState(): CloudMasterChallengeState {
+  const sgs = createDefaultSecurityGroups();
+  return {
+    infraState: {
+      buckets: createDefaultStorageBuckets(),
+      securityGroups: [sgs.webAlbSg, sgs.appWorkloadSg, sgs.dbTierSg, sgs.vulnerableOpenSshSg],
+      principals: createDefaultCloudIdentities().principals,
+      policies: ALL_PRESET_POLICIES,
+      computeInstances: createDefaultComputeInstances(),
+      trailConfig: { ...createDefaultTrailConfig(), isLogging: false, enableLogFileValidation: false },
+      rootHasActiveAccessKey: true,
+    },
+    incidentCase: createDefaultCloudIncident(),
+    appliedRemediations: new Set(),
+    testedAuthorizationsPassed: false,
+  };
 }
 
 export interface CloudMasterValidationResult {
@@ -262,6 +298,29 @@ export function validateCloudMasterChallenge(challengeState: CloudMasterChalleng
     antiCheatViolations.push('Anti-Cheat: Architecture security validator was bypassed or suppressed.');
   }
 
+  // Explicit anti-cheat conditions for remediation abuse
+  if (flags.deleteProductionResources) {
+    antiCheatViolations.push('Anti-Cheat: Security remediation cannot delete required production infrastructure.');
+  }
+  if (flags.disableApplication) {
+    antiCheatViolations.push('Anti-Cheat: Hardening cannot disable customer-facing application functionality.');
+  }
+  if (flags.grantEveryoneAdmin) {
+    antiCheatViolations.push('Anti-Cheat: Granting universal administrative access violates least privilege.');
+  }
+  if (flags.disableAllIdentities) {
+    antiCheatViolations.push('Anti-Cheat: Security controls must preserve legitimate identity access.');
+  }
+  if (flags.makeAllStorageInaccessible) {
+    antiCheatViolations.push('Anti-Cheat: Required business data must remain accessible to approved workloads.');
+  }
+  if (flags.removeAllNetworkConnectivity) {
+    antiCheatViolations.push('Anti-Cheat: Business-critical application paths must remain functional.');
+  }
+  if (flags.blockAllInboundTraffic) {
+    antiCheatViolations.push('Anti-Cheat: Customer portal must remain reachable through the intended public entry point.');
+  }
+
   // 2. Behavioral Anti-Cheat: Trivial S3 mutation
   // If bucket is marked !isPubliclyExposed but BPA blockPublicPolicy and blockPublicAcls are false
   const rawBucket = challengeState.infraState.buckets.find((b) => b.name === 'nexora-analytics-raw-bucket');
@@ -282,6 +341,71 @@ export function validateCloudMasterChallenge(challengeState: CloudMasterChalleng
   // 4. Behavioral Anti-Cheat: Disabling logging to hide alerts
   if (!challengeState.infraState.trailConfig.isLogging) {
     antiCheatViolations.push('Anti-Cheat: Central audit logging is disabled (blind spot anti-pattern).');
+  }
+
+  // 5. Derived Anti-Cheat from infrastructure state
+  // Check if compute resources were deleted or disabled
+  if (
+    !challengeState.infraState.computeInstances ||
+    challengeState.infraState.computeInstances.length === 0 ||
+    challengeState.infraState.computeInstances.every((i) => i.status === 'STOPPED')
+  ) {
+    if (!flags.disableApplication && !flags.deleteProductionResources) {
+      antiCheatViolations.push('Anti-Cheat: Hardening cannot disable customer-facing application functionality.');
+    }
+  }
+
+  // Check if all storage was deleted or made inaccessible
+  if (!challengeState.infraState.buckets || challengeState.infraState.buckets.length === 0) {
+    if (!flags.makeAllStorageInaccessible) {
+      antiCheatViolations.push('Anti-Cheat: Required business data must remain accessible to approved workloads.');
+    }
+  }
+
+  // Check if all identities were disabled or deleted
+  if (
+    !challengeState.infraState.principals ||
+    challengeState.infraState.principals.length === 0 ||
+    challengeState.infraState.principals.every(
+      (p) => p.attachedPolicyIds.length === 0 && p.accessKeys.every((k) => k.status === 'REVOKED' || k.status === 'INACTIVE')
+    )
+  ) {
+    if (!flags.disableAllIdentities) {
+      antiCheatViolations.push('Anti-Cheat: Security controls must preserve legitimate identity access.');
+    }
+  }
+
+  // Check if universal admin access was granted broadly
+  const nonAdminPrincipalsWithWildcardAdmin = challengeState.infraState.principals?.filter((pr) => {
+    if (pr.name === 'root' || pr.name === 'admin-secops') return false;
+    return pr.attachedPolicyIds.some((pId: string) => {
+      const pol = challengeState.infraState.policies?.find((p) => p.id === pId);
+      return pol?.isWildcardAdmin || pol?.statements.some((s) => s.actions.includes('*') && s.resources.includes('*') && s.effect === 'ALLOW');
+    });
+  });
+  if (nonAdminPrincipalsWithWildcardAdmin && nonAdminPrincipalsWithWildcardAdmin.length > 0) {
+    if (!flags.grantEveryoneAdmin) {
+      antiCheatViolations.push('Anti-Cheat: Granting universal administrative access violates least privilege.');
+    }
+  }
+
+  // Check if all network connectivity removed
+  if (
+    !challengeState.infraState.securityGroups ||
+    challengeState.infraState.securityGroups.length === 0 ||
+    challengeState.infraState.securityGroups.every((sg) => sg.ingressRules.length === 0 && sg.egressRules.length === 0)
+  ) {
+    if (!flags.removeAllNetworkConnectivity) {
+      antiCheatViolations.push('Anti-Cheat: Business-critical application paths must remain functional.');
+    }
+  }
+
+  // Check if public ALB ingress was completely removed
+  const webAlbSg = challengeState.infraState.securityGroups?.find((sg) => sg.id === 'sg-prod-web-alb');
+  if (webAlbSg && webAlbSg.ingressRules.length === 0) {
+    if (!flags.blockAllInboundTraffic) {
+      antiCheatViolations.push('Anti-Cheat: Customer portal must remain reachable through the intended public entry point.');
+    }
   }
 
   // ==========================================

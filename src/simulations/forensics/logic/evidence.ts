@@ -4,6 +4,9 @@
  * Fully deterministic - no Date.now, Math.random, or local timers.
  */
 
+import { SecurityTelemetryEvent } from '../../soc/logic/telemetry';
+import { calculateEvidenceHash } from './hashing';
+
 export interface ForensicEvidence {
   id: string;
   type:
@@ -27,6 +30,38 @@ export interface ForensicEvidence {
   integrityStatus: 'VERIFIED' | 'MISMATCH' | 'NOT_VERIFIED';
 
   metadata: Record<string, unknown>;
+}
+
+/**
+ * Maps a unified SOC telemetry event into a Forensics-compatible evidence reference.
+ * Retains deterministic virtual time, source world, event type, resource, and raw event ID.
+ */
+export function createForensicEvidenceFromTelemetry(event: SecurityTelemetryEvent): ForensicEvidence {
+  const metadata: Record<string, unknown> = {
+    sourceWorld: event.sourceWorld,
+    eventType: event.eventType,
+    virtualTime: event.virtualTime,
+    resource: event.resource || 'unknown-resource',
+    sourceIp: event.sourceIp || '0.0.0.0',
+    rawEventId: event.rawEventId || event.id,
+    severity: event.severity,
+    category: event.category,
+    outcome: event.outcome,
+    ...event.attributes,
+  };
+  const hash = calculateEvidenceHash(metadata);
+  return {
+    id: `EVD-${event.sourceWorld}-${event.rawEventId || event.id}`,
+    type: 'LOG_EXPORT',
+    sourceHost: event.host || (event.sourceWorld === 'CLOUD' ? 'CLOUD-VPC-PROD' : 'HOST-01'),
+    sourceUser: event.user || 'system',
+    acquiredAtVirtualTime: event.virtualTime,
+    originalHash: hash,
+    currentHash: hash,
+    preserved: true,
+    integrityStatus: 'VERIFIED',
+    metadata,
+  };
 }
 
 export interface ForensicsCase {

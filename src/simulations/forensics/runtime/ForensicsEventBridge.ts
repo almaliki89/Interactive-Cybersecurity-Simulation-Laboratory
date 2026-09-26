@@ -163,6 +163,35 @@ export class ForensicsEventBridge {
           });
         }
       }
+
+      if (type === 'CLOUD_DATA_EXFILTRATION' || type === 'CLOUD_IMDS_CREDENTIAL_THEFT' || type === 'CLOUD_STORAGE_ACCESS') {
+        const rawId = rawEvt.id || `cloud-${vTime}-${type}`;
+        const id = `EVD-${type}`;
+        if (!this.evidenceMap.has(id)) {
+          const payload = {
+            sourceWorld: 'CLOUD',
+            eventType: type,
+            virtualTime: vTime,
+            resource: rawEvt.payload?.resource || rawEvt.payload?.bucketName || rawEvt.target || 'finance storage',
+            sourceIp: rawEvt.payload?.sourceIPAddress || rawEvt.payload?.sourceIp || rawEvt.source || '198.51.100.44',
+            rawEventId: rawId,
+            ...rawEvt.payload,
+          };
+          const hash = calculateEvidenceHash(payload);
+          this.evidenceMap.set(id, {
+            id,
+            type: 'LOG_EXPORT',
+            sourceHost: 'CLOUD-VPC-PROD',
+            sourceUser: rawEvt.payload?.user || rawEvt.payload?.userName || 'iam-role-finance-reader',
+            acquiredAtVirtualTime: vTime,
+            originalHash: hash,
+            currentHash: hash,
+            preserved: true,
+            integrityStatus: 'VERIFIED',
+            metadata: payload,
+          });
+        }
+      }
     });
 
     this.notifyListeners();

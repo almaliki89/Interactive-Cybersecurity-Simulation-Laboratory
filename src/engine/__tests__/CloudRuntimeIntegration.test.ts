@@ -17,6 +17,8 @@ import { loadCloudAttackScenario } from '../../simulations/cloud/runtime/CloudAt
 import { SocEventBridge } from '../../simulations/soc/runtime/SocEventBridge';
 import { normalizeCloudEvent } from '../../simulations/cloud/runtime/normalizeCloudEvent';
 import { TELEMETRY_CATEGORIES } from '../../simulations/soc/logic/telemetry';
+import { ForensicsEventBridge } from '../../simulations/forensics/runtime/ForensicsEventBridge';
+import { createForensicEvidenceFromTelemetry } from '../../simulations/forensics/logic/evidence';
 
 describe('Cloud Runtime Integration & Deterministic Replay', () => {
   let runtime: SimulationRuntime;
@@ -200,5 +202,67 @@ describe('Cloud Runtime Integration & Deterministic Replay', () => {
       expect(normalized.outcome).toBeDefined();
       expect(normalized.user).toBe('test-user');
     }
+  });
+
+  it('guarantees complete cross-world Cloud → SOC → Forensics pipeline compatibility and deterministic evidence generation', () => {
+    // Pipeline Flow:
+    // SimulationRuntime -> CloudAttackScenario -> CloudEventBridge -> SecurityTelemetryEvent -> SocEventBridge -> Forensics-compatible evidence reference
+    const socBridge = new SocEventBridge(runtime);
+    const forensicsBridge = new ForensicsEventBridge(runtime);
+
+    loadCloudAttackScenario(runtime, { startVirtualTime: 0 });
+
+    // Step to T=1500 where CLOUD_DATA_EXFILTRATION (T=1200) and CLOUD_IMDS_CREDENTIAL_THEFT (T=450) have occurred
+    runtime.step(1500);
+
+    // 1. Cloud Event Exists in SimulationRuntime
+    const runtimeEvents = runtime.getState().events;
+    const exfilRaw = runtimeEvents.find((e) => e.type === 'CLOUD_DATA_EXFILTRATION');
+    expect(exfilRaw).toBeDefined();
+    expect(exfilRaw?.virtualTime).toBe(1200);
+
+    // 2. CloudEventBridge produces normalized SecurityTelemetryEvent
+    const cloudSocTelemetry = bridge.getSocTelemetryEvents();
+    const cloudExfilSoc = cloudSocTelemetry.find((e) => e.eventType === 'CLOUD_DATA_EXFILTRATION');
+    expect(cloudExfilSoc).toBeDefined();
+    expect(cloudExfilSoc?.sourceWorld).toBe('CLOUD');
+    expect(cloudExfilSoc?.virtualTime).toBe(1200);
+    expect(cloudExfilSoc?.resource).toBe('nexora-analytics-raw-bucket');
+
+    // 3. SocEventBridge receives and normalizes the event
+    const socTelemetry = socBridge.getTelemetry();
+    const socExfil = socTelemetry.find((e) => e.eventType === 'CLOUD_DATA_EXFILTRATION');
+    expect(socExfil).toBeDefined();
+    expect(socExfil?.sourceWorld).toBe('CLOUD');
+    expect(socExfil?.virtualTime).toBe(1200);
+    expect(socExfil?.resource).toBe('nexora-analytics-raw-bucket');
+    expect(socExfil?.outcome).toBe('ANOMALY');
+
+    // 4. Forensics receives or constructs evidence from the same event reference
+    const acquiredEvidence = forensicsBridge.getAcquiredEvidence();
+    const cloudEvidence = acquiredEvidence.find((ev) => ev.metadata?.eventType === 'CLOUD_DATA_EXFILTRATION');
+    expect(cloudEvidence).toBeDefined();
+    expect(cloudEvidence?.metadata.sourceWorld).toBe('CLOUD');
+    expect(cloudEvidence?.metadata.eventType).toBe('CLOUD_DATA_EXFILTRATION');
+    expect(cloudEvidence?.acquiredAtVirtualTime).toBe(1200);
+    expect(cloudEvidence?.integrityStatus).toBe('VERIFIED');
+    expect(cloudEvidence?.originalHash).toBeDefined();
+
+    // 5. Test adapter construction from normalized SOC telemetry
+    const directEvidence = createForensicEvidenceFromTelemetry(socExfil!);
+    expect(directEvidence.id).toContain('CLOUD');
+    expect(directEvidence.acquiredAtVirtualTime).toBe(1200);
+    expect(directEvidence.metadata.sourceWorld).toBe('CLOUD');
+    expect(directEvidence.metadata.eventType).toBe('CLOUD_DATA_EXFILTRATION');
+    expect(directEvidence.integrityStatus).toBe('VERIFIED');
+
+    // 6. Reset clears associated Cloud evidence state
+    runtime.reset();
+    expect(bridge.getAuditLogs().length).toBe(0);
+    expect(bridge.getSocTelemetryEvents().length).toBe(0);
+    expect(forensicsBridge.getAcquiredEvidence().length).toBe(0);
+
+    socBridge.destroy();
+    forensicsBridge.destroy();
   });
 });

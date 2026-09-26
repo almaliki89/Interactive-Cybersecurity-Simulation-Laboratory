@@ -84,6 +84,7 @@ import {
   calculateCspmBenchmark,
   validateCloudMasterChallenge,
   CloudMasterChallengeState,
+  createDefaultCloudMasterChallengeState,
 } from '../../simulations/cloud/logic/hardening';
 
 describe('1. Cloud Organization & Multi-Account Blast Radius', () => {
@@ -860,5 +861,152 @@ describe('14. Business Continuity Validation', () => {
     expect(val.isPassed).toBe(false);
     expect(val.businessContinuityPassed).toBe(false);
     expect(val.failedChecks.some((f) => f.includes('Authorized legitimate role assumption'))).toBe(true);
+  });
+});
+
+describe('15. Cloud Master Challenge Initial State & Anti-Cheat Suite', () => {
+  const defaultSgs = createDefaultSecurityGroups();
+
+  const getValidHardenedState = (): CloudMasterChallengeState => {
+    const completedIncident = createDefaultCloudIncident();
+    completedIncident.playbookActions.forEach((a) => (a.isExecuted = true));
+    completedIncident.currentStage = 'RESOLVED';
+
+    return {
+      infraState: {
+        buckets: createDefaultStorageBuckets().map((b) => ({
+          ...b,
+          isPubliclyExposed: false,
+          publicAccessBlock: {
+            blockPublicAcls: true,
+            ignorePublicAcls: true,
+            blockPublicPolicy: true,
+            restrictPublicBuckets: true,
+          },
+          encryption: { ...b.encryption, enabled: true },
+          accessLogging: { enabled: true, targetBucket: 'nexora-central-audit-logs-immutable' },
+        })),
+        securityGroups: [defaultSgs.webAlbSg, defaultSgs.appWorkloadSg, defaultSgs.dbTierSg],
+        principals: createDefaultCloudIdentities().principals,
+        policies: ALL_PRESET_POLICIES.filter((p) => !p.isWildcardAdmin),
+        computeInstances: createDefaultComputeInstances().map((i) =>
+          enforceImdsv2OnInstance({
+            ...i,
+            vulnerabilities: i.vulnerabilities.map((v) => ({ ...v, isPatched: true })),
+          })
+        ),
+        trailConfig: {
+          ...createDefaultTrailConfig(),
+          isLogging: true,
+          enableLogFileValidation: true,
+          isMultiRegionTrail: true,
+        },
+        rootHasActiveAccessKey: false,
+      },
+      incidentCase: completedIncident,
+      appliedRemediations: new Set(['S3_BPA', 'CLOSE_SSH', 'ENFORCE_IMDSV2', 'ENABLE_TRAIL', 'DELETE_ROOT_KEY']),
+      testedAuthorizationsPassed: true,
+    };
+  };
+
+  it('initializes Cloud Master Challenge in an unsolved state with testedAuthorizationsPassed as false', () => {
+    const initial = createDefaultCloudMasterChallengeState();
+    expect(initial.testedAuthorizationsPassed).toBe(false);
+    const validation = validateCloudMasterChallenge(initial);
+    expect(validation.isPassed).toBe(false);
+    expect(validation.failedChecks.length).toBeGreaterThan(0);
+  });
+
+  it('valid hardened state passes all CIS benchmark, anti-cheat, and continuity checks', () => {
+    const state = getValidHardenedState();
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(true);
+    expect(val.failedChecks.length).toBe(0);
+    expect(val.antiCheatViolations.length).toBe(0);
+    expect(val.businessContinuityPassed).toBe(true);
+  });
+
+  // Anti-Cheat Condition 1: blockAllInboundTraffic
+  it('detects and independently fails on blockAllInboundTraffic defect', () => {
+    const state = getValidHardenedState();
+    state.antiCheatFlags = { blockAllInboundTraffic: true };
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations).toContain(
+      'Anti-Cheat: Customer portal must remain reachable through the intended public entry point.'
+    );
+  });
+
+  // Anti-Cheat Condition 2: deleteProductionResources
+  it('detects and independently fails on deleteProductionResources defect', () => {
+    const state = getValidHardenedState();
+    state.antiCheatFlags = { deleteProductionResources: true };
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations).toContain(
+      'Anti-Cheat: Security remediation cannot delete required production infrastructure.'
+    );
+  });
+
+  // Anti-Cheat Condition 3: disableApplication
+  it('detects and independently fails on disableApplication defect', () => {
+    const state = getValidHardenedState();
+    state.antiCheatFlags = { disableApplication: true };
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations).toContain(
+      'Anti-Cheat: Hardening cannot disable customer-facing application functionality.'
+    );
+  });
+
+  // Anti-Cheat Condition 4: grantEveryoneAdmin
+  it('detects and independently fails on grantEveryoneAdmin defect', () => {
+    const state = getValidHardenedState();
+    state.antiCheatFlags = { grantEveryoneAdmin: true };
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations).toContain(
+      'Anti-Cheat: Granting universal administrative access violates least privilege.'
+    );
+  });
+
+  // Anti-Cheat Condition 5: disableAllIdentities
+  it('detects and independently fails on disableAllIdentities defect', () => {
+    const state = getValidHardenedState();
+    state.antiCheatFlags = { disableAllIdentities: true };
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations).toContain(
+      'Anti-Cheat: Security controls must preserve legitimate identity access.'
+    );
+  });
+
+  // Anti-Cheat Condition 6: makeAllStorageInaccessible
+  it('detects and independently fails on makeAllStorageInaccessible defect', () => {
+    const state = getValidHardenedState();
+    state.antiCheatFlags = { makeAllStorageInaccessible: true };
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations).toContain(
+      'Anti-Cheat: Required business data must remain accessible to approved workloads.'
+    );
+  });
+
+  // Anti-Cheat Condition 7: removeAllNetworkConnectivity
+  it('detects and independently fails on removeAllNetworkConnectivity defect', () => {
+    const state = getValidHardenedState();
+    state.antiCheatFlags = { removeAllNetworkConnectivity: true };
+
+    const val = validateCloudMasterChallenge(state);
+    expect(val.isPassed).toBe(false);
+    expect(val.antiCheatViolations).toContain(
+      'Anti-Cheat: Business-critical application paths must remain functional.'
+    );
   });
 });

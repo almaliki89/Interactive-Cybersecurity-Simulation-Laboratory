@@ -15,14 +15,8 @@ import {
   validateCloudMasterChallenge,
   calculateCspmBenchmark,
   CloudMasterChallengeState,
+  createDefaultCloudMasterChallengeState,
 } from './logic/hardening';
-import { createDefaultStorageBuckets } from './logic/storage';
-import { createDefaultSecurityGroups } from './logic/securityGroups';
-import { createDefaultCloudIdentities } from './logic/identity';
-import { ALL_PRESET_POLICIES } from './logic/policies';
-import { createDefaultComputeInstances } from './logic/compute';
-import { createDefaultTrailConfig } from './logic/logging';
-import { createDefaultCloudIncident } from './logic/incidents';
 import {
   Sparkles,
   Shield,
@@ -42,21 +36,7 @@ export const CloudMasterChallenge: React.FC = () => {
   const isAr = language === 'ar';
 
   const initializeFreshChallenge = (): CloudMasterChallengeState => {
-    const sgs = createDefaultSecurityGroups();
-    return {
-      infraState: {
-        buckets: createDefaultStorageBuckets(),
-        securityGroups: [sgs.webAlbSg, sgs.appWorkloadSg, sgs.dbTierSg, sgs.vulnerableOpenSshSg],
-        principals: createDefaultCloudIdentities().principals,
-        policies: ALL_PRESET_POLICIES,
-        computeInstances: createDefaultComputeInstances(),
-        trailConfig: { ...createDefaultTrailConfig(), isLogging: false, enableLogFileValidation: false }, // Flaw
-        rootHasActiveAccessKey: true, // Flaw
-      },
-      incidentCase: createDefaultCloudIncident(),
-      appliedRemediations: new Set(),
-      testedAuthorizationsPassed: true,
-    };
+    return createDefaultCloudMasterChallengeState();
   };
 
   const [state, setState] = useState<CloudMasterChallengeState>(initializeFreshChallenge);
@@ -162,7 +142,16 @@ export const CloudMasterChallenge: React.FC = () => {
     }));
   };
 
-  // Learner action 6: Execute Playbook Action
+  // Learner action 6: Test Workload Authorizations
+  const actionTestAuthorizations = () => {
+    setState((prev) => ({
+      ...prev,
+      testedAuthorizationsPassed: true,
+      appliedRemediations: new Set(prev.appliedRemediations).add('TEST_AUTH'),
+    }));
+  };
+
+  // Learner action 7: Execute Playbook Action
   const togglePlaybookAction = (actionId: string) => {
     setState((prev) => {
       const updatedActions = prev.incidentCase.playbookActions.map((a) =>
@@ -392,6 +381,30 @@ export const CloudMasterChallenge: React.FC = () => {
                     className="px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs"
                   >
                     Delete Root Keys
+                  </button>
+                )}
+              </div>
+
+              {/* Workload Authorizations Validation Action */}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between sm:col-span-2">
+                <div>
+                  <span className="font-bold text-white block">
+                    {isAr ? 'اختبار تفويضات أدوار العمل المشروعة' : 'Test Legitimate Workload Authorizations'}
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {isAr
+                      ? 'التحقق من صحة تقمص الأدوار وسياسات الامتياز الأدنى لأعباء العمل'
+                      : 'Verify application role assumptions and least-privilege policies'}
+                  </span>
+                </div>
+                {state.testedAuthorizationsPassed ? (
+                  <span className="text-[10px] font-bold text-emerald-400">VERIFIED ✓</span>
+                ) : (
+                  <button
+                    onClick={actionTestAuthorizations}
+                    className="px-3 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white font-bold text-xs"
+                  >
+                    {isAr ? 'فحص التفويضات' : 'Verify Authorizations'}
                   </button>
                 )}
               </div>
