@@ -802,7 +802,7 @@ export const WORLDS_REGISTRY: Record<number, WorldDefinition> = {
     descriptionAr: 'تحكم في خط الإنتاج البرمجي CI/CD: فعل بوابات الفحص الأمني التلقائي (Security Gates) لمنع تمرير الأكواد المحتوية على أسرار مكشوفة أو مكتبات ملغومة.',
     descriptionEn: 'Interactive CI/CD pipeline visualizer: toggle automated SAST and secret-detection gates to stop vulnerable builds before production deployment.',
     difficulty: 'Intermediate',
-    simulationType: 'cloud_containers',
+    simulationType: 'devsecops',
     iconName: 'Workflow',
     prerequisites: [9, 20],
     relatedWorlds: [9, 12, 13, 20, 23],

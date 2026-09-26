@@ -46,6 +46,9 @@ const CloudSimulation = React.lazy(() =>
 const ContainerSimulation = React.lazy(() =>
   import('./containers/ContainerSimulation').then((m) => ({ default: m.ContainerSimulation }))
 );
+const DevSecOpsSimulation = React.lazy(() =>
+  import('./devsecops/DevSecOpsSimulation').then((m) => ({ default: m.DevSecOpsSimulation }))
+);
 const ThreatHuntingSimulation = React.lazy(() =>
   import('./threat/ThreatHuntingSimulation').then((m) => ({ default: m.ThreatHuntingSimulation }))
 );
@@ -324,6 +327,15 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
     domain: 'containers',
     component: ContainerSimulation,
     worldId: 20,
+    category: 'lab',
+  },
+  devsecops: {
+    id: 'devsecops',
+    nameAr: 'عالم أمن سلاسل التوريد وDevSecOps (Nexora CI/CD)',
+    nameEn: 'DevSecOps & Software Supply Chain World',
+    domain: 'devsecops',
+    component: DevSecOpsSimulation,
+    worldId: 22,
     category: 'lab',
   },
   siem: {
