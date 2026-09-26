@@ -202,7 +202,7 @@ export function loadDevSecOpsAttackScenario(runtime: SimulationRuntime): void {
   for (const evt of CANONICAL_DEVSECOPS_TIMELINE) {
     runtime.schedule({
       id: `devsec-evt-${evt.virtualTime}`,
-      virtualTime: evt.virtualTime,
+      at: evt.virtualTime,
       type: evt.type,
       source: evt.source,
       target: evt.target,

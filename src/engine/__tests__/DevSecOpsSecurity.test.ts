@@ -250,5 +250,135 @@ describe('OMEGA V15 — DevSecOps, IaC Security & Supply Chain World', () => {
       expect(validation.score).toBe(100);
       expect(validation.failedChecks.length).toBe(0);
     });
+
+    it('rejects deletion of SAST findings with anti-cheat violation', () => {
+      const state = createDefaultDevSecOpsMasterState();
+      state.sastFindings = []; // empty array cheat
+      const res = validateDevSecOpsMasterChallenge(state);
+      expect(res.isPassed).toBe(false);
+      expect(res.score).toBe(0);
+      expect(res.antiCheatViolations).toContain('SAST findings array tampered or deleted. Vulnerabilities must be preserved and fully remediated.');
+    });
+
+    it('rejects deletion of SCA dependencies with anti-cheat violation', () => {
+      const state = createDefaultDevSecOpsMasterState();
+      state.dependencies = []; // empty array cheat
+      const res = validateDevSecOpsMasterChallenge(state);
+      expect(res.isPassed).toBe(false);
+      expect(res.score).toBe(0);
+      expect(res.antiCheatViolations).toContain('SCA dependencies array tampered or deleted. Package records must be preserved and fully updated.');
+    });
+
+    it('rejects active pipeline bypass with anti-cheat violation', () => {
+      const state = createDefaultDevSecOpsMasterState();
+      
+      // Fully remediate everything
+      state.sastFindings = state.sastFindings.map((f) => ({ ...f, remediated: true }));
+      state.dependencies = state.dependencies.map((d) => ({ ...d, remediated: true, licenseCompliant: true }));
+      state.secretMatches = state.secretMatches.map((m) => ({ ...m, remediated: true, inCommitHistory: false }));
+      state.terraformResources = state.terraformResources.map((r) => ({ ...r, remediated: true, hasMisconfiguration: false }));
+      state.containerImages[0] = {
+        imageName: 'nexora-enterprise-service',
+        tag: 'v1.4.2',
+        digest: 'sha256:d57e1234567890abcdef',
+        vulnerabilitiesCount: 0,
+        signed: true,
+        trustedRegistry: true,
+        embeddedSecretsCount: 0,
+        sbomVerified: true,
+        hasCriticalVulns: false
+      };
+      state.sbomComponents = [
+        {
+          id: 'sbom-react',
+          name: 'react',
+          version: '19.0.1',
+          purl: 'pkg:npm/react@19.0.1',
+          type: 'framework',
+          license: 'MIT',
+          supplier: 'Meta Open Source',
+          hashes: [{ algo: 'SHA-256', digest: '9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d' }]
+        },
+        {
+          id: 'sbom-express',
+          name: 'express',
+          version: '4.21.2',
+          purl: 'pkg:npm/express@4.21.2',
+          type: 'library',
+          license: 'MIT',
+          supplier: 'OpenJS Foundation',
+          hashes: [{ algo: 'SHA-256', digest: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d' }]
+        },
+        {
+          id: 'sbom-distroless',
+          name: 'gcr.io/distroless/static-debian12',
+          version: 'nonroot',
+          purl: 'pkg:oci/distroless-static@sha256:881f3a2b1c0d9e8f7a6b5c4d3e2f1a0b',
+          type: 'container',
+          license: 'Apache-2.0',
+          supplier: 'Google Container Registry',
+          hashes: [{ algo: 'SHA-256', digest: '881f3a2b1c0d9e8f7a6b5c4d3e2f1a0b' }]
+        }
+      ];
+      state.slsaAttestation = {
+        slsaLevel: 3,
+        builderId: 'https://github.com/actions/runner',
+        buildType: 'https://slsa.dev/provenance/v1',
+        materials: [
+          { uri: 'git+https://github.com/nexora/enterprise-platform', digest: 'sha256:7f9a28b61a3d90fcb3b811883b276709...' }
+        ],
+        isSignedRekorLog: true,
+        verified: true
+      };
+      state.signatures[0] = {
+        artifactName: 'nexora-enterprise-service',
+        digest: 'sha256:d57e1234567890abcdef',
+        signed: true,
+        signature: 'sig-prod-fa88193aa77ff01b',
+        signerIdentity: 'github.com/nexora/enterprise-platform/.github/workflows/ci-cd-pipeline.yml@refs/heads/main',
+        certificateIssuer: 'https://token.actions.githubusercontent.com',
+        rekorEntry: 'rekor-uuid-7711-aa99',
+        verified: true
+      };
+      state.driftFindings = state.driftFindings.map((d) => ({ ...d, autoRemediated: true }));
+      state.complianceState = {
+        pciDssCompliant: true,
+        soc2Compliant: true,
+        iso27001Compliant: true,
+        failedControls: []
+      };
+      state.artifactState.tampered = false;
+      state.artifactState.digest = 'sha256:d57e1234567890abcdef';
+
+      // Ensure allowBypassOnFailure is true (which is a cheat attempt)
+      state.pipelineConfig = {
+        id: 'pipe-production-build',
+        name: 'Production DevSecOps Pipeline',
+        repository: 'github.com/nexora/enterprise-platform',
+        branch: 'main',
+        requireSastGate: true,
+        requireScaGate: true,
+        requireSecretScanGate: true,
+        requireIacScanGate: true,
+        requireContainerScanGate: true,
+        requireCosignSignatureGate: true,
+        allowBypassOnFailure: true, // cheat flag!
+      };
+
+      const res = validateDevSecOpsMasterChallenge(state);
+      expect(res.isPassed).toBe(false);
+      expect(res.score).toBe(0);
+      expect(res.antiCheatViolations).toContain('CI/CD Pipeline configuration bypass is active. Security quality gates must be non-bypassable (allowBypassOnFailure must be false) to achieve OMEGA status.');
+    });
+
+    it('rejects forged/untrusted SLSA builder with anti-cheat violation', () => {
+      const state = createDefaultDevSecOpsMasterState();
+      // Force verified = true but supply a rogue builder ID (forgery check)
+      state.slsaAttestation.verified = true;
+      state.slsaAttestation.builderId = 'https://github.com/untrusted/rogue-builder';
+
+      const res = validateDevSecOpsMasterChallenge(state);
+      expect(res.antiCheatViolations).toContain('SLSA Provenance builder is forged or untrusted.');
+    });
   });
 });

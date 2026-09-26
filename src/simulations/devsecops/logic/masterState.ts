@@ -919,8 +919,62 @@ export function validateDevSecOpsMasterChallenge(state: DevSecOpsMasterState): D
     failedChecks.push('Enforce all mandatory CI/CD security quality gates with zero bypass permissions');
   }
 
+  // 12. Explicit Anti-Cheat Violations
+  // Violation A: Deleting/clearing findings to bypass
+  if (state.sastFindings.length < 3) {
+    antiCheatViolations.push('SAST findings array tampered or deleted. Vulnerabilities must be preserved and fully remediated.');
+  }
+  if (state.dependencies.length < 3) {
+    antiCheatViolations.push('SCA dependencies array tampered or deleted. Package records must be preserved and fully updated.');
+  }
+  if (state.secretMatches.length < 2) {
+    antiCheatViolations.push('Git secrets matches array tampered or cleared. Secret scan history must be preserved and fully scrubbed.');
+  }
+  if (state.terraformResources.length < 2) {
+    antiCheatViolations.push('Terraform templates array tampered or deleted. Cloud resource definitions must be preserved and fully hardened.');
+  }
+  if (state.containerImages.length === 0) {
+    antiCheatViolations.push('Container image registry reference deleted or emptied. Secure target image validation is mandatory.');
+  }
+  if (state.sbomComponents.length < 3) {
+    antiCheatViolations.push('SBOM components cannot be cleared to bypass composition analysis.');
+  }
+
+  // Violation B: Pipeline bypass configuration active
+  if (config.allowBypassOnFailure) {
+    antiCheatViolations.push('CI/CD Pipeline configuration bypass is active. Security quality gates must be non-bypassable (allowBypassOnFailure must be false) to achieve OMEGA status.');
+  }
+  
+  // Violation C: Disabled mandatory quality gates
+  const mandatoryGatesEnabled =
+    config.requireSastGate &&
+    config.requireScaGate &&
+    config.requireSecretScanGate &&
+    config.requireIacScanGate &&
+    config.requireContainerScanGate &&
+    config.requireCosignSignatureGate;
+  if (!mandatoryGatesEnabled) {
+    antiCheatViolations.push('Mandatory CI/CD verification gates must remain enabled and configured correctly.');
+  }
+
+  // Violation D: Digital signatures or SLSA attestation integrity forged
+  if (state.signatures[0]) {
+    const signature = state.signatures[0];
+    if (signature.signed && (!signature.signature || !signature.signature.startsWith('sig-prod-'))) {
+      antiCheatViolations.push('Cosign software signature format is invalid or forged.');
+    }
+    if (signature.verified && signature.digest !== state.artifactState.digest) {
+      antiCheatViolations.push('Artifact signature verified status is forged. Digital signature digest must match the release artifact digest.');
+    }
+  }
+  if (state.slsaAttestation) {
+    if (state.slsaAttestation.verified && state.slsaAttestation.builderId !== 'https://github.com/actions/runner') {
+      antiCheatViolations.push('SLSA Provenance builder is forged or untrusted.');
+    }
+  }
+
   // Enforce Anti-Cheat: User must not bypass gate check requirements or manually force passing variables
-  if (state.antiCheatFlags) {
+  if (state.antiCheatFlags && antiCheatViolations.length === 0) {
     state.antiCheatFlags.sastVulnerabilitiesFixed = sastRemediated;
     state.antiCheatFlags.scaPackagesUpdatedAndLicensesVerified = scaRemediated;
     state.antiCheatFlags.hardcodedSecretsScrubbedFromGitHistory = secretsRemediated;
@@ -932,8 +986,20 @@ export function validateDevSecOpsMasterChallenge(state: DevSecOpsMasterState): D
 
   // Business Continuity check: If everything is hardened and remediated, pipeline allows the build and releases!
   // Secure release -> ALLOW, Vulnerable release -> BLOCK
-  const pipelineAllowed = pipelineScoreCheck.allowed;
+  const pipelineAllowed = pipelineScoreCheck.allowed && antiCheatViolations.length === 0;
   const businessContinuityPassed = pipelineAllowed && failedChecks.length === 0;
+
+  // If there are any anti-cheat violations, override everything
+  if (antiCheatViolations.length > 0) {
+    return {
+      isPassed: false,
+      failedChecks,
+      antiCheatViolations,
+      pipelineAllowed: false,
+      businessContinuityPassed: false,
+      score: 0
+    };
+  }
 
   const totalCriteria = 11;
   const completedCriteria = totalCriteria - failedChecks.length;
