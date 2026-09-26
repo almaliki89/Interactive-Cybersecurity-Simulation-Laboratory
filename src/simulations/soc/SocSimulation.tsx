@@ -14,6 +14,7 @@ import { IncidentTimelineLab } from './IncidentTimelineLab';
 import { ContainmentDecisionLab } from './ContainmentDecisionLab';
 import { DetectionEngineeringLab } from './DetectionEngineeringLab';
 import { SocMasterChallenge } from './SocMasterChallenge';
+import { SocWorkstation } from './components/SocWorkstation';
 
 export type SocLabId =
   | 'map'
@@ -30,12 +31,15 @@ export type SocLabId =
   | 'timeline'
   | 'containment'
   | 'detection_engineering'
+  | 'workstation'
   | 'challenge';
 
 export const SocSimulation: React.FC = () => {
-  const [activeLab, setActiveLab] = useState<SocLabId>('map');
+  const [activeLab, setActiveLab] = useState<SocLabId>('workstation');
 
   switch (activeLab) {
+    case 'workstation':
+      return <SocWorkstation onBackToMap={() => setActiveLab('map')} />;
     case 'ingestion':
       return (
         <TelemetryIngestionLab

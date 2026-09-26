@@ -30,6 +30,25 @@ export const SocWorldMap: React.FC<SocWorldMapProps> = ({ onSelectLab }) => {
 
   const labClusters = [
     {
+      clusterNameEn: 'Security Operations Workstation',
+      clusterNameAr: 'منصة إدارة العمليات الأمنية والتحقيق',
+      descriptionEn: 'Integrated analyst workstation for alert triage, investigation, and incident response.',
+      descriptionAr: 'منصة العمل الموحدة للمحللين لفرز التنبيهات والتحقيق والاحتواء.',
+      color: 'from-cyan-500/20 to-blue-500/10 border-cyan-500/30',
+      labs: [
+        {
+          id: 'workstation',
+          titleEn: 'SOC Investigation Workstation',
+          titleAr: 'منصة التحقيق في العمليات الأمنية',
+          subtitleEn: 'Unified analyst console for triage, timeline, and forensics correlation',
+          subtitleAr: 'واجهة المحلل الموحدة لفرز التنبيهات والخط الزمني للأدلة',
+          icon: ShieldAlert,
+          badge: 'Operations Hub',
+          badgeColor: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+        },
+      ],
+    },
+    {
       clusterNameEn: 'Telemetry Ingestion & SIEM Core',
       clusterNameAr: 'طبقة تدفق السجلات ومحرك SIEM المركزي',
       descriptionEn: 'Unified cross-world telemetry normalization, enrichment, and safe querying.',
