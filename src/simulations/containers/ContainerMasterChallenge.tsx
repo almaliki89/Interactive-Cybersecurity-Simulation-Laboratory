@@ -1,17 +1,21 @@
 /**
- * OMEGA V14 — Container & Kubernetes Security Master Challenge
- * Flagship interactive enterprise defense challenge with strict Anti-Cheat validation.
+ * OMEGA V14.3 — Container & Kubernetes Security Master Challenge
+ * Flagship interactive enterprise defense challenge with strict Anti-Cheat validation & Master State wiring.
  */
 
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
-import { getInitialContainerAntiCheatFlags, evaluateContainerMasterChallenge } from './logic/antiCheat';
-import { createDefaultKubernetesMasterState, validateKubernetesMasterChallenge } from './logic/masterState';
-import { ContainerAntiCheatFlags, KubernetesMasterState, KubernetesNetworkPolicy } from './logic/types';
+import { getInitialContainerAntiCheatFlags } from './logic/antiCheat';
+import {
+  createDefaultKubernetesMasterState,
+  createHardenedKubernetesMasterState,
+  validateKubernetesMasterChallenge,
+} from './logic/masterState';
+import { ContainerAntiCheatFlags, KubernetesMasterState } from './logic/types';
 import { containerEventBridge } from './runtime/ContainerEventBridge';
 import { evaluateKubernetesAuthorization } from './logic/rbac';
 import { evaluatePodNetworkReachability } from './logic/networkPolicies';
-import { Terminal, ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, Trophy, Sparkles, ArrowRight, Play } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, Trophy, Play, Zap, ShieldAlert } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const ContainerMasterChallenge: React.FC = () => {
@@ -25,8 +29,112 @@ export const ContainerMasterChallenge: React.FC = () => {
   const [authTestLogs, setAuthTestLogs] = useState<string[]>([]);
   const [netTestLogs, setNetTestLogs] = useState<string[]>([]);
 
+  const applyHardenedState = () => {
+    const hardened = createHardenedKubernetesMasterState();
+    setMasterState(hardened);
+    setFlags({
+      imageSecuredWithNonRootAndDistroless: true,
+      dangerousCapabilitiesDropped: true,
+      hostSockAndPrivilegedDisabled: true,
+      rbacWildcardsAndExecEliminated: true,
+      defaultDenyNetworkPolicyEnforced: true,
+      etcdKmsEncryptionEnabled: true,
+      falcoRuntimeRulesActiveAndQuarantineVerified: true,
+      noStateTampering: true,
+    });
+    setTested(false);
+  };
+
+  const applyVulnerableState = () => {
+    const vuln = createDefaultKubernetesMasterState();
+    setMasterState(vuln);
+    setFlags(getInitialContainerAntiCheatFlags());
+    setTested(false);
+  };
+
   const toggleFlag = (key: keyof ContainerAntiCheatFlags) => {
-    setFlags((prev) => ({ ...prev, [key]: !prev[key] }));
+    const newVal = !flags[key];
+    const newFlags = { ...flags, [key]: newVal };
+    setFlags(newFlags);
+
+    // Sync KubernetesMasterState with flag toggle
+    setMasterState((prev) => {
+      const next = { ...prev, antiCheatFlags: { ...prev.antiCheatFlags, [key]: newVal } };
+
+      if (key === 'imageSecuredWithNonRootAndDistroless') {
+        next.images = next.images.map((img) => ({ ...img, isSignedCosign: newVal, runsAsUser: newVal ? 'nonroot' : 'root' }));
+        next.pods = next.pods.map((p) => ({
+          ...p,
+          image: { ...p.image, isSignedCosign: newVal, runsAsUser: newVal ? 'nonroot' : 'root' },
+        }));
+      } else if (key === 'dangerousCapabilitiesDropped') {
+        next.pods = next.pods.map((p) => ({
+          ...p,
+          securityContext: {
+            ...p.securityContext,
+            capabilitiesAdd: newVal ? [] : ['CAP_SYS_ADMIN'],
+            capabilitiesDrop: newVal ? ['CAP_SYS_ADMIN'] : [],
+          },
+        }));
+      } else if (key === 'hostSockAndPrivilegedDisabled') {
+        next.pods = next.pods.map((p) => ({
+          ...p,
+          securityContext: { ...p.securityContext, privileged: !newVal },
+          volumeMounts: newVal
+            ? []
+            : [{ name: 'dockersock', mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock', isReadOnly: false, isSensitiveHostMount: true }],
+        }));
+      } else if (key === 'rbacWildcardsAndExecEliminated') {
+        if (newVal) {
+          next.roles = [
+            { id: 'r-1', name: 'frontend-reader', namespace: 'frontend', isClusterRole: false, rules: [{ apiGroups: [''], resources: ['pods'], verbs: ['get', 'list'] }] },
+          ];
+          next.bindings = [
+            { id: 'b-1', name: 'frontend-reader-binding', namespace: 'frontend', isClusterRoleBinding: false, roleRefName: 'frontend-reader', subjects: [{ kind: 'ServiceAccount', name: 'frontend-sa', namespace: 'frontend' }] },
+          ];
+        } else {
+          next.roles = [
+            { id: 'role-wildcard', name: 'frontend-wildcard-role', namespace: 'frontend', isClusterRole: false, rules: [{ apiGroups: ['*'], resources: ['*'], verbs: ['*'] }] },
+          ];
+          next.bindings = [
+            { id: 'binding-wildcard', name: 'frontend-sa-wildcard-binding', namespace: 'frontend', isClusterRoleBinding: false, roleRefName: 'frontend-wildcard-role', subjects: [{ kind: 'ServiceAccount', name: 'frontend-sa', namespace: 'frontend' }] },
+          ];
+        }
+      } else if (key === 'defaultDenyNetworkPolicyEnforced') {
+        if (newVal) {
+          next.networkPolicies = [
+            {
+              id: 'pol-deny-fin',
+              name: 'default-deny-finance',
+              namespace: 'finance',
+              podSelector: {},
+              policyTypes: ['Ingress', 'Egress'],
+              ingressRules: [{ from: [{ podSelector: { app: 'backend' } }], ports: [{ protocol: 'TCP', port: 8080 }] }],
+              egressRules: [],
+              enabled: true,
+            },
+            {
+              id: 'pol-allow-fb',
+              name: 'allow-frontend-backend',
+              namespace: 'backend',
+              podSelector: { app: 'backend' },
+              policyTypes: ['Ingress'],
+              ingressRules: [{ from: [{ podSelector: { app: 'frontend' } }], ports: [{ protocol: 'TCP', port: 443 }] }],
+              egressRules: [],
+              enabled: true,
+            },
+          ];
+        } else {
+          next.networkPolicies = [];
+        }
+      } else if (key === 'etcdKmsEncryptionEnabled') {
+        next.secrets = next.secrets.map((s) => ({ ...s, encryptedAtRest: newVal }));
+      } else if (key === 'falcoRuntimeRulesActiveAndQuarantineVerified') {
+        next.auditConfig = { ...next.auditConfig, enabled: newVal, policyLevel: newVal ? 'RequestResponse' : 'None' };
+      }
+
+      return next;
+    });
   };
 
   const runAuthorizationTests = () => {
@@ -129,8 +237,9 @@ export const ContainerMasterChallenge: React.FC = () => {
     }
   };
 
-  const evaluation = evaluateContainerMasterChallenge(flags);
   const masterVal = validateKubernetesMasterChallenge(masterState);
+  const totalViolations = masterVal.failedChecks.length + masterVal.antiCheatViolations.length;
+  const computedScore = masterVal.isPassed ? 100 : Math.max(0, 100 - totalViolations * 10);
 
   const runChallengeVerification = () => {
     setTested(true);
@@ -178,8 +287,8 @@ export const ContainerMasterChallenge: React.FC = () => {
               </h1>
               <p className="text-slate-400 text-xs mt-1 max-w-2xl">
                 {isAr
-                  ? 'قم بتنفيذ وتطبيق كافة الضوابط الدفاعية السبعة لتحصين كلاستر الإنتاج بالكامل ضد محاولات الاختراق وسرقة التوكن وكسر العزل.'
-                  : 'Enforce all 7 core cloud-native defensive controls to harden the production Kubernetes cluster against breach and escape.'}
+                  ? 'قم بتنفيذ وتطبيق كافة الضوابط الدفاعية السبعة واختبار المصادقة والتوجيه الشبكي لتحصين كلاستر الإنتاج بالكامل ضد محاولات الاختراق.'
+                  : 'Enforce all 7 core cloud-native defensive controls and pass interactive RBAC & Network suites to harden production cluster.'}
               </p>
             </div>
 
@@ -188,26 +297,34 @@ export const ContainerMasterChallenge: React.FC = () => {
                 <div className="text-xs text-slate-400">{isAr ? 'الإنجاز الدفاعي' : 'Defense Score'}</div>
                 <div
                   className={`text-3xl font-black ${
-                    evaluation.score === 100
+                    masterVal.isPassed
                       ? 'text-emerald-400'
-                      : evaluation.score >= 60
+                      : computedScore >= 60
                       ? 'text-cyan-400'
                       : 'text-amber-400'
                   }`}
                 >
-                  {evaluation.score}%
+                  {computedScore}%
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setFlags(getInitialContainerAntiCheatFlags());
-                  setTested(false);
-                }}
-                className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={applyHardenedState}
+                  title={isAr ? 'تطبيق التحصين الكامل' : 'Apply Full Hardening'}
+                  className="px-2.5 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'تحصين' : 'Harden'}</span>
+                </button>
+                <button
+                  onClick={applyVulnerableState}
+                  title={isAr ? 'إعادة للكلاستر الشائع المليء بالثغرات' : 'Reset to Vulnerable Cluster'}
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -316,6 +433,11 @@ export const ContainerMasterChallenge: React.FC = () => {
               <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-cyan-400" />
                 <span>{isAr ? 'حزمة اختبارات المحرك لمصادقة RBAC' : 'RBAC Authorization Engine Suite'}</span>
+                {masterState.testedAuthorizationsPassed && (
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
+                    PASSED
+                  </span>
+                )}
               </h3>
               <button
                 onClick={runAuthorizationTests}
@@ -341,6 +463,11 @@ export const ContainerMasterChallenge: React.FC = () => {
               <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>{isAr ? 'حزمة اختبارات مسارات سياسات الشبكة' : 'NetworkPolicy Reachability Matrix Suite'}</span>
+                {masterState.testedNetworkPathsPassed && (
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
+                    PASSED
+                  </span>
+                )}
               </h3>
               <button
                 onClick={runNetworkPathTests}
@@ -366,42 +493,56 @@ export const ContainerMasterChallenge: React.FC = () => {
         {tested && (
           <div
             className={`p-6 rounded-2xl border ${
-              evaluation.isMastered
+              masterVal.isPassed
                 ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-300'
                 : 'bg-rose-950/30 border-rose-500/40 text-rose-300'
             }`}
           >
             <div className="flex items-center gap-3 mb-2">
-              {evaluation.isMastered ? (
+              {masterVal.isPassed ? (
                 <Trophy className="w-7 h-7 text-emerald-400" />
               ) : (
-                <AlertTriangle className="w-7 h-7 text-rose-400" />
+                <ShieldAlert className="w-7 h-7 text-rose-400" />
               )}
               <h3 className="text-lg font-black text-white">
-                {evaluation.isMastered
+                {masterVal.isPassed
                   ? isAr
-                    ? 'تهانينا! لقد حققت السيطرة الدفاعية الكاملة على كلاستر Nexora Kubernetes!'
-                    : 'Congratulations! You have achieved Total Defense Mastery over Nexora K8s Cluster!'
+                    ? 'تهانينا! لقد حققت السيطرة الدفاعية الكاملة ونجحت في كافه بوابات Kubernetes Master State!'
+                    : 'Congratulations! You achieved Total Defense Mastery & passed all Kubernetes Master State gates!'
                   : isAr
-                  ? `التحدي غير مكتمل بعد (${evaluation.completedTasks} من ${evaluation.totalTasks})`
-                  : `Challenge Incomplete (${evaluation.completedTasks} of ${evaluation.totalTasks} tasks fulfilled)`}
+                  ? 'التحدي غير مكتمل بعد — توجد ملاحظات على تحصين الكلاستر أو بوابات الاختبار:'
+                  : 'Challenge Incomplete — Master validation failed on state gates or anti-cheat policies:'}
               </h3>
             </div>
 
-            {evaluation.isMastered ? (
+            {masterVal.isPassed ? (
               <p className="text-xs text-slate-200 leading-relaxed font-mono">
                 {isAr
                   ? 'تم تطبيق معايير الدفاع في العمق، وعزل مساحات الأسماء، وتأمين سلاسل التوريد، وتشفير etcd، وتفعيل مستشعرات Falco بنجاح تام.'
                   : 'Full defense-in-depth enforced: supply chain verified, PSS Restricted active, RBAC sanitized, and eBPF Falco monitoring operational.'}
               </p>
             ) : (
-              <div className="mt-3 space-y-1">
-                <div className="text-xs font-bold text-slate-300">{isAr ? 'المهام المتبقية:' : 'Remaining tasks:'}</div>
-                {evaluation.remainingTasksAr.map((t, idx) => (
-                  <div key={idx} className="text-xs text-rose-300 font-mono">
-                    • {isAr ? t : evaluation.remainingTasksEn[idx]}
+              <div className="mt-3 space-y-2">
+                {masterVal.failedChecks.length > 0 && (
+                  <div>
+                    <div className="text-xs font-bold text-amber-400">{isAr ? 'البوابات غير المكتملة:' : 'Incomplete Gates:'}</div>
+                    {masterVal.failedChecks.map((check, idx) => (
+                      <div key={idx} className="text-xs text-amber-300 font-mono">
+                        • {check}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+                {masterVal.antiCheatViolations.length > 0 && (
+                  <div>
+                    <div className="text-xs font-bold text-rose-400">{isAr ? 'مخالفات سياسة تحصين الكلاستر (Anti-Cheat):' : 'Anti-Cheat / Security Remediation Violations:'}</div>
+                    {masterVal.antiCheatViolations.map((v, idx) => (
+                      <div key={idx} className="text-xs text-rose-300 font-mono">
+                        • {v}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

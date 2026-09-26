@@ -202,6 +202,45 @@ export const DETERMINISTIC_K8S_ATTACK_TIMELINE: K8sAttackTimelineStep[] = [
 ];
 
 import { containerEventBridge } from './ContainerEventBridge';
+import { globalSimulationRuntime, SimulationRuntime } from '../../../engine/runtime/SimulationRuntime';
+import { ScheduledEvent } from '../../../engine/events/EventEngine';
+
+export function loadKubernetesAttackScenario(
+  runtime: SimulationRuntime = globalSimulationRuntime,
+  options: { autoStart?: boolean } = {}
+): void {
+  runtime.reset();
+  const scheduledEvents: ScheduledEvent[] = DETERMINISTIC_K8S_ATTACK_TIMELINE.map((step) => ({
+    id: `evt-k8s-timeline-${step.virtualTime}-${step.eventType}`,
+    at: step.virtualTime,
+    type: step.eventType,
+    source: step.podName || 'k8s-control-plane',
+    target: step.namespace || 'production',
+    category: 'KUBERNETES',
+    severity: (step.severity === 'critical' || step.severity === 'threat' ? 'threat' : step.severity === 'warn' ? 'warn' : 'info') as any,
+    description: step.descriptionEn,
+    payload: {
+      id: `evt-k8s-timeline-${step.virtualTime}-${step.eventType}`,
+      eventType: step.eventType,
+      virtualTime: step.virtualTime,
+      podName: step.podName,
+      namespace: step.namespace,
+      serviceAccount: step.serviceAccount,
+      sourceIp: step.sourceIp,
+      resource: step.resource,
+      severity: step.severity,
+      descriptionEn: step.descriptionEn,
+      descriptionAr: step.descriptionAr,
+      ...step.payload,
+    },
+  }));
+
+  runtime.events.scheduleBatch(scheduledEvents);
+
+  if (options.autoStart) {
+    runtime.start();
+  }
+}
 
 export function runKubernetesAttackScenario(): void {
   DETERMINISTIC_K8S_ATTACK_TIMELINE.forEach((step) => {

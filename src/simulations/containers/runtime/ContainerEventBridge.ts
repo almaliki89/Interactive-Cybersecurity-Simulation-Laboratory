@@ -16,6 +16,52 @@ export class ContainerEventBridge {
 
   private constructor(runtime: SimulationRuntime = globalSimulationRuntime) {
     this.runtime = runtime;
+    this.initRuntimeSubscription();
+  }
+
+  private initRuntimeSubscription() {
+    this.runtime.events.on('*', (evt) => {
+      if (evt.category === 'KUBERNETES' || evt.type.startsWith('K8S_')) {
+        const existing = this.ingestedEvents.some((e) => e.rawEventId === evt.id);
+        if (!existing) {
+          const rawPayload = (evt.payload as Record<string, unknown>) || {};
+          const raw: RawContainerEvent = {
+            id: evt.id,
+            eventType: evt.type,
+            virtualTime: evt.virtualTime,
+            podName: (rawPayload.podName as string) || evt.source,
+            namespace: (rawPayload.namespace as string) || (evt.target as string),
+            serviceAccount: rawPayload.serviceAccount as string,
+            sourceIp: rawPayload.sourceIp as string,
+            resource: (rawPayload.resource as string) || evt.source,
+            severity: evt.severity === 'threat' ? 'critical' : evt.severity === 'warn' ? 'warn' : 'info',
+            attributes: rawPayload,
+          };
+          const normalized = normalizeContainerEvent(raw);
+          this.ingestedEvents.push(normalized);
+          globalSocEventBridge.ingestEvent(normalized);
+          globalForensicsEventBridge.syncEvidenceFromEvents([
+            {
+              id: normalized.rawEventId || normalized.id,
+              type: normalized.eventType,
+              virtualTime: normalized.virtualTime,
+              source: normalized.resource || normalized.host,
+              target: normalized.attributes.namespace,
+              category: normalized.category,
+              severity: normalized.severity,
+              payload: {
+                ...normalized.attributes,
+                sourceWorld: normalized.sourceWorld,
+                serviceAccount: normalized.attributes.serviceAccount || normalized.user,
+                pod: normalized.attributes.pod || normalized.resource,
+                sourceIp: normalized.sourceIp,
+                resource: normalized.resource,
+              },
+            },
+          ]);
+        }
+      }
+    });
   }
 
   public static getInstance(): ContainerEventBridge {
