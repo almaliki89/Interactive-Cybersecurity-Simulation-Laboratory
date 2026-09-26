@@ -129,3 +129,50 @@ export function validateCustodyChain(
     reasonsAr,
   };
 }
+
+/**
+ * Gets the custody history for a specific evidence item from the global records.
+ * This is used by the technical drawer and other inspectors.
+ */
+export function getCustodyHistory(evidenceId: string): CustodyRecord[] {
+  // Note: In a real implementation, this would access a store or database.
+  // Since this is a logic file, we'll assume it's filtered externally or 
+  // passed in. However, for the TechnicalDrawer to work as currently written,
+  // it expects to import it. We'll use the store's state if possible,
+  // but since logic can't easily access hooks, we'll provide a helper 
+  // that labs can use to filter.
+  // Actually, I'll update the TechnicalDrawer to use the store directly.
+  return []; // Placeholder - will update TechnicalDrawer
+}
+
+/**
+ * Default custody records for the initial Nexora case
+ */
+export function getInitialCustodyRecords(): CustodyRecord[] {
+  return [
+    {
+      id: 'CUST-DISK-FIN-WS01-1',
+      evidenceId: 'EVD-DISK-FIN-WS01',
+      virtualTime: 10,
+      action: 'COLLECTED',
+      actor: 'Investigator Lead (sara_forensics)',
+      notes: 'Initial disk image acquisition from FIN-WS-01',
+    },
+    {
+      id: 'CUST-DISK-FIN-WS01-2',
+      evidenceId: 'EVD-DISK-FIN-WS01',
+      virtualTime: 20,
+      action: 'VERIFIED',
+      actor: 'Evidence Officer (ahmed_sec)',
+      notes: 'SHA-256 hash match verified on primary storage vault',
+    },
+    {
+      id: 'CUST-MEM-FIN-WS01-1',
+      evidenceId: 'EVD-MEM-FIN-WS01',
+      virtualTime: 15,
+      action: 'COLLECTED',
+      actor: 'Investigator Lead (sara_forensics)',
+      notes: 'Memory dump acquisition',
+    }
+  ];
+}

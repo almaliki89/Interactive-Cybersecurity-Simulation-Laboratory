@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { validateRecoveryState, SystemRecoveryState } from './logic/recovery';
-import { RotateCcw, ShieldCheck, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { RotateCcw, ShieldCheck, AlertTriangle, CheckCircle2, XCircle, ClipboardCheck, LayoutList } from 'lucide-react';
 
 export const RecoveryValidationLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -35,73 +35,94 @@ export const RecoveryValidationLab: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto">
+    <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
       <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
             <RotateCcw className="w-4 h-4" />
             <span>{isAr ? 'معمل التحقق من التعافي وتفعيل التسجيل الأمني' : 'Recovery & System Re-Validation Lab'}</span>
           </div>
-          <h1 className="text-xl font-black text-white mt-1">
-            {isAr ? 'التحقق من خلو الأنظمة من التهديد واستعادة الجاهزية التشغيلية' : 'System Eradication Verification & Audit Logging Activation'}
+          <h1 className="text-xl font-black text-white mt-1 uppercase tracking-tight">
+            {isAr ? 'التحقق من التعافي والاستعادة التشغيلية' : 'RECOVERY_VERIFICATION_&_OPERATIONAL_READY'}
           </h1>
         </div>
 
-        <div className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border ${
-          valResult.passed ? 'bg-emerald-950 border-emerald-800 text-emerald-300' : 'bg-rose-950 border-rose-800 text-rose-300'
+        <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border transition-all ${
+          valResult.passed 
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]' 
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
         }`}>
           {valResult.passed ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          <span>{valResult.passed ? (isAr ? 'جاهز للإنتاج Production Ready' : 'Production Ready') : (isAr ? 'التعافي غير مكتمل' : 'Incomplete Recovery')}</span>
+          <span>{valResult.passed ? (isAr ? 'جاهز للتشغيل PRODUCTION_READY' : 'PRODUCTION_READY') : (isAr ? 'التعافي غير مكتمل' : 'RECOVERY_INCOMPLETE')}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4" />
-            <span>{isAr ? 'قائمة الفحص والتحقق للتعافي' : 'Recovery Checklist Items'}</span>
-          </h2>
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-6">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+              <LayoutList className="w-4 h-4" />
+              {isAr ? 'قائمة التحقق من التطهير' : 'ERADICATION_CHECKLIST'}
+            </h2>
+            <span className="text-[9px] font-mono text-slate-600 uppercase">
+              {checkItems.filter(i => recState[i.key]).length} / {checkItems.length} {isAr ? 'بنود مكتملة' : 'TASKS_DONE'}
+            </span>
+          </div>
 
-          <div className="flex flex-col gap-2.5 text-xs">
+          <div className="space-y-2">
             {checkItems.map((item) => {
               const checked = recState[item.key];
               return (
                 <div
                   key={item.key}
                   onClick={() => toggleCheck(item.key)}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between group ${
                     checked
-                      ? 'bg-emerald-950/60 border-emerald-700 text-emerald-200'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-100 shadow-sm'
+                      : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
                   }`}
                 >
-                  <span className="font-semibold">{isAr ? item.labelAr : item.labelEn}</span>
-                  {checked ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-slate-600" />}
+                  <span className="text-[11px] font-bold uppercase tracking-tight">{isAr ? item.labelAr : item.labelEn}</span>
+                  <div className={`p-1 rounded-lg transition-colors ${checked ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-900 text-slate-700'}`}>
+                    {checked ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wide flex items-center gap-2">
-            <RotateCcw className="w-4 h-4" />
-            <span>{isAr ? 'ملخص تقرير الجاهزية والتدقيق' : 'Recovery Status Report'}</span>
-          </h2>
+        <div className="space-y-6">
+          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-6">
+            <h2 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4 text-amber-500" />
+              <span>{isAr ? 'تقرير حالة التعافي' : 'RECOVERY_STATUS_REPORT'}</span>
+            </h2>
 
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col gap-3 text-xs font-mono">
-            <p className="text-slate-200 leading-relaxed font-bold">
-              {isAr ? valResult.summaryAr : valResult.summaryEn}
-            </p>
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col gap-4 text-[11px] font-mono">
+              <p className="text-slate-300 leading-relaxed italic bg-black/20 p-3 rounded-lg border border-slate-900">
+                {isAr ? valResult.summaryAr : valResult.summaryEn}
+              </p>
 
-            {valResult.failedChecksEn.length > 0 && (
-              <div className="flex flex-col gap-1 text-rose-300 text-[11px] mt-2 border-t border-slate-800 pt-2">
-                <span className="font-bold">{isAr ? 'البنود المتبقية للتعافي:' : 'Remaining Issues:'}</span>
-                {valResult.failedChecksEn.map((f, i) => (
-                  <div key={i}>• {f}</div>
-                ))}
-              </div>
-            )}
+              {valResult.failedChecksEn.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-rose-400 font-black uppercase tracking-widest block mb-2">{isAr ? 'المخاطر المتبقية:' : 'REMAINING_RESIDUAL_RISKS:'}</span>
+                  {valResult.failedChecksEn.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 text-rose-300/80 bg-rose-500/5 p-2 rounded-lg border border-rose-500/10">
+                       <AlertTriangle className="w-3.5 h-3.5" />
+                       <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {valResult.passed && (
+                <div className="flex items-center gap-2 text-emerald-400 font-black uppercase tracking-widest bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/10">
+                   <ShieldCheck className="w-4 h-4" />
+                   <span>{isAr ? 'تم التحقق من استعادة كافة الخدمات' : 'ALL_SERVICES_VALIDATED_FOR_RESUMPTION'}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

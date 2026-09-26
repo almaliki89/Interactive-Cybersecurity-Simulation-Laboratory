@@ -1,128 +1,152 @@
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
+import { useForensicsStore } from '../../stores/forensicsStore';
 import { CustodyRecord, addCustodyRecord, validateCustodyChain } from './logic/custody';
-import { FileText, Plus, ShieldCheck, AlertTriangle, UserCheck } from 'lucide-react';
+import { FileText, Plus, ShieldCheck, AlertTriangle, UserCheck, History, ArrowRight, User } from 'lucide-react';
 
 export const ChainOfCustodyLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
+  
+  const selectedEvidenceId = useForensicsStore((s) => s.selectedEvidenceId);
+  const setSelectedEvidenceId = useForensicsStore((s) => s.setSelectedEvidenceId);
+  const evidence = useForensicsStore((s) => s.evidence);
+  const records = useForensicsStore((s) => s.custodyRecords);
+  const addRecordToStore = useForensicsStore((s) => s.addCustodyRecord);
 
-  const [records, setRecords] = useState<CustodyRecord[]>([
-    {
-      id: 'CUST-001',
-      evidenceId: 'EVD-DISK-FIN-WS01',
-      virtualTime: 10,
-      action: 'COLLECTED',
-      actor: 'Investigator Lead (sara_forensics)',
-      notes: 'Initial disk image acquisition from FIN-WS-01',
-    },
-    {
-      id: 'CUST-002',
-      evidenceId: 'EVD-DISK-FIN-WS01',
-      virtualTime: 20,
-      action: 'VERIFIED',
-      actor: 'Evidence Officer (ahmed_sec)',
-      notes: 'SHA-256 hash match verified on primary storage vault',
-    },
-  ]);
-
-  const [evidenceId, setEvidenceId] = useState('EVD-DISK-FIN-WS01');
+  const [targetEvidenceId, setTargetEvidenceId] = useState(selectedEvidenceId || (evidence.length > 0 ? evidence[0].id : ''));
   const [action, setAction] = useState<'COLLECTED' | 'TRANSFERRED' | 'VERIFIED' | 'WORKING_COPY_CREATED' | 'ANALYZED'>('TRANSFERRED');
   const [actor, setActor] = useState('Analyst Reem');
   const [notes, setNotes] = useState('Transferred to evidence vault');
 
   const handleAddRecord = () => {
-    if (!actor.trim()) return;
-    const updated = addCustodyRecord(records, {
-      evidenceId,
-      virtualTime: 50,
+    if (!actor.trim() || !targetEvidenceId) return;
+    
+    const virtualTime = useSimulationStore.getState().virtualTime || 50;
+    const id = `CUST-${targetEvidenceId}-${records.length + 1}`;
+    
+    addRecordToStore({
+      id,
+      evidenceId: targetEvidenceId,
+      virtualTime,
       action,
       actor,
       notes,
     });
-    setRecords(updated);
   };
 
+  const targetItem = evidence.find(ev => ev.id === targetEvidenceId);
   const validation = validateCustodyChain(
-    'EVD-DISK-FIN-WS01',
+    targetEvidenceId,
     records,
-    'sha256:4a8123901b238c9012389a012381203981203912039812039182309128309128',
-    'sha256:4a8123901b238c9012389a012381203981203912039812039182309128309128'
+    targetItem?.originalHash || '',
+    targetItem?.currentHash || ''
   );
 
   return (
-    <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto">
+    <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
       <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
-            <FileText className="w-4 h-4" />
+            <History className="w-4 h-4" />
             <span>{isAr ? 'معمل سلسلة الحضانة والملكية الجنائية' : 'Chain of Custody Ledger Lab'}</span>
           </div>
-          <h1 className="text-xl font-black text-white mt-1">
-            {isAr ? 'سجل الحضانة والملكية للأدلة الجنائية (Chain of Custody)' : 'Chain of Custody Immutable Documentation'}
+          <h1 className="text-xl font-black text-white mt-1 uppercase tracking-tight">
+            {isAr ? 'سجل الحضانة والملكية للأدلة الجنائية (Chain of Custody)' : 'CUSTODY_IMMUTABLE_LEDGER'}
           </h1>
         </div>
-        <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border ${
+        <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border transition-all ${
           validation.valid
-            ? 'bg-emerald-950 border-emerald-800 text-emerald-300'
-            : 'bg-rose-950 border-rose-800 text-rose-300'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
         }`}>
           {validation.valid ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          <span>{validation.valid ? (isAr ? 'سلسلة الحضانة مكتملة وموثوقة' : 'Chain Valid') : (isAr ? 'غير مكتملة' : 'Invalid Chain')}</span>
+          <span>{validation.valid ? (isAr ? 'سلسلة الحضانة صحيحة' : 'CHAIN_VALID') : (isAr ? 'سلسلة غير مكتملة' : 'INVALID_CHAIN')}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            <span>{isAr ? 'سجلات الحضانة المسجلة للأدلة' : 'Recorded Custody Log Entries'}</span>
-          </h2>
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5" />
+              {isAr ? 'سجلات الحضانة المسجلة' : 'CUSTODY_RECORDS'}
+            </h2>
+            {targetEvidenceId && (
+              <span className="text-[10px] font-mono text-cyan-500 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 uppercase font-bold">
+                {targetEvidenceId}
+              </span>
+            )}
+          </div>
 
-          <div className="flex flex-col gap-2">
-            {records.map((r) => (
-              <div key={r.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-col gap-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-cyan-400 font-bold">{r.id}</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">
-                    {r.action}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-300 font-semibold">
-                  <UserCheck className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{r.actor}</span>
-                  <span className="text-slate-600">|</span>
-                  <span className="font-mono text-slate-400">T+{r.virtualTime}ms</span>
-                </div>
-                <p className="text-[11px] text-slate-400 italic">{r.notes}</p>
+          <div className="space-y-3">
+            {records.filter(r => r.evidenceId === targetEvidenceId).length === 0 ? (
+              <div className="p-12 text-center rounded-2xl bg-slate-900/30 border border-slate-900 flex flex-col items-center gap-3 opacity-30">
+                 <History className="w-8 h-8 text-slate-600" />
+                 <p className="text-[10px] font-mono uppercase">{isAr ? 'لا توجد سجلات لهذا الدليل' : 'No records found for this evidence item'}</p>
               </div>
-            ))}
+            ) : (
+              records.filter(r => r.evidenceId === targetEvidenceId).map((r) => (
+                <div key={r.id} className="group flex items-start gap-4 p-4 rounded-2xl bg-slate-900/40 border border-slate-900 hover:border-slate-800 transition-all">
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <span className="text-[10px] font-mono text-cyan-500 font-black tabular-nums">T+{r.virtualTime}ms</span>
+                    <div className="w-px h-8 bg-slate-800 group-last:hidden" />
+                    <div className="w-8 h-8 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center">
+                       <User className="w-4 h-4 text-slate-600" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                       <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-black uppercase tracking-widest">
+                         {r.action}
+                       </span>
+                       <span className="text-[9px] font-mono text-slate-600 uppercase font-bold">{r.id}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                       <span className="text-xs font-bold text-slate-200">{r.actor}</span>
+                    </div>
+                    
+                    <p className="text-[11px] text-slate-400 italic bg-black/20 p-2.5 rounded-lg border border-slate-800/50">
+                      {r.notes}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wide flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            <span>{isAr ? 'إضافة إجراء حضانة جديد' : 'Record New Custody Action'}</span>
+        <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col gap-5">
+          <h2 className="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
+            <Plus className="w-4 h-4 text-amber-500" />
+            <span>{isAr ? 'توثيق إجراء جديد' : 'NEW_LOG_ENTRY'}</span>
           </h2>
 
-          <div className="flex flex-col gap-3 text-xs">
+          <div className="space-y-4 text-[11px]">
             <div>
-              <label className="text-slate-400 block mb-1">{isAr ? 'معرف الدليل' : 'Evidence ID'}</label>
-              <input
-                type="text"
-                value={evidenceId}
-                onChange={(e) => setEvidenceId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
-              />
+              <label className="text-slate-500 font-black uppercase tracking-widest block mb-1.5">{isAr ? 'اختيار الدليل' : 'SELECT_EVIDENCE'}</label>
+              <select
+                value={targetEvidenceId}
+                onChange={(e) => {
+                  setTargetEvidenceId(e.target.value);
+                  setSelectedEvidenceId(e.target.value);
+                }}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500 transition-colors"
+              >
+                {evidence.map(ev => (
+                  <option key={ev.id} value={ev.id}>{ev.id} ({ev.type})</option>
+                ))}
+              </select>
             </div>
 
             <div>
-              <label className="text-slate-400 block mb-1">{isAr ? 'الإجراء المتخذ' : 'Action'}</label>
+              <label className="text-slate-500 font-black uppercase tracking-widest block mb-1.5">{isAr ? 'الإجراء المتخذ' : 'ACTION_TYPE'}</label>
               <select
                 value={action}
                 onChange={(e: any) => setAction(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500 transition-colors"
               >
                 <option value="COLLECTED">COLLECTED</option>
                 <option value="TRANSFERRED">TRANSFERRED</option>
@@ -133,29 +157,31 @@ export const ChainOfCustodyLab: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-slate-400 block mb-1">{isAr ? 'الشخص المسؤول (Actor)' : 'Responsible Actor'}</label>
+              <label className="text-slate-500 font-black uppercase tracking-widest block mb-1.5">{isAr ? 'الشخص المسؤول' : 'ACTOR_IDENTITY'}</label>
               <input
                 type="text"
                 value={actor}
                 onChange={(e) => setActor(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-cyan-500"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-cyan-500 transition-colors"
+                placeholder="e.g. sara_forensics"
               />
             </div>
 
             <div>
-              <label className="text-slate-400 block mb-1">{isAr ? 'ملاحظات التوثيق' : 'Custody Notes'}</label>
+              <label className="text-slate-500 font-black uppercase tracking-widest block mb-1.5">{isAr ? 'ملاحظات التوثيق' : 'CUSTODY_NOTES'}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-cyan-500 h-20"
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-cyan-500 h-24 resize-none transition-colors"
+                placeholder="Brief reason for action..."
               />
             </div>
 
             <button
               onClick={handleAddRecord}
-              className="py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition-colors shadow-lg"
+              className="w-full py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-[0.2em] transition-all shadow-lg shadow-cyan-900/40"
             >
-              {isAr ? 'توثيق إجراء الحضانة' : 'Record Custody Log Entry'}
+              {isAr ? 'تسجيل في سلسلة الحضانة' : 'SIGN_LEDGER_ENTRY'}
             </button>
           </div>
         </div>

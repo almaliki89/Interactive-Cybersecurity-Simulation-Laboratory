@@ -20,7 +20,11 @@ import { ForensicsMasterChallenge } from './ForensicsMasterChallenge';
 import { useForensicsStore, ForensicsLabId } from '../../stores/forensicsStore';
 import { normalizeRuntimeEvent } from '../soc/logic/normalization';
 import { createForensicEvidenceFromTelemetry } from './logic/evidence';
+import { getInitialCustodyRecords } from './logic/custody';
 import { FileSearch, Map, ArrowLeft } from 'lucide-react';
+
+import { ForensicsCaseWorkspace } from './components/ForensicsCaseWorkspace';
+import { NEXORA_CASE_EVIDENCE } from './logic/caseEvidence';
 
 export const ForensicsSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -29,7 +33,16 @@ export const ForensicsSimulation: React.FC = () => {
   const setActiveTab = useForensicsStore((s) => s.setActiveTab);
   const deepLink = useForensicsStore((s) => s.deepLinkContext);
   const setSelectedEvidenceId = useForensicsStore((s) => s.setSelectedEvidenceId);
+  const addEvidence = useForensicsStore((s) => s.addEvidence);
+  const setEvidence = useForensicsStore((s) => s.setEvidence);
+  const setCustodyRecords = useForensicsStore((s) => s.setCustodyRecords);
   const runtimeEvents = useSimulationStore((s) => s.events);
+
+  // Initialize Case Evidence & Custody
+  React.useEffect(() => {
+    setEvidence(NEXORA_CASE_EVIDENCE);
+    setCustodyRecords(getInitialCustodyRecords());
+  }, [setEvidence, setCustodyRecords]);
 
   // Deep Link Lifecycle: Resolve SOC events to Forensics Evidence IDs
   React.useEffect(() => {
@@ -53,10 +66,11 @@ export const ForensicsSimulation: React.FC = () => {
          });
          
          const evidence = createForensicEvidenceFromTelemetry(normalized);
+         addEvidence(evidence); // Ensure it's in our collection
          setSelectedEvidenceId(evidence.id);
       }
     }
-  }, [deepLink, runtimeEvents, setSelectedEvidenceId]);
+  }, [deepLink, runtimeEvents, setSelectedEvidenceId, addEvidence]);
 
   const renderActiveLab = () => {
     switch (activeTab) {
@@ -99,62 +113,8 @@ export const ForensicsSimulation: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden select-none">
-      {/* Top Thin Shell Header Nav */}
-      <div className="h-12 border-b border-slate-800 bg-slate-900/90 px-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          {activeTab !== 'map' && (
-            <button
-              onClick={() => setActiveTab('map')}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors flex items-center gap-1 text-xs font-bold"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{isAr ? 'الخريطة' : 'Map'}</span>
-            </button>
-          )}
-
-          <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs">
-            <FileSearch className="w-4 h-4" />
-            <span>{isAr ? 'عالم الاستجابة للحوادث والتحقيق الجنائي الرقمي' : 'Incident Response & Digital Forensics World'}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 overflow-x-auto py-1 max-w-2xl text-[11px]">
-          {[
-            { id: 'map', labelEn: 'Map', labelAr: 'الخريطة' },
-            { id: 'intake', labelEn: 'Intake', labelAr: 'استلام القضية' },
-            { id: 'preservation', labelEn: 'Preservation', labelAr: 'الحفظ' },
-            { id: 'custody', labelEn: 'Custody', labelAr: 'الحضانة' },
-            { id: 'disk', labelEn: 'Disk', labelAr: 'القرص' },
-            { id: 'memory', labelEn: 'RAM', labelAr: 'الذاكرة' },
-            { id: 'windows', labelEn: 'Windows', labelAr: 'ويندوز' },
-            { id: 'linux', labelEn: 'Linux', labelAr: 'لينكس' },
-            { id: 'logs', labelEn: 'Logs', labelAr: 'السجلات' },
-            { id: 'timeline', labelEn: 'Timeline', labelAr: 'الخط الزمني' },
-            { id: 'rootcause', labelEn: 'Root Cause', labelAr: 'السبب الجذر' },
-            { id: 'containment', labelEn: 'Containment', labelAr: 'الاحتواء' },
-            { id: 'recovery', labelEn: 'Recovery', labelAr: 'التعافي' },
-            { id: 'master', labelEn: 'Master Challenge', labelAr: 'التحدي الشامل' },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id as ForensicsLabId)}
-              className={`px-2.5 py-1 rounded-lg font-mono font-bold transition-all whitespace-nowrap ${
-                activeTab === t.id
-                  ? 'bg-cyan-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              {isAr ? t.labelAr : t.labelEn}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Main Lab Content Container */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {renderActiveLab()}
-      </div>
-    </div>
+    <ForensicsCaseWorkspace>
+      {renderActiveLab()}
+    </ForensicsCaseWorkspace>
   );
 };
