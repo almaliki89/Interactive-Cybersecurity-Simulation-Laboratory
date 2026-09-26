@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSimulationStore, SimulationId } from '../../stores/simulationStore';
+import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
 import { translations } from '../../i18n/translations';
 import {
   Compass,
@@ -25,6 +26,13 @@ import {
   X,
   Play,
   Pause,
+  Box,
+  Boxes,
+  CheckCircle2,
+  GitBranch,
+  FileSearch,
+  Lock,
+  Sparkles,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -40,6 +48,10 @@ export const Header: React.FC = () => {
   const clockStatus = useSimulationStore((s) => s.clockStatus);
   const clockSpeed = useSimulationStore((s) => s.clockSpeed);
   const virtualTime = useSimulationStore((s) => s.virtualTime);
+
+  // DevSecOps Sub-navigation Store
+  const devSecOpsTab = useDevSecOpsStore((s) => s.activeTab);
+  const setDevSecOpsTab = useDevSecOpsStore((s) => s.setActiveTab);
 
   const [labsOpen, setLabsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -76,6 +88,25 @@ export const Header: React.FC = () => {
     { id: 'zero_trust', nameAr: 'محرك قرارات انعدام الثقة ZTA', nameEn: 'Zero Trust Decision Engine', icon: Shield, category: 'H. Architecture' },
   ];
 
+  const devSecOpsSubLabs = [
+    { id: 'map', nameAr: 'خريطة Hub المركزية', nameEn: 'World Map Hub', icon: Globe },
+    { id: 'sast', nameAr: 'فحص الكود (SAST)', nameEn: 'SAST Scan', icon: FileCode },
+    { id: 'sca', nameAr: 'فحص التبعيات (SCA)', nameEn: 'SCA Dependency', icon: Box },
+    { id: 'secrets', nameAr: 'فحص الأسرار (Secrets)', nameEn: 'Git Secrets', icon: Key },
+    { id: 'iac', nameAr: 'أمن البنية (IaC)', nameEn: 'IaC Terraform', icon: Workflow },
+    { id: 'slsa', nameAr: 'توثيق البناء (SLSA)', nameEn: 'SLSA Provenance', icon: Shield },
+    { id: 'gates', nameAr: 'بوابات الأمان', nameEn: 'Pipeline Gates', icon: CheckCircle2 },
+    { id: 'drift', nameAr: 'رصد الانحراف', nameEn: 'Drift Detection', icon: GitBranch },
+    { id: 'serverless', nameAr: 'أمن الدوال', nameEn: 'Serverless Security', icon: Boxes },
+    { id: 'sbom', nameAr: 'جرد المكونات (SBOM)', nameEn: 'SBOM Inventory', icon: Layers },
+    { id: 'containerci', nameAr: 'فحص الحاويات CI', nameEn: 'CI Container Scan', icon: Lock },
+    { id: 'signing', nameAr: 'توقيع المخرجات', nameEn: 'Artifact Signing', icon: Key },
+    { id: 'compliance', nameAr: 'الامتثال ككود', nameEn: 'Compliance as Code', icon: Shield },
+    { id: 'incident', nameAr: 'حوادث سلاسل التوريد', nameEn: 'Supply Chain Incident', icon: Activity },
+    { id: 'architecture', nameAr: 'المعمارية الآمنة', nameEn: 'Zero-Trust Architecture', icon: Workflow },
+    { id: 'master', nameAr: 'التحدي الشامل الختامي', nameEn: 'Master Challenge', icon: Sparkles },
+  ];
+
   const universeNav = [
     { id: 'range' as SimulationId, labelAr: 'الميدان الشامل', labelEn: 'Cyber Range', icon: Compass },
     { id: 'explorer' as SimulationId, labelAr: 'العوالم الـ 60', labelEn: '60 Worlds', icon: Globe },
@@ -84,11 +115,18 @@ export const Header: React.FC = () => {
     { id: 'glossary' as SimulationId, labelAr: 'المعجم التقني', labelEn: 'Glossary', icon: BookOpen },
   ];
 
-  const isLabActive = labsList.some((l) => l.id === activeSimulationId) || activeSimulationId === 'devsecops';
+  const isLabActive = labsList.some((l) => l.id === activeSimulationId) || activeSimulationId === 'devsecops' || activeSimulationId === 'forensics';
+  
   const activeLab = labsList.find((l) => l.id === activeSimulationId) || 
-    (activeSimulationId === 'devsecops' ? { nameAr: 'أمن سلاسل التوريد والـ DevSecOps', nameEn: 'Software Supply Chain & DevSecOps', icon: Workflow, category: 'E. Cloud Systems' } : null);
+    (activeSimulationId === 'devsecops' ? { nameAr: 'أمن سلاسل التوريد والـ DevSecOps', nameEn: 'Software Supply Chain & DevSecOps', icon: Workflow, category: 'E. Cloud Systems' } : null) ||
+    (activeSimulationId === 'forensics' ? { nameAr: 'التحقيق الجنائي الرقمي', nameEn: 'Digital Forensics World', icon: Shield, category: 'G. Investigation' } : null);
 
-  // Unified Three-Zone Header (Consolidated Phase 1C)
+  // If in DevSecOps, override identity with sub-lab if not on map
+  const displayLabName = (activeSimulationId === 'devsecops' && devSecOpsTab !== 'map')
+    ? (devSecOpsSubLabs.find(l => l.id === devSecOpsTab))
+    : activeLab;
+
+  // Unified Three-Zone Header (Consolidated Phase 1D)
   return (
     <header className="h-12 border-b border-slate-900 bg-slate-950 px-4 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
       {/* Zone 1: Identity / Context */}
@@ -104,14 +142,14 @@ export const Header: React.FC = () => {
             </button>
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                {React.createElement(activeLab.icon, { className: 'w-4 h-4' })}
+                {React.createElement(displayLabName?.icon || activeLab.icon, { className: 'w-4 h-4' })}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[10px] font-bold text-white uppercase tracking-tight truncate leading-tight">
-                  {language === 'ar' ? activeLab.nameAr : activeLab.nameEn}
+                  {language === 'ar' ? displayLabName?.nameAr || activeLab.nameAr : displayLabName?.nameEn || activeLab.nameEn}
                 </span>
                 <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest leading-none">
-                  {activeLab.category}
+                  {activeSimulationId === 'devsecops' ? (devSecOpsTab === 'map' ? 'WORLD HUB' : 'DEVSECOPS LAB') : activeLab.category}
                 </span>
               </div>
             </div>
@@ -138,7 +176,7 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-5 px-5 py-1 rounded-full bg-slate-900/40 border border-slate-800/60 shadow-inner">
             <div className="flex items-center gap-2">
               <div className={`w-1.5 h-1.5 rounded-full ${
-                clockStatus === 'running' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-amber-500'
+                clockStatus === 'running' ? 'bg-omega-success shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-omega-warning'
               }`} />
               <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">
                 {clockStatus === 'running' ? 'Active' : 'Halted'}
@@ -209,27 +247,49 @@ export const Header: React.FC = () => {
               <div className="absolute top-full right-0 rtl:right-auto rtl:left-0 mt-2 w-72 max-h-[70vh] overflow-hidden bg-slate-950 border border-slate-800 rounded-xl shadow-2xl flex flex-col z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="px-3 py-2.5 border-b border-slate-900 bg-slate-900/20">
                   <span className="text-[9px] font-mono font-bold text-cyan-400 uppercase tracking-[0.2em]">
-                    {language === 'ar' ? 'مركز التحكم بالمختبرات' : 'Lab Simulation Center'}
+                    {activeSimulationId === 'devsecops' ? (language === 'ar' ? 'أقسام عالم DevSecOps' : 'DevSecOps Workstations') : (language === 'ar' ? 'مركز التحكم بالمختبرات' : 'Lab Simulation Center')}
                   </span>
                 </div>
                 <div className="overflow-y-auto p-1.5 space-y-0.5 custom-scrollbar">
-                  {labsList.map((lab) => (
-                    <button
-                      key={lab.id}
-                      onClick={() => { setActiveSimulation(lab.id); setLabsOpen(false); }}
-                      className={`w-full p-2 rounded-lg flex items-center gap-3 text-left rtl:text-right transition-all group ${
-                        activeSimulationId === lab.id ? 'bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/10' : 'hover:bg-slate-900 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${activeSimulationId === lab.id ? 'bg-cyan-500/20' : 'bg-slate-950 border border-slate-900 group-hover:border-slate-700'}`}>
-                        {React.createElement(lab.icon, { className: 'w-4 h-4' })}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[11px] truncate uppercase tracking-tight">{language === 'ar' ? lab.nameAr : lab.nameEn}</div>
-                        <div className="text-[8px] font-mono text-slate-600 uppercase tracking-tighter">{lab.category}</div>
-                      </div>
-                    </button>
-                  ))}
+                  {activeSimulationId === 'devsecops' ? (
+                    // Show DevSecOps Sub-labs in Switcher when in DevSecOps World
+                    devSecOpsSubLabs.map((lab) => (
+                      <button
+                        key={lab.id}
+                        onClick={() => { setDevSecOpsTab(lab.id); setLabsOpen(false); }}
+                        className={`w-full p-2 rounded-lg flex items-center gap-3 text-left rtl:text-right transition-all group ${
+                          devSecOpsTab === lab.id ? 'bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/10' : 'hover:bg-slate-900 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${devSecOpsTab === lab.id ? 'bg-cyan-500/20' : 'bg-slate-950 border border-slate-900 group-hover:border-slate-700'}`}>
+                          {React.createElement(lab.icon, { className: 'w-4 h-4' })}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] truncate uppercase tracking-tight">{language === 'ar' ? lab.nameAr : lab.nameEn}</div>
+                          <div className="text-[8px] font-mono text-slate-600 uppercase tracking-tighter">SUB-LAB</div>
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    // Standard Lab Switcher
+                    labsList.map((lab) => (
+                      <button
+                        key={lab.id}
+                        onClick={() => { setActiveSimulation(lab.id); setLabsOpen(false); }}
+                        className={`w-full p-2 rounded-lg flex items-center gap-3 text-left rtl:text-right transition-all group ${
+                          activeSimulationId === lab.id ? 'bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/10' : 'hover:bg-slate-900 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${activeSimulationId === lab.id ? 'bg-cyan-500/20' : 'bg-slate-950 border border-slate-900 group-hover:border-slate-700'}`}>
+                          {React.createElement(lab.icon, { className: 'w-4 h-4' })}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] truncate uppercase tracking-tight">{language === 'ar' ? lab.nameAr : lab.nameEn}</div>
+                          <div className="text-[8px] font-mono text-slate-600 uppercase tracking-tighter">{lab.category}</div>
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
             )}

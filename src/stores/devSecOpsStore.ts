@@ -6,12 +6,15 @@ import {
 
 interface DevSecOpsStoreState {
   masterState: DevSecOpsMasterState;
+  activeTab: string;
   setMasterState: (updater: (state: DevSecOpsMasterState) => void) => void;
+  setActiveTab: (tab: string) => void;
   resetMasterState: () => void;
 }
 
 export const useDevSecOpsStore = create<DevSecOpsStoreState>((set) => ({
   masterState: createDefaultDevSecOpsMasterState(),
+  activeTab: 'map',
   setMasterState: (updater) =>
     set((prev) => {
       // Create a deep copy or copy of the state structure
@@ -66,5 +69,6 @@ export const useDevSecOpsStore = create<DevSecOpsStoreState>((set) => ({
 
       return { masterState: newState };
     }),
-  resetMasterState: () => set({ masterState: createDefaultDevSecOpsMasterState() })
+  setActiveTab: (tab) => set({ activeTab: tab }),
+  resetMasterState: () => set({ masterState: createDefaultDevSecOpsMasterState(), activeTab: 'map' })
 }));

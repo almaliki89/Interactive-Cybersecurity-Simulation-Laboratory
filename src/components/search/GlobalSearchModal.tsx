@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSimulationStore, SimulationId } from '../../stores/simulationStore';
+import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
 import { MACRO_DOMAINS, WORLDS_REGISTRY, LEARNING_PATHS } from '../../data/universeData';
 import { GLOSSARY_TERMS } from '../../data/glossaryData';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
@@ -112,6 +113,16 @@ export const GlobalSearchModal: React.FC = () => {
       labelAr: 'فتح معمل التحقيق الجنائي الرقمي',
       labelEn: 'Enter Forensics Lab',
       action: () => setActiveSimulation('forensics'),
+    },
+    {
+      id: 'open_devsecops_master',
+      icon: Sparkles,
+      labelAr: 'التحدي الشامل لـ DevSecOps',
+      labelEn: 'Launch DevSecOps Master Challenge',
+      action: () => {
+        setActiveSimulation('devsecops');
+        useDevSecOpsStore.getState().setActiveTab('master');
+      },
     },
     {
       id: 'reset_sim',

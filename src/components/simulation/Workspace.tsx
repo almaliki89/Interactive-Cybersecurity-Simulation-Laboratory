@@ -33,6 +33,7 @@ interface WorkspaceProps {
   challenge?: Challenge;
   onValidateChallenge?: () => { success: boolean; message: string };
   onRestart?: () => void;
+  onBackToHub?: () => void;
   onStep?: () => void;
   controlDeck?: React.ReactNode;
   children: React.ReactNode; // The simulation canvas / interactive stage
@@ -45,6 +46,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   challenge,
   onValidateChallenge,
   onRestart,
+  onBackToHub,
   onStep,
   controlDeck,
   children,
@@ -100,8 +102,20 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 select-none font-sans">
       {/* 1. Technical Toolbar (Consolidated) */}
       <div className="h-8 border-b border-slate-900 bg-slate-900/20 px-4 flex items-center justify-between shrink-0 z-20">
-        {/* Left: Domain Context Indicator */}
+        {/* Left: Domain Context Indicator & Optional Navigation */}
         <div className="flex items-center gap-3">
+          {onBackToHub && (
+            <>
+              <button
+                onClick={onBackToHub}
+                className="flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest group"
+              >
+                <ArrowLeft className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform rtl:rotate-180" />
+                <span>{language === 'ar' ? 'العودة للمركز' : 'Hub'}</span>
+              </button>
+              <div className="h-3 w-px bg-slate-800" />
+            </>
+          )}
           <div className="flex items-center gap-1.5 text-[9px] font-mono text-slate-500 uppercase tracking-widest">
             <Sliders className="w-3 h-3 text-cyan-500" />
             <span className="hidden sm:inline">{language === 'ar' ? 'نمط العمل:' : 'MODE:'}</span>
