@@ -91,11 +91,30 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
           </div>
         )}
 
-        {/* Left-ish: Evidence Board (Collapsible) */}
+        {/* Left-ish: Evidence Board (Collapsible Desktop / Drawer Mobile) */}
         {isEvidenceBoardVisible && (
-          <div className="w-72 shrink-0 border-r border-slate-900 transition-all hidden md:block">
-             <ForensicsEvidenceBoard />
-          </div>
+          <>
+            {/* Desktop Sidebar */}
+            <div className="w-72 shrink-0 border-r border-slate-900 transition-all hidden md:block">
+               <ForensicsEvidenceBoard />
+            </div>
+
+            {/* Mobile/Tablet Drawer Overlay */}
+            <div className="absolute inset-0 z-40 bg-black/80 flex md:hidden">
+              <div className="w-72 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
+                <button 
+                  onClick={() => setEvidenceBoardVisible(false)}
+                  className="absolute top-3 right-3 p-1 text-slate-400 hover:text-white z-10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex-1 overflow-y-auto pt-6">
+                  <ForensicsEvidenceBoard />
+                </div>
+              </div>
+              <div className="flex-1" onClick={() => setEvidenceBoardVisible(false)} />
+            </div>
+          </>
         )}
 
         {/* Center: Content Workspace */}
@@ -103,11 +122,30 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
            {children}
         </div>
 
-        {/* Right: Inspector (Collapsible) */}
+        {/* Right: Inspector (Collapsible Desktop / Drawer Mobile/Tablet) */}
         {isInspectorVisible && (
-          <div className="w-80 shrink-0 hidden lg:block">
-             <ForensicsEvidenceInspector />
-          </div>
+          <>
+            {/* Desktop Sidebar */}
+            <div className="w-80 shrink-0 hidden lg:block border-l border-slate-900">
+               <ForensicsEvidenceInspector />
+            </div>
+
+            {/* Mobile/Tablet Drawer Overlay */}
+            <div className="absolute inset-0 z-40 bg-black/80 flex lg:hidden justify-end">
+              <div className="flex-1" onClick={() => setInspectorVisible(false)} />
+              <div className="w-80 bg-slate-950 h-full border-l border-slate-800 flex flex-col relative">
+                <button 
+                  onClick={() => setInspectorVisible(false)}
+                  className="absolute top-3 left-3 p-1 text-slate-400 hover:text-white z-10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex-1 overflow-y-auto pt-6">
+                  <ForensicsEvidenceInspector />
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Bottom Drawer Overlay */}

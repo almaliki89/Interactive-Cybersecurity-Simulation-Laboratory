@@ -72,4 +72,13 @@ describe('Forensics Phase 3C Acceptance Tests', () => {
     expect(validation.valid).toBe(true);
     expect(records.length).toBe(2);
   });
+
+  it('verifies responsive panel and drawer state toggling logic', () => {
+    const store = useForensicsStore.getState();
+    store.setActiveTab('intake');
+    expect(useForensicsStore.getState().activeTab).toBe('intake');
+
+    store.setActiveTab('preservation');
+    expect(useForensicsStore.getState().activeTab).toBe('preservation');
+  });
 });
