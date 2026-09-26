@@ -4,10 +4,9 @@ import {
   validateForensicInvestigationState,
   ForensicsMasterState,
   getInitialForensicsChallengeState,
-  getSolvedForensicsMasterState,
 } from './logic/hardening';
 import { createDefaultForensicsCase } from './logic/evidence';
-import { Award, ShieldCheck, AlertTriangle, CheckCircle2, XCircle, RotateCcw, Cpu, FileCheck2, Play } from 'lucide-react';
+import { Award, ShieldCheck, AlertTriangle, CheckCircle2, XCircle, RotateCcw, Cpu, FileCheck2 } from 'lucide-react';
 
 export const ForensicsMasterChallenge: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -21,10 +20,6 @@ export const ForensicsMasterChallenge: React.FC = () => {
 
   const toggleAntiCheatFlag = (flagKey: keyof ForensicsMasterState) => {
     setState((prev) => ({ ...prev, [flagKey]: !prev[flagKey] }));
-  };
-
-  const loadSolvedState = () => {
-    setState(getSolvedForensicsMasterState());
   };
 
   const resetState = () => {
@@ -45,14 +40,6 @@ export const ForensicsMasterChallenge: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={loadSolvedState}
-            className="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
-          >
-            <Play className="w-4 h-4" />
-            <span>{isAr ? 'تحميل التحقيق المكتمل' : 'Load Solved Investigation'}</span>
-          </button>
-
           <button
             onClick={resetState}
             className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-700"

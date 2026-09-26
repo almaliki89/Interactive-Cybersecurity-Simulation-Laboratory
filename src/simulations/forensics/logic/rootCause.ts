@@ -101,6 +101,49 @@ export function evaluateRootCauseFinding(
     reasonsAr.push('ادعاء تأثير الموارد المالية غير مدعوم بأدلة ملفات القرص.');
   }
 
+  // Semantic value validation for Nexora case:
+  // 1. affectedIdentity must be 'sara'
+  if (finding.affectedIdentity !== undefined && finding.affectedIdentity.trim() !== '') {
+    if (finding.affectedIdentity.toLowerCase().trim() !== 'sara') {
+      unsupportedClaims.push('affectedIdentity');
+      reasonsEn.push(`Affected identity claim '${finding.affectedIdentity}' is invalid; expected 'sara'.`);
+      reasonsAr.push(`ادعاء الهوية المتأثرة '${finding.affectedIdentity}' غير صحيح؛ المتوقع 'sara'.`);
+    }
+  }
+
+  // 2. affectedHost must be 'FIN-WS-01'
+  if (finding.affectedHost !== undefined && finding.affectedHost.trim() !== '') {
+    if (finding.affectedHost.toUpperCase().trim() !== 'FIN-WS-01') {
+      unsupportedClaims.push('affectedHost');
+      reasonsEn.push(`Affected host claim '${finding.affectedHost}' is invalid; expected 'FIN-WS-01'.`);
+      reasonsAr.push(`ادعاء الجهاز المتأثر '${finding.affectedHost}' غير صحيح؛ المتوقع 'FIN-WS-01'.`);
+    }
+  }
+
+  // 3. privilegeChange must include 'Domain Admins'
+  if (finding.privilegeChange !== undefined && finding.privilegeChange.trim() !== '') {
+    if (!finding.privilegeChange.toLowerCase().includes('domain admin')) {
+      unsupportedClaims.push('privilegeChange');
+      reasonsEn.push(`Privilege escalation claim '${finding.privilegeChange}' is invalid; expected 'Domain Admins'.`);
+      reasonsAr.push(`ادعاء تصعيد الصلاحيات '${finding.privilegeChange}' غير صحيح؛ المتوقع 'Domain Admins'.`);
+    }
+  }
+
+  // 4. impactedResources must include 'FinanceShare' or 'Q3_Report'
+  const hasExpectedResource =
+    finding.impactedResources &&
+    finding.impactedResources.length > 0 &&
+    finding.impactedResources.some(
+      (r) =>
+        r.toLowerCase().includes('financeshare') ||
+        r.toLowerCase().includes('q3_report')
+    );
+  if (!hasExpectedResource) {
+    unsupportedClaims.push('impactedResources');
+    reasonsEn.push("Impacted resource claim is invalid; must include 'FinanceShare' or 'Q3_Report' file repository.");
+    reasonsAr.push("ادعاء المورد المتأثر غير صحيح؛ يجب أن يتضمن مستودع 'FinanceShare' أو 'Q3_Report'.");
+  }
+
   const supportedByEvidence = missing.length === 0 && unsupportedClaims.length === 0 && finding.evidenceIds.length >= 3;
   const valid = supportedByEvidence && finding.initialAccessVector.length > 0;
 

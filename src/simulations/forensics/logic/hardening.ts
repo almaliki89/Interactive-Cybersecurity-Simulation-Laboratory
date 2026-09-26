@@ -353,27 +353,37 @@ export function validateForensicInvestigationState(
     );
   }
 
-  // Check 1: Evidence Integrity Status (Hash Mismatch Check)
+  // Check 1: Evidence Integrity Status & Verification Check
   const corruptEvidence = state.acquiredEvidence.filter(
     (e) => e.originalHash !== e.currentHash || e.integrityStatus === 'MISMATCH'
   );
-  const evidenceIntegrityPassed = corruptEvidence.length === 0 && state.acquiredEvidence.length > 0;
+  const unverifiedEvidence = state.acquiredEvidence.filter(
+    (e) => e.integrityStatus !== 'VERIFIED' || !state.verifiedEvidenceHashes.includes(e.id)
+  );
+  const evidenceIntegrityPassed =
+    corruptEvidence.length === 0 &&
+    unverifiedEvidence.length === 0 &&
+    state.acquiredEvidence.length > 0;
 
   checks.push({
     id: 'chk-evidence-hash-integrity',
     category: 'Integrity Verification',
-    nameEn: 'Evidence Hash Integrity Verification (SHA-256 Synthetic Match)',
-    nameAr: 'التحقق من سلامة تجزئة الأدلة الجنائية',
+    nameEn: 'Evidence Hash Integrity Verification (Synthetic Deterministic Hash Match & Verified Status)',
+    nameAr: 'التحقق من سلامة تجزئة الأدلة الجنائية والتحقق المعتمد',
     passed: evidenceIntegrityPassed,
     score: evidenceIntegrityPassed ? 10 : 0,
     weight: 10,
     severity: 'CRITICAL',
     feedbackEn: evidenceIntegrityPassed
-      ? 'PASS: All acquired forensic evidence matches original SHA-256 synthetic hash digests.'
-      : `FAIL: Evidence hash integrity mismatch detected on ${corruptEvidence.length} item(s).`,
+      ? 'PASS: All acquired forensic evidence verified with matching synthetic deterministic hash digests.'
+      : corruptEvidence.length > 0
+      ? `FAIL: Evidence hash integrity mismatch detected on ${corruptEvidence.length} item(s).`
+      : `FAIL: Evidence integrity verification incomplete on ${unverifiedEvidence.length} item(s) (must be explicitly VERIFIED and recorded in verifiedEvidenceHashes).`,
     feedbackAr: evidenceIntegrityPassed
-      ? 'نجاح: جميع الأدلة الجنائية تطابق قيم التجزئة الأصلية.'
-      : 'فشل: تباين في تجزئة الأدلة الجنائية مما يدل على تعديلها.',
+      ? 'نجاح: جميع الأدلة الجنائية تم التحقق من سلامتها وتطابق قيم التجزئة التركيبية.'
+      : corruptEvidence.length > 0
+      ? 'فشل: تباين في تجزئة الأدلة الجنائية مما يدل على تعديلها.'
+      : 'فشل: لم يتم توثيق التحقق من سلامة الأدلة الجنائية في سجل التحقق.',
   });
 
   // Check 2: Incident Scope Selection

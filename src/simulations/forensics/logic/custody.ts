@@ -26,6 +26,8 @@ export interface CustodyValidationResult {
   missingAcquisitionTime: boolean;
   missingIntegrityVerification: boolean;
   unauthorizedModification: boolean;
+  invalidChronology: boolean;
+  outOfOrderActions: string[];
   reasonsEn: string[];
   reasonsAr: string[];
 }
@@ -60,8 +62,36 @@ export function validateCustodyChain(
   const missingIntegrityVerification = !verifiedRecord;
   const unauthorizedModification = originalHash !== currentHash;
 
+  const outOfOrderActions: string[] = [];
   const reasonsEn: string[] = [];
   const reasonsAr: string[] = [];
+
+  // Enforce custody chronology:
+  // COLLECTED < VERIFIED
+  // and when present:
+  // COLLECTED < TRANSFERRED
+  // COLLECTED < WORKING_COPY_CREATED
+  // COLLECTED < ANALYZED
+  // A custody action cannot precede collection.
+  itemRecords.forEach((r) => {
+    if (r.action !== 'COLLECTED') {
+      if (!collectedRecord || r.virtualTime <= collectedRecord.virtualTime) {
+        outOfOrderActions.push(r.action);
+        reasonsEn.push(
+          `Custody action ${r.action} occurred before or at collection time (${r.virtualTime} <= ${
+            collectedRecord ? collectedRecord.virtualTime : 'N/A'
+          }) for item ${evidenceId}.`
+        );
+        reasonsAr.push(
+          `الإجراء الجنائي ${r.action} حدث قبل أو في وقت التحريز (${r.virtualTime} <= ${
+            collectedRecord ? collectedRecord.virtualTime : 'غير محدد'
+          }) للدليل ${evidenceId}.`
+        );
+      }
+    }
+  });
+
+  const invalidChronology = outOfOrderActions.length > 0;
 
   if (missingCollector) {
     reasonsEn.push(`Missing designated evidence collector for item ${evidenceId}`);
@@ -84,7 +114,8 @@ export function validateCustodyChain(
     !missingCollector &&
     !missingAcquisitionTime &&
     !missingIntegrityVerification &&
-    !unauthorizedModification;
+    !unauthorizedModification &&
+    !invalidChronology;
 
   return {
     valid,
@@ -92,6 +123,8 @@ export function validateCustodyChain(
     missingAcquisitionTime,
     missingIntegrityVerification,
     unauthorizedModification,
+    invalidChronology,
+    outOfOrderActions,
     reasonsEn,
     reasonsAr,
   };

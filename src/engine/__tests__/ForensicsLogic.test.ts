@@ -40,8 +40,8 @@ describe('Digital Forensics & Incident Response Logic Suite', () => {
     });
   });
 
-  describe('Chain of Custody Ledger', () => {
-    it('validates a complete and intact chain of custody', () => {
+  describe('Chain of Custody Ledger & Chronology Enforcers', () => {
+    it('correct chronology passes validation', () => {
       const records: CustodyRecord[] = [
         {
           id: 'CUST-01',
@@ -64,6 +64,8 @@ describe('Digital Forensics & Incident Response Logic Suite', () => {
       expect(res.valid).toBe(true);
       expect(res.missingCollector).toBe(false);
       expect(res.missingIntegrityVerification).toBe(false);
+      expect(res.invalidChronology).toBe(false);
+      expect(res.outOfOrderActions).toHaveLength(0);
     });
 
     it('fails when collector is missing from custody log', () => {
@@ -80,6 +82,137 @@ describe('Digital Forensics & Incident Response Logic Suite', () => {
       const res = validateCustodyChain('EVD-DISK-01', records, 'hash123', 'hash123');
       expect(res.valid).toBe(false);
       expect(res.missingCollector).toBe(true);
+    });
+
+    it('fails when VERIFIED occurs before COLLECTED', () => {
+      const records: CustodyRecord[] = [
+        {
+          id: 'CUST-01',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 5,
+          action: 'VERIFIED',
+          actor: 'Vault Officer',
+          notes: 'Hash verified prior to collection',
+        },
+        {
+          id: 'CUST-02',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 10,
+          action: 'COLLECTED',
+          actor: 'Investigator Sara',
+          notes: 'Physical disk collected',
+        },
+      ];
+      const res = validateCustodyChain('EVD-DISK-01', records, 'hash123', 'hash123');
+      expect(res.valid).toBe(false);
+      expect(res.invalidChronology).toBe(true);
+      expect(res.outOfOrderActions).toContain('VERIFIED');
+    });
+
+    it('fails when TRANSFERRED occurs before COLLECTED', () => {
+      const records: CustodyRecord[] = [
+        {
+          id: 'CUST-01',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 5,
+          action: 'TRANSFERRED',
+          actor: 'Courier',
+          notes: 'Evidence transferred early',
+        },
+        {
+          id: 'CUST-02',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 10,
+          action: 'COLLECTED',
+          actor: 'Investigator Sara',
+          notes: 'Collected',
+        },
+        {
+          id: 'CUST-03',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 20,
+          action: 'VERIFIED',
+          actor: 'Vault Officer',
+          notes: 'Verified',
+        },
+      ];
+      const res = validateCustodyChain('EVD-DISK-01', records, 'hash123', 'hash123');
+      expect(res.valid).toBe(false);
+      expect(res.invalidChronology).toBe(true);
+      expect(res.outOfOrderActions).toContain('TRANSFERRED');
+    });
+
+    it('fails when ANALYZED occurs before COLLECTED', () => {
+      const records: CustodyRecord[] = [
+        {
+          id: 'CUST-01',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 5,
+          action: 'ANALYZED',
+          actor: 'Analyst',
+          notes: 'Analysis ran prior to collection',
+        },
+        {
+          id: 'CUST-02',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 10,
+          action: 'COLLECTED',
+          actor: 'Investigator Sara',
+          notes: 'Collected',
+        },
+        {
+          id: 'CUST-03',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 20,
+          action: 'VERIFIED',
+          actor: 'Vault Officer',
+          notes: 'Verified',
+        },
+      ];
+      const res = validateCustodyChain('EVD-DISK-01', records, 'hash123', 'hash123');
+      expect(res.valid).toBe(false);
+      expect(res.invalidChronology).toBe(true);
+      expect(res.outOfOrderActions).toContain('ANALYZED');
+    });
+
+    it('fails when VERIFIED action is missing', () => {
+      const records: CustodyRecord[] = [
+        {
+          id: 'CUST-01',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 10,
+          action: 'COLLECTED',
+          actor: 'Investigator Sara',
+          notes: 'Collected without verification',
+        },
+      ];
+      const res = validateCustodyChain('EVD-DISK-01', records, 'hash123', 'hash123');
+      expect(res.valid).toBe(false);
+      expect(res.missingIntegrityVerification).toBe(true);
+    });
+
+    it('fails when hash mismatch occurs', () => {
+      const records: CustodyRecord[] = [
+        {
+          id: 'CUST-01',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 10,
+          action: 'COLLECTED',
+          actor: 'Investigator Sara',
+          notes: 'Collected',
+        },
+        {
+          id: 'CUST-02',
+          evidenceId: 'EVD-DISK-01',
+          virtualTime: 20,
+          action: 'VERIFIED',
+          actor: 'Vault Officer',
+          notes: 'Verified',
+        },
+      ];
+      const res = validateCustodyChain('EVD-DISK-01', records, 'origHash123', 'tamperedHash456');
+      expect(res.valid).toBe(false);
+      expect(res.unauthorizedModification).toBe(true);
     });
   });
 
@@ -311,6 +444,108 @@ describe('Digital Forensics & Incident Response Logic Suite', () => {
       const res = evaluateRootCauseFinding(finding, collected);
       expect(res.valid).toBe(false);
       expect(res.unsupportedClaims).toContain('impactedResource');
+    });
+
+    it('correct evidence + wrong user fails validation', () => {
+      const finding: RootCauseFinding = {
+        initialAccessVector: 'Brute-force Kerberos spray',
+        affectedIdentity: 'attacker_bob', // wrong user!
+        affectedHost: 'FIN-WS-01',
+        privilegeChange: 'Domain Admins',
+        impactedResources: ['\\\\FIN-SRV\\FinanceShare\\Q3_Report.xlsx'],
+        evidenceIds: ['EVD-LOG-WIN-SEC', 'EVD-NET-PCAP-01', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'],
+      };
+      const collected = ['EVD-LOG-WIN-SEC', 'EVD-NET-PCAP-01', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'];
+      const res = evaluateRootCauseFinding(finding, collected);
+      expect(res.valid).toBe(false);
+      expect(res.unsupportedClaims).toContain('affectedIdentity');
+    });
+
+    it('correct evidence + wrong host fails validation', () => {
+      const finding: RootCauseFinding = {
+        initialAccessVector: 'Brute-force Kerberos spray',
+        affectedIdentity: 'sara',
+        affectedHost: 'DC-01', // wrong host!
+        privilegeChange: 'Domain Admins',
+        impactedResources: ['\\\\FIN-SRV\\FinanceShare\\Q3_Report.xlsx'],
+        evidenceIds: ['EVD-LOG-WIN-SEC', 'EVD-NET-PCAP-01', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'],
+      };
+      const collected = ['EVD-LOG-WIN-SEC', 'EVD-NET-PCAP-01', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'];
+      const res = evaluateRootCauseFinding(finding, collected);
+      expect(res.valid).toBe(false);
+      expect(res.unsupportedClaims).toContain('affectedHost');
+    });
+
+    it('correct evidence + wrong privilege change fails validation', () => {
+      const finding: RootCauseFinding = {
+        initialAccessVector: 'Brute-force Kerberos spray',
+        affectedIdentity: 'sara',
+        affectedHost: 'FIN-WS-01',
+        privilegeChange: 'Backup Operators', // wrong privilege!
+        impactedResources: ['\\\\FIN-SRV\\FinanceShare\\Q3_Report.xlsx'],
+        evidenceIds: ['EVD-LOG-WIN-SEC', 'EVD-NET-PCAP-01', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'],
+      };
+      const collected = ['EVD-LOG-WIN-SEC', 'EVD-NET-PCAP-01', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'];
+      const res = evaluateRootCauseFinding(finding, collected);
+      expect(res.valid).toBe(false);
+      expect(res.unsupportedClaims).toContain('privilegeChange');
+    });
+
+    it('correct evidence + wrong resource fails validation', () => {
+      const finding: RootCauseFinding = {
+        initialAccessVector: 'Brute-force Kerberos spray',
+        affectedIdentity: 'sara',
+        affectedHost: 'FIN-WS-01',
+        privilegeChange: 'Domain Admins',
+        impactedResources: ['\\\\BACKUP-SRV\\PublicShare\\notes.txt'], // wrong resource!
+        evidenceIds: ['EVD-LOG-WIN-SEC', 'EVD-NET-PCAP-01', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'],
+      };
+      const collected = ['EVD-LOG-WIN-SEC', 'EVD-NET-PCAP-01', 'EVD-MEM-FIN-WS01', 'EVD-DISK-FIN-WS01'];
+      const res = evaluateRootCauseFinding(finding, collected);
+      expect(res.valid).toBe(false);
+      expect(res.unsupportedClaims).toContain('impactedResources');
+    });
+  });
+
+  describe('Master Challenge Integrity Verification Enforcers', () => {
+    it('matching hash + NOT_VERIFIED fails master integrity check', () => {
+      const solved = getSolvedForensicsMasterState();
+      // Set one evidence to NOT_VERIFIED even though hashes match
+      solved.acquiredEvidence[0].integrityStatus = 'NOT_VERIFIED';
+      const val = validateForensicInvestigationState(solved);
+      const integrityChk = val.checkDetails.find((c) => c.id === 'chk-evidence-hash-integrity');
+      expect(integrityChk?.passed).toBe(false);
+      expect(val.success).toBe(false);
+    });
+
+    it('matching hash + VERIFIED passes master integrity check', () => {
+      const solved = getSolvedForensicsMasterState();
+      const val = validateForensicInvestigationState(solved);
+      const integrityChk = val.checkDetails.find((c) => c.id === 'chk-evidence-hash-integrity');
+      expect(integrityChk?.passed).toBe(true);
+      expect(val.success).toBe(true);
+    });
+
+    it('hash mismatch + VERIFIED fails master integrity check', () => {
+      const solved = getSolvedForensicsMasterState();
+      solved.acquiredEvidence[0].integrityStatus = 'VERIFIED';
+      solved.acquiredEvidence[0].currentHash = 'sha256:TAMPERED9999999999999999';
+      const val = validateForensicInvestigationState(solved);
+      const integrityChk = val.checkDetails.find((c) => c.id === 'chk-evidence-hash-integrity');
+      expect(integrityChk?.passed).toBe(false);
+      expect(val.success).toBe(false);
+    });
+
+    it('missing required verification record in verifiedEvidenceHashes fails master integrity check', () => {
+      const solved = getSolvedForensicsMasterState();
+      // Remove evidence id from verifiedEvidenceHashes
+      solved.verifiedEvidenceHashes = solved.verifiedEvidenceHashes.filter(
+        (id) => id !== solved.acquiredEvidence[0].id
+      );
+      const val = validateForensicInvestigationState(solved);
+      const integrityChk = val.checkDetails.find((c) => c.id === 'chk-evidence-hash-integrity');
+      expect(integrityChk?.passed).toBe(false);
+      expect(val.success).toBe(false);
     });
   });
 

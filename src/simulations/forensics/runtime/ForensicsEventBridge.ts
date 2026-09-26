@@ -25,7 +25,20 @@ export class ForensicsEventBridge {
     });
   }
 
+  public reset() {
+    this.evidenceMap.clear();
+    this.notifyListeners();
+  }
+
   public syncEvidenceFromEvents(events: unknown[]) {
+    if (!events || events.length === 0) {
+      if (this.evidenceMap.size > 0) {
+        this.evidenceMap.clear();
+        this.notifyListeners();
+      }
+      return;
+    }
+
     events.forEach((rawEvt: any) => {
       const vTime = rawEvt.virtualTime ?? 0;
       const type = String(rawEvt.type || '');
