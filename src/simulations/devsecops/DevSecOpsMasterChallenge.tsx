@@ -73,13 +73,33 @@ export const DevSecOpsMasterChallenge: React.FC = () => {
   const tfRemediated = masterState.terraformResources.filter(r => !r.remediated && r.hasMisconfiguration).length === 0;
   
   const config = masterState.pipelineConfig;
-  const gatesEnforced = config.requireSastGate && config.requireScaGate && config.requireSecretScanGate && config.requireIacScanGate && config.requireContainerScanGate && config.requireCosignSignatureGate && !config.allowBypassOnFailure;
+  const gatesEnforced = !!(config.requireSastGate && config.requireScaGate && config.requireSecretScanGate && config.requireIacScanGate && config.requireContainerScanGate && config.requireCosignSignatureGate && !config.allowBypassOnFailure);
   
   const sbomResult = validateSbom(masterState.sbomComponents, masterState.artifactState);
   const provResult = validateBuildProvenance(masterState.slsaAttestation, masterState.artifactState);
-  const sbomSlsaPassed = sbomResult.valid && provResult.verified;
   
+  const container = masterState.containerImages[0];
+  const containerValid = !!(container &&
+    container.vulnerabilitiesCount === 0 &&
+    container.signed &&
+    container.trustedRegistry &&
+    container.embeddedSecretsCount === 0 &&
+    container.tag !== 'latest' &&
+    container.digest !== '' &&
+    container.sbomVerified);
+
+  const sbomPassed = sbomResult.valid;
+  const slsaPassed = provResult.verified;
+
+  const signatureState = masterState.signatures[0];
+  const integrityResult = verifyArtifactIntegrity(masterState.artifactState, signatureState, masterState.slsaAttestation);
+  const signingPassed = integrityResult.verified;
+
   const driftRemediated = masterState.driftFindings.filter(d => !d.autoRemediated).length === 0;
+
+  const compliancePassed = masterState.complianceState.failedControls.length === 0 &&
+    masterState.complianceState.pciDssCompliant &&
+    masterState.complianceState.soc2Compliant;
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-slate-950 text-slate-100">
@@ -139,7 +159,7 @@ export const DevSecOpsMasterChallenge: React.FC = () => {
         <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {isAr ? 'التحصينات والضوابط السبعة للتحدي الشامل:' : 'Required Hardening Criteria Checklist:'}
+              {isAr ? 'التحصينات والضوابط الأحد عشر للتحدي الشامل:' : 'Required Hardening Criteria Checklist (11 Gates):'}
             </h2>
           </div>
 
@@ -170,22 +190,46 @@ export const DevSecOpsMasterChallenge: React.FC = () => {
                 lab: 'iac'
               },
               {
-                titleAr: '5. تفعيل كافة بوابات الفحص الإلزامية في خط CI/CD وحظر التجاوز (Zero Bypass)',
-                titleEn: '5. Enforce All Mandatory CI/CD Quality Gates & Set Bypass=False',
-                val: gatesEnforced,
-                lab: 'gates'
+                titleAr: '5. تحصين وتوقيع صورة الحاوية: إزالة الثغرات وتثبيت البصمة الرقمية للمستودع',
+                titleEn: '5. Secure and Sign Container Image: Remove Vulnerabilities & Pin Registry Digest',
+                val: containerValid,
+                lab: 'containerci'
               },
               {
-                titleAr: '6. توليد جرد SBOM مكتمل والتحقق من شهادة المنشأ SLSA Level 3',
-                titleEn: '6. Generate CycloneDX SBOM Inventory & Verify SLSA Level 3 Provenance',
-                val: sbomSlsaPassed,
+                titleAr: '6. توليد جرد SBOM مكتمل ومطابق لمواصفات CycloneDX',
+                titleEn: '6. Generate Complete & Valid CycloneDX SBOM Declarations',
+                val: sbomPassed,
                 lab: 'sbom'
               },
               {
-                titleAr: '7. كشف وإعادة مزامنة انحراف البنية التحتية يدوي الصنع تلقائيًا',
-                titleEn: '7. Detect & Remediate Cloud Live Infrastructure Configuration Drift',
+                titleAr: '7. التحقق من شهادة المنشأ البرمجي بمستوى SLSA Level 3',
+                titleEn: '7. Verify SLSA Level 3 Build Provenance Attestation',
+                val: slsaPassed,
+                lab: 'slsa'
+              },
+              {
+                titleAr: '8. التحقق من النزاهة الرقمية للأداة وإثبات سجل الشفافية Rekor',
+                titleEn: '8. Verify Cryptographic Integrity & Rekor Ledger Transparency Proof',
+                val: signingPassed,
+                lab: 'signing'
+              },
+              {
+                titleAr: '9. كشف وإعادة مزامنة انحراف البنية التحتية يدوي الصنع تلقائيًا',
+                titleEn: '9. Detect & Remediate Cloud Live Infrastructure Configuration Drift',
                 val: driftRemediated,
                 lab: 'drift'
+              },
+              {
+                titleAr: '10. تدقيق ومطابقة عناصر الامتثال لمعايير PCI-DSS v4.0 و SOC2',
+                titleEn: '10. Audit & Align PCI-DSS v4.0 and SOC2 Compliance Controls',
+                val: compliancePassed,
+                lab: 'compliance'
+              },
+              {
+                titleAr: '11. تفعيل كافة بوابات الفحص الإلزامية في خط CI/CD وحظر التجاوز (Zero Bypass)',
+                titleEn: '11. Enforce All Mandatory CI/CD Quality Gates & Set Bypass=False',
+                val: gatesEnforced,
+                lab: 'gates'
               },
             ].map((task, idx) => (
               <div
