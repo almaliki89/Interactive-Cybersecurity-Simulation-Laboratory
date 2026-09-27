@@ -24,6 +24,7 @@ export interface RealityProcessState {
   status: 'Running' | 'Suspended' | 'Terminated';
   securityCritical: boolean;
   startVirtualTime: number;
+  tokenId: string;
 }
 
 export interface RealitySessionState {
@@ -85,6 +86,33 @@ export interface RealitySocketState {
   startVirtualTime: number;
 }
 
+export interface RealityUserModel {
+  id: string;
+  username: string;
+  domain: string;
+  sid: string;
+  displayName: string;
+  enabled: boolean;
+  passwordState: string;
+  type: 'local' | 'domain';
+  primaryGroup: string;
+  groupSids: string[];
+  privileges: string[];
+  defaultIntegrityLevel: IntegrityLevel;
+}
+
+export interface RealityAccessToken {
+  tokenId: string;
+  userSid: string;
+  username: string;
+  groupSids: string[];
+  privileges: string[];
+  integrityLevel: IntegrityLevel;
+  elevated: boolean;
+  sessionId: number;
+  issuedAtVirtualTime: number;
+}
+
 export interface RealityMachineSnapshot {
   id: string;
   hostname: string;
@@ -100,6 +128,8 @@ export interface RealityMachineSnapshot {
   sockets: RealitySocketState[];
   eventLogs: RealityEventLogEntry[];
   lastUpdatedVirtualTime: number;
+  users?: RealityUserModel[];
+  tokens?: RealityAccessToken[];
 }
 
 export interface RealityEngineSnapshot {

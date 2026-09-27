@@ -1,5 +1,5 @@
 /**
- * OMEGA REALITY ENGINE V1.0 — Core Orchestrator
+ * OMEGA REALITY ENGINE V1.1 — Core Orchestrator
  * System-first state transitions and realistic cyber range execution.
  * Fully deterministic - no Date.now(), Math.random(), or local timers.
  */
@@ -96,7 +96,7 @@ export class RealityEngine {
   public attemptLogon(params: {
     targetHost: string;
     userName: string;
-    userSid: string;
+    userSid?: string;
     passwordCorrect: boolean;
     logonType?: 'Interactive' | 'Network' | 'RemoteInteractive';
     sourceIp?: string;
@@ -108,54 +108,100 @@ export class RealityEngine {
 
     const vTime = this.currentVirtualTime;
 
+    // Resolve user details case-insensitively to get their canonical details
+    const user = machine.getUserByName(params.userName) || (params.userSid ? machine.getUser(params.userSid) : undefined);
+    let success = params.passwordCorrect;
+    let failureReason = 'BadPassword';
+
+    if (success) {
+      if (!user) {
+        success = false;
+        failureReason = 'UserNotFound';
+      } else if (!user.enabled) {
+        success = false;
+        failureReason = 'UserDisabled';
+      }
+    }
+
     // Execute state transition on machine
     const session = machine.createSession({
       userName: params.userName,
-      userSid: params.userSid,
+      userSid: params.userSid || (user ? user.sid : undefined),
       logonType: params.logonType || 'Interactive',
       sourceIp: params.sourceIp || '127.0.0.1',
       virtualTime: vTime,
-      success: params.passwordCorrect,
-      failureReason: params.passwordCorrect ? undefined : 'BadPassword',
+      success,
+      failureReason,
     });
 
+    const reportName = user ? user.username : params.userName;
+
     // Emit runtime event as CONSEQUENCE of machine state transition
-    if (params.passwordCorrect) {
+    if (success && session) {
       this.runtime.dispatch({
         type: 'WIN_4624',
         category: 'WINDOWS',
         source: machine.hostname,
-        target: params.userName,
+        target: reportName,
         severity: 'info',
-        description: `Successful logon on ${machine.hostname} for user ${params.userName}`,
+        description: `Successful logon on ${machine.hostname} for user ${reportName}`,
         payload: {
           eventId: '4624',
-          user: params.userName,
+          user: reportName,
           host: machine.hostname,
           sourceIp: params.sourceIp || '127.0.0.1',
           logonType: params.logonType || 'Interactive',
+          sessionId: session.sessionId,
+          tokenId: session.tokenId,
         },
       });
+
+      // Interactive logons spawn explorer.exe shell process. Dispatch the WIN_4688 telemetry for it!
+      if (params.logonType === 'Interactive' || params.logonType === 'RemoteInteractive' || !params.logonType) {
+        const explorer = machine.getProcesses().find(
+          (p) => p.name === 'explorer.exe' && p.sessionId === session.sessionId && p.status === 'Running'
+        );
+        if (explorer) {
+          this.runtime.dispatch({
+            type: 'WIN_4688',
+            category: 'WINDOWS',
+            source: machine.hostname,
+            target: 'explorer.exe',
+            severity: 'info',
+            description: `Process created: explorer.exe (PID: ${explorer.pid})`,
+            payload: {
+              eventId: '4688',
+              user: reportName,
+              host: machine.hostname,
+              process: 'explorer.exe',
+              pid: explorer.pid,
+              parentPid: explorer.ppid,
+              commandLine: explorer.commandLine,
+              tokenId: explorer.tokenId,
+            },
+          });
+        }
+      }
     } else {
       this.runtime.dispatch({
         type: 'WIN_4625',
         category: 'WINDOWS',
         source: machine.hostname,
-        target: params.userName,
+        target: reportName,
         severity: 'warn',
-        description: `Failed logon attempt on ${machine.hostname} for user ${params.userName}`,
+        description: `Failed logon attempt on ${machine.hostname} for user ${reportName}`,
         payload: {
           eventId: '4625',
-          user: params.userName,
+          user: reportName,
           host: machine.hostname,
           sourceIp: params.sourceIp || '127.0.0.1',
-          failureReason: 'BadPassword',
+          failureReason,
         },
       });
     }
 
     return {
-      success: params.passwordCorrect,
+      success,
       machine,
       session,
     };
@@ -170,9 +216,10 @@ export class RealityEngine {
     parentPid: number;
     name: string;
     commandLine: string;
-    userName: string;
-    userSid: string;
-    integrityLevel?: 'Medium' | 'High' | 'System';
+    userName?: string;
+    userSid?: string;
+    integrityLevel?: 'Low' | 'Medium' | 'High' | 'System';
+    tokenId?: string;
   }): { process: any; machine: WindowsMachine } {
     const machine = this.registry.getMachine(params.host);
     if (!machine) {
@@ -187,7 +234,8 @@ export class RealityEngine {
       commandLine: params.commandLine,
       userName: params.userName,
       userSid: params.userSid,
-      integrityLevel: params.integrityLevel || 'Medium',
+      integrityLevel: params.integrityLevel,
+      tokenId: params.tokenId,
       virtualTime: vTime,
     });
 
@@ -201,19 +249,54 @@ export class RealityEngine {
       description: `Process created: ${params.name} (PID: ${proc.pid})`,
       payload: {
         eventId: '4688',
-        user: params.userName,
+        user: proc.userName,
         host: machine.hostname,
         process: params.name,
         pid: proc.pid,
         parentPid: params.parentPid,
         commandLine: params.commandLine,
+        tokenId: proc.tokenId,
       },
     });
 
     return { process: proc, machine };
   }
 
-  // --- SNAPSHOTS & REPLAY DETERMINISM ---
+  /**
+   * Performs an authentic logoff session on a target machine.
+   */
+  public logoffSession(targetHost: string, sessionId: number): boolean {
+    const machine = this.registry.getMachine(targetHost);
+    if (!machine) return false;
+
+    const vTime = this.currentVirtualTime;
+    const session = machine.getSessions().find((s) => s.sessionId === sessionId);
+    if (!session || session.status === 'LOGGED_OFF') return false;
+
+    const username = session.userName;
+    const success = machine.logoffSession(sessionId, vTime);
+
+    if (success) {
+      this.runtime.dispatch({
+        type: 'WIN_4634',
+        category: 'WINDOWS',
+        source: machine.hostname,
+        target: username,
+        severity: 'info',
+        description: `Successful logoff on ${machine.hostname} for user ${username}`,
+        payload: {
+          eventId: '4634',
+          user: username,
+          host: machine.hostname,
+          sessionId,
+        },
+      });
+    }
+
+    return success;
+  }
+
+  // --- SNAPSHOT & REPLAY DETERMINISM ---
 
   public getStateSnapshot(): RealityEngineSnapshot {
     return {
