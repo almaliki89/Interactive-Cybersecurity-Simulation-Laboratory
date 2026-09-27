@@ -118,7 +118,134 @@ export class ThreatHuntQueryEngine {
             continue;
           }
 
-          // Expect: field operator value
+          // Helper to parse condition
+          const parseCondition = (field: string, opToken: string): QueryCondition => {
+            let actualOp = opToken;
+            let isInverted = false;
+
+            if (opToken === 'NOT') {
+              if (index >= tokens.length) {
+                throw new Error(`Incomplete condition after NOT for field '${field}': missing operator`);
+              }
+              actualOp = tokens[index].toUpperCase();
+              index++;
+              isInverted = true;
+            }
+
+            if (actualOp === 'BETWEEN') {
+              if (index >= tokens.length) {
+                throw new Error(`Malformed BETWEEN for field '${field}': expected start value`);
+              }
+              const startValStr = tokens[index];
+              index++;
+
+              if (index >= tokens.length || tokens[index].toUpperCase() !== 'AND') {
+                throw new Error(`Malformed BETWEEN for field '${field}': expected 'AND' separator`);
+              }
+              index++; // consume 'AND'
+
+              if (index >= tokens.length) {
+                throw new Error(`Malformed BETWEEN for field '${field}': expected end value`);
+              }
+              const endValStr = tokens[index];
+              index++;
+
+              const startNum = Number(startValStr.replace(/['"]/g, ''));
+              const endNum = Number(endValStr.replace(/['"]/g, ''));
+
+              if (isNaN(startNum) || isNaN(endNum)) {
+                throw new Error(`BETWEEN requires numeric boundaries for field '${field}'`);
+              }
+
+              return {
+                field,
+                operator: 'BETWEEN',
+                value: [startNum, endNum],
+                inverted: isInverted ? true : undefined,
+              };
+            }
+
+            if (actualOp === 'IN') {
+              if (index >= tokens.length || tokens[index] !== '(') {
+                throw new Error(`Expected '(' after IN operator for field '${field}'`);
+              }
+              index++; // consume '('
+
+              const inValues: string[] = [];
+              while (index < tokens.length && tokens[index] !== ')') {
+                if (tokens[index] === ',') {
+                  index++;
+                  continue;
+                }
+                const cleanVal = tokens[index].replace(/^['"]|['"]$/g, '');
+                inValues.push(cleanVal);
+                index++;
+              }
+
+              if (index >= tokens.length || tokens[index] !== ')') {
+                throw new Error(`Unclosed parenthesis in IN list for field '${field}'`);
+              }
+              index++; // consume ')'
+
+              return {
+                field,
+                operator: 'IN',
+                value: inValues,
+                inverted: isInverted ? true : undefined,
+              };
+            }
+
+            if (['=', '!=', 'CONTAINS', '>', '<', '>=', '<='].includes(actualOp)) {
+              if (index >= tokens.length) {
+                throw new Error(`Missing value after operator '${actualOp}' for field '${field}'`);
+              }
+              const rawVal = tokens[index];
+              index++;
+
+              const cleanVal = rawVal.replace(/^['"]|['"]$/g, '');
+              const numVal = Number(cleanVal);
+              const finalVal = !isNaN(numVal) && cleanVal !== '' && !rawVal.startsWith('"') && !rawVal.startsWith("'")
+                ? numVal
+                : cleanVal;
+
+              return {
+                field,
+                operator: actualOp as any,
+                value: finalVal,
+                inverted: isInverted ? true : undefined,
+              };
+            }
+
+            throw new Error(`Unknown operator '${actualOp}' for field '${field}'`);
+          };
+
+          if (token.toUpperCase() === 'NOT') {
+            index++; // consume 'NOT'
+            if (index >= tokens.length) {
+              throw new Error("Unexpected end of query after 'NOT'");
+            }
+            if (tokens[index] === '(') {
+              index++; // consume '('
+              const nestedGroup = parseGroup(true);
+              nestedGroup.inverted = true;
+              group.conditions.push(nestedGroup);
+              continue;
+            } else {
+              // Parse single inverted condition: NOT field operator value
+              const field = tokens[index];
+              index++;
+              if (index >= tokens.length) {
+                throw new Error(`Incomplete condition for field '${field}' after NOT: missing operator`);
+              }
+              const opToken = tokens[index].toUpperCase();
+              index++;
+              const condition = parseCondition(field, opToken);
+              condition.inverted = true;
+              group.conditions.push(condition);
+              continue;
+            }
+          }
+
           const field = token;
           index++;
 
@@ -129,91 +256,9 @@ export class ThreatHuntQueryEngine {
           const opToken = tokens[index].toUpperCase();
           index++;
 
-          if (opToken === 'BETWEEN') {
-            if (index >= tokens.length) {
-              throw new Error(`Malformed BETWEEN for field '${field}': expected start value`);
-            }
-            const startValStr = tokens[index];
-            index++;
-
-            if (index >= tokens.length || tokens[index].toUpperCase() !== 'AND') {
-              throw new Error(`Malformed BETWEEN for field '${field}': expected 'AND' separator`);
-            }
-            index++; // consume 'AND'
-
-            if (index >= tokens.length) {
-              throw new Error(`Malformed BETWEEN for field '${field}': expected end value`);
-            }
-            const endValStr = tokens[index];
-            index++;
-
-            const startNum = Number(startValStr.replace(/['"]/g, ''));
-            const endNum = Number(endValStr.replace(/['"]/g, ''));
-
-            if (isNaN(startNum) || isNaN(endNum)) {
-              throw new Error(`BETWEEN requires numeric boundaries for field '${field}'`);
-            }
-
-            group.conditions.push({
-              field,
-              operator: 'BETWEEN',
-              value: [startNum, endNum],
-            });
-            continue;
-          }
-
-          if (opToken === 'IN') {
-            if (index >= tokens.length || tokens[index] !== '(') {
-              throw new Error(`Expected '(' after IN operator for field '${field}'`);
-            }
-            index++; // consume '('
-
-            const inValues: string[] = [];
-            while (index < tokens.length && tokens[index] !== ')') {
-              if (tokens[index] === ',') {
-                index++;
-                continue;
-              }
-              const cleanVal = tokens[index].replace(/^['"]|['"]$/g, '');
-              inValues.push(cleanVal);
-              index++;
-            }
-
-            if (index >= tokens.length || tokens[index] !== ')') {
-              throw new Error(`Unclosed parenthesis in IN list for field '${field}'`);
-            }
-            index++; // consume ')'
-
-            group.conditions.push({
-              field,
-              operator: 'IN',
-              value: inValues,
-            });
-            continue;
-          }
-
-          if (['=', '!=', 'CONTAINS', '>', '<', '>=', '<='].includes(opToken)) {
-            if (index >= tokens.length) {
-              throw new Error(`Missing value after operator '${opToken}' for field '${field}'`);
-            }
-            const rawVal = tokens[index];
-            index++;
-
-            const cleanVal = rawVal.replace(/^['"]|['"]$/g, '');
-            const numVal = Number(cleanVal);
-            const finalVal = !isNaN(numVal) && cleanVal !== '' && !rawVal.startsWith('"') && !rawVal.startsWith("'")
-              ? numVal
-              : cleanVal;
-
-            group.conditions.push({
-              field,
-              operator: opToken as any,
-              value: finalVal,
-            });
-            continue;
-          }
-
-          throw new Error(`Unknown operator '${opToken}' for field '${field}'`);
+          const cond = parseCondition(field, opToken);
+          group.conditions.push(cond);
+          continue;
         }
 
         return group;
@@ -264,65 +309,92 @@ export class ThreatHuntQueryEngine {
       eventVal = event.attributes ? event.attributes[field] || event.attributes[lowerField] : undefined;
     }
 
+    let match = false;
     if (eventVal === undefined || eventVal === null) {
-      if (operator === '!=') return true;
-      return false;
+      if (operator === '!=') match = true;
+      else match = false;
+    } else {
+      const strEventVal = String(eventVal).toLowerCase();
+
+      switch (operator) {
+        case '=':
+          match = typeof value === 'number'
+            ? Number(eventVal) === Number(value)
+            : strEventVal === String(value).toLowerCase();
+          break;
+
+        case '!=':
+          match = typeof value === 'number'
+            ? Number(eventVal) !== Number(value)
+            : strEventVal !== String(value).toLowerCase();
+          break;
+
+        case 'CONTAINS':
+          match = strEventVal.includes(String(value).toLowerCase());
+          break;
+
+        case 'IN': {
+          if (!Array.isArray(value)) match = false;
+          else {
+            const normalizedIn = value.map((v) => String(v).toLowerCase());
+            match = normalizedIn.includes(strEventVal);
+          }
+          break;
+        }
+
+        case 'BETWEEN': {
+          if (!Array.isArray(value) || value.length !== 2) match = false;
+          else {
+            const num = Number(eventVal);
+            const [low, high] = value.map(Number);
+            match = !isNaN(num) && !isNaN(low) && !isNaN(high) && num >= low && num <= high;
+          }
+          break;
+        }
+
+        case '>':
+          match = Number(eventVal) > Number(value);
+          break;
+
+        case '<':
+          match = Number(eventVal) < Number(value);
+          break;
+
+        case '>=':
+          match = Number(eventVal) >= Number(value);
+          break;
+
+        case '<=':
+          match = Number(eventVal) <= Number(value);
+          break;
+
+        default:
+          match = false;
+          break;
+      }
     }
 
-    const strEventVal = String(eventVal).toLowerCase();
-
-    switch (operator) {
-      case '=':
-        return typeof value === 'number'
-          ? Number(eventVal) === Number(value)
-          : strEventVal === String(value).toLowerCase();
-
-      case '!=':
-        return typeof value === 'number'
-          ? Number(eventVal) !== Number(value)
-          : strEventVal !== String(value).toLowerCase();
-
-      case 'CONTAINS':
-        return strEventVal.includes(String(value).toLowerCase());
-
-      case 'IN': {
-        if (!Array.isArray(value)) return false;
-        const normalizedIn = value.map((v) => String(v).toLowerCase());
-        return normalizedIn.includes(strEventVal);
-      }
-
-      case 'BETWEEN': {
-        if (!Array.isArray(value) || value.length !== 2) return false;
-        const num = Number(eventVal);
-        const [low, high] = value.map(Number);
-        return !isNaN(num) && !isNaN(low) && !isNaN(high) && num >= low && num <= high;
-      }
-
-      case '>':
-        return Number(eventVal) > Number(value);
-
-      case '<':
-        return Number(eventVal) < Number(value);
-
-      case '>=':
-        return Number(eventVal) >= Number(value);
-
-      case '<=':
-        return Number(eventVal) <= Number(value);
-
-      default:
-        return false;
-    }
+    return condition.inverted ? !match : match;
   }
 
   /**
    * Recursively evaluates a QueryGroup
    */
   public static evaluateGroup(event: SecurityTelemetryEvent, group: QueryGroup): boolean {
-    if (!group.conditions || group.conditions.length === 0) return true;
+    if (!group.conditions || group.conditions.length === 0) {
+      return group.inverted ? false : true;
+    }
 
+    let groupResult: boolean;
     if (group.logical === 'OR') {
-      return group.conditions.some((child) => {
+      groupResult = group.conditions.some((child) => {
+        if ('logical' in child) {
+          return this.evaluateGroup(event, child as QueryGroup);
+        }
+        return this.evaluateCondition(event, child as QueryCondition);
+      });
+    } else {
+      groupResult = group.conditions.every((child) => {
         if ('logical' in child) {
           return this.evaluateGroup(event, child as QueryGroup);
         }
@@ -330,13 +402,7 @@ export class ThreatHuntQueryEngine {
       });
     }
 
-    // Default 'AND'
-    return group.conditions.every((child) => {
-      if ('logical' in child) {
-        return this.evaluateGroup(event, child as QueryGroup);
-      }
-      return this.evaluateCondition(event, child as QueryCondition);
-    });
+    return group.inverted ? !groupResult : groupResult;
   }
 
   /**

@@ -6,6 +6,8 @@
 
 import { create } from 'zustand';
 import { SecurityTelemetryEvent } from '../../soc/logic/telemetry';
+import { normalizeRuntimeEvent, RawSimulationEvent } from '../../soc/logic/normalization';
+import { SimulationRuntime, globalSimulationRuntime } from '../../../engine/runtime/SimulationRuntime';
 import {
   ThreatHunt,
   HuntHypothesis,
@@ -96,6 +98,11 @@ export interface ThreatHuntingState {
 
   dispatchSocHandoff: (findingId: string, ruleId?: string) => SocHandoffPackage;
   dispatchForensicsHandoff: (findingId: string, caseId?: string) => ForensicsHandoffPackage;
+
+  // SimulationRuntime Integration
+  ingestRuntimeEvents: (rawEvents: RawSimulationEvent[]) => number;
+  syncWithSimulationRuntime: (runtime?: SimulationRuntime) => number;
+  connectRuntime: (runtime?: SimulationRuntime) => () => void;
 
   setActiveTab: (tab: ThreatHuntingState['activeTab']) => void;
   setBottomDrawer: (open: boolean, tab?: ThreatHuntingState['bottomDrawerTab']) => void;
@@ -409,6 +416,49 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     }));
 
     return handoff;
+  },
+
+  ingestRuntimeEvents: (rawEvents) => {
+    if (!rawEvents || rawEvents.length === 0) return 0;
+
+    const normalizedNew = rawEvents.map((evt) => normalizeRuntimeEvent(evt));
+
+    set((state) => {
+      const existingIds = new Set(state.telemetryEvents.map((e) => e.id));
+      const deduplicated = normalizedNew.filter((e) => !existingIds.has(e.id));
+
+      if (deduplicated.length === 0) return state;
+
+      const updatedTelemetry = [...deduplicated, ...state.telemetryEvents];
+      const matchedIntel = ThreatIntelMatcher.matchTelemetry(SIMULATION_THREAT_INDICATORS, updatedTelemetry);
+
+      return {
+        ...state,
+        telemetryEvents: updatedTelemetry,
+        intelIndicators: matchedIntel,
+      };
+    });
+
+    return normalizedNew.length;
+  },
+
+  syncWithSimulationRuntime: (runtime = globalSimulationRuntime) => {
+    const rawHistory = runtime.events.getHistory();
+    const rawQueue = runtime.events.getQueue() || [];
+    const allRaw = [...rawHistory, ...rawQueue];
+    return get().ingestRuntimeEvents(allRaw as any);
+  },
+
+  connectRuntime: (runtime = globalSimulationRuntime) => {
+    // Initial sync
+    get().syncWithSimulationRuntime(runtime);
+
+    // Subscribe to live events on SimulationRuntime
+    const unsubscribe = runtime.events.on('*', (evt) => {
+      get().ingestRuntimeEvents([evt as any]);
+    });
+
+    return unsubscribe;
   },
 
   setActiveTab: (activeTab) => set({ activeTab }),
