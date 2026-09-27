@@ -73,6 +73,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
          <div className="flex items-center gap-2">
             <button 
               onClick={toggleMobileNavigator}
+              data-testid="toggle-navigator-btn"
               className="sm:hidden p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-white transition-colors"
               title={isAr ? 'قائمة المراحل' : 'Toggle Phases'}
             >
@@ -80,6 +81,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
             </button>
             <button 
               onClick={toggleMobileEvidence}
+              data-testid="toggle-evidence-btn"
               className={`p-2 rounded-lg transition-colors ${isEvidenceBoardVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
               title={isAr ? 'تبديل لوحة الأدلة' : 'Toggle Evidence Board'}
             >
@@ -87,6 +89,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
             </button>
             <button 
               onClick={toggleMobileInspector}
+              data-testid="toggle-inspector-btn"
               className={`p-2 rounded-lg transition-colors ${isInspectorVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
               title={isAr ? 'تبديل المعاين' : 'Toggle Inspector'}
             >
@@ -97,6 +100,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
          <div className="flex items-center gap-2">
             <button 
               onClick={toggleMobileTech}
+              data-testid="toggle-tech-btn"
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${isMobileTechOpen ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
             >
                <PanelBottom className="w-3.5 h-3.5" />
@@ -114,7 +118,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
 
         {/* Mobile Navigator Drawer Overlay */}
         {isMobileNavigatorOpen && (
-          <div className="absolute inset-0 z-40 bg-black/80 flex sm:hidden">
+          <div data-testid="mobile-navigator-drawer" className="absolute inset-0 z-40 bg-black/80 flex sm:hidden">
             <div className="w-64 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
               <button 
                 onClick={() => setMobileNavigatorOpen(false)}
@@ -139,7 +143,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
 
         {/* Mobile Evidence Drawer Overlay */}
         {isMobileEvidenceOpen && (
-          <div className="absolute inset-0 z-40 bg-black/80 flex md:hidden">
+          <div data-testid="mobile-evidence-drawer" className="absolute inset-0 z-40 bg-black/80 flex md:hidden">
             <div className="w-72 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
               <button 
                 onClick={() => setMobileEvidenceOpen(false)}
@@ -169,7 +173,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
 
         {/* Mobile/Tablet Inspector Drawer Overlay */}
         {isMobileInspectorOpen && (
-          <div className="absolute inset-0 z-40 bg-black/80 flex lg:hidden justify-end">
+          <div data-testid="mobile-inspector-drawer" className="absolute inset-0 z-40 bg-black/80 flex lg:hidden justify-end">
             <div className="flex-1" onClick={() => setMobileInspectorOpen(false)} />
             <div className="w-80 bg-slate-950 h-full border-l border-slate-800 flex flex-col relative">
               <button 

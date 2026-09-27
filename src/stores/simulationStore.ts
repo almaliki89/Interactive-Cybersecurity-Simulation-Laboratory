@@ -159,8 +159,29 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     });
   });
 
+  const getStoredItem = (key: string): string | null => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
+  const setStoredItem = (key: string, value: string): void => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   return {
-    language: (localStorage.getItem('omega_language') as Language) || 'ar',
+    language: (getStoredItem('omega_language') as Language) || 'ar',
     activeSimulationId: 'landing',
     selectedMacroDomainId: null,
     selectedWorldId: null,
@@ -190,11 +211,11 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     onboardingStep: 0,
 
     selectedEntity: null,
-    completedChallenges: JSON.parse(localStorage.getItem('omega_completed_challenges') || '[]'),
+    completedChallenges: JSON.parse(getStoredItem('omega_completed_challenges') || '[]'),
     activeChallengeId: null,
 
     setLanguage: (lang) => {
-      localStorage.setItem('omega_language', lang);
+      setStoredItem('omega_language', lang);
       if (typeof document !== 'undefined') {
         document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
         document.documentElement.lang = lang;
@@ -331,7 +352,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     const existing = get().completedChallenges;
     if (!existing.includes(challengeId)) {
       const updated = [...existing, challengeId];
-      localStorage.setItem('omega_completed_challenges', JSON.stringify(updated));
+      setStoredItem('omega_completed_challenges', JSON.stringify(updated));
       set({ completedChallenges: updated });
     }
   },
