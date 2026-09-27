@@ -40,9 +40,9 @@ export const WindowsSimulation: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-950 text-slate-100 min-h-screen">
+    <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-hidden">
       {/* Top Windows World Navigation Bar */}
-      <div className="border-b border-slate-800 bg-slate-900/80 px-4 py-2 flex items-center justify-between gap-4 overflow-x-auto select-none sticky top-0 z-20 backdrop-blur-md">
+      <div className="border-b border-slate-800 bg-slate-900/80 px-4 py-2 flex items-center justify-between gap-4 overflow-x-auto select-none shrink-0 z-20 backdrop-blur-md no-scrollbar">
         <div className="flex items-center gap-1.5 overflow-x-auto py-1">
           {navItems.map((item) => {
             const Icon = item.icon;

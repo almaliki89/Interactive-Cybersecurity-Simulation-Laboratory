@@ -107,13 +107,13 @@ export const CloudSimulation: React.FC = () => {
             </button>
           )}
 
-          <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs">
-            <Cloud className="w-4 h-4" />
-            <span>{isAr ? 'عالم أمن الحوسبة السحابية (Nexora Cloud)' : 'Cloud Security World (Nexora Cloud)'}</span>
+          <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs min-w-0">
+            <Cloud className="w-4 h-4 shrink-0" />
+            <span className="truncate max-w-[140px] sm:max-w-xs md:max-w-none">{isAr ? 'عالم أمن الحوسبة السحابية (Nexora Cloud)' : 'Cloud Security World (Nexora Cloud)'}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 overflow-x-auto py-1 max-w-3xl text-[11px]">
+        <div className="flex items-center gap-1 overflow-x-auto py-1 max-w-3xl text-[11px] no-scrollbar">
           {navTabs.map((t) => (
             <button
               key={t.id}

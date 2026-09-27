@@ -25,6 +25,16 @@ export const SocRawEventDrawer: React.FC<SocRawEventDrawerProps> = ({ selectedEv
     }
   };
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isRawDrawerOpen) {
+        setRawDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isRawDrawerOpen, setRawDrawerOpen]);
+
   if (!isRawDrawerOpen) return null;
 
   return (
@@ -65,29 +75,33 @@ export const SocRawEventDrawer: React.FC<SocRawEventDrawerProps> = ({ selectedEv
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
          {/* Sidebar with common fields summary */}
-         <div className="w-64 border-r border-slate-900 bg-slate-950/50 p-4 overflow-y-auto hidden md:block">
-            <h4 className="text-[9px] font-mono text-slate-600 uppercase font-bold mb-4 tracking-widest">Normalized Fields</h4>
+         <div className="w-64 border-r rtl:border-r-0 rtl:border-l border-slate-900 bg-slate-950/50 p-4 overflow-y-auto hidden md:block">
+            <h4 className="text-[9px] font-mono text-slate-400 uppercase font-bold mb-4 tracking-widest">
+               {isAr ? 'الحقول المعيارية' : 'Normalized Fields'}
+            </h4>
             {selectedEvent ? (
               <div className="space-y-4">
-                 <FieldGroup label="Metadata" items={[
-                   { k: 'Time', v: `T+${selectedEvent.virtualTime}ms` },
-                   { k: 'World', v: selectedEvent.sourceWorld },
-                   { k: 'Type', v: selectedEvent.eventType }
+                 <FieldGroup label={isAr ? 'البيانات الوصفية' : 'Metadata'} items={[
+                   { k: isAr ? 'الوقت' : 'Time', v: `T+${selectedEvent.virtualTime}ms` },
+                   { k: isAr ? 'المجال' : 'World', v: selectedEvent.sourceWorld },
+                   { k: isAr ? 'النوع' : 'Type', v: selectedEvent.eventType }
                  ]} />
-                 <FieldGroup label="Entity" items={[
-                   { k: 'User', v: selectedEvent.user || 'None' },
-                   { k: 'Host', v: selectedEvent.host || 'None' },
+                 <FieldGroup label={isAr ? 'الكيان' : 'Entity'} items={[
+                   { k: isAr ? 'المستخدم' : 'User', v: selectedEvent.user || 'None' },
+                   { k: isAr ? 'المستضيف' : 'Host', v: selectedEvent.host || 'None' },
                    { k: 'IP', v: selectedEvent.sourceIp || 'None' }
                  ]} />
-                 <FieldGroup label="Result" items={[
-                   { k: 'Outcome', v: selectedEvent.outcome || 'N/A' },
-                   { k: 'Severity', v: selectedEvent.severity }
+                 <FieldGroup label={isAr ? 'النتيجة' : 'Result'} items={[
+                   { k: isAr ? 'الحالة' : 'Outcome', v: selectedEvent.outcome || 'N/A' },
+                   { k: isAr ? 'الخطورة' : 'Severity', v: selectedEvent.severity }
                  ]} />
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full opacity-20">
-                 <Terminal className="w-8 h-8 mb-2" />
-                 <span className="text-[8px] font-mono uppercase">Waiting for select</span>
+              <div className="flex flex-col items-center justify-center h-full opacity-30 text-center">
+                 <Terminal className="w-8 h-8 mb-2 text-slate-500" />
+                 <span className="text-[9px] font-mono uppercase text-slate-400">
+                    {isAr ? 'في انتظار التحديد' : 'Waiting for select'}
+                 </span>
               </div>
             )}
          </div>
@@ -95,13 +109,15 @@ export const SocRawEventDrawer: React.FC<SocRawEventDrawerProps> = ({ selectedEv
          {/* Main JSON view */}
          <div className="flex-1 bg-slate-950 p-4 overflow-hidden flex flex-col">
             {selectedEvent ? (
-               <pre className="flex-1 overflow-auto custom-scrollbar text-[11px] font-mono text-cyan-300 leading-relaxed bg-black/30 p-4 rounded-xl border border-slate-900 selection:bg-cyan-500/30">
+               <pre className="flex-1 overflow-auto custom-scrollbar text-[11px] font-mono text-cyan-300 leading-relaxed bg-black/30 p-4 rounded-xl border border-slate-900 selection:bg-cyan-500/30 text-left select-all" dir="ltr">
                   {JSON.stringify(selectedEvent, null, 2)}
                </pre>
             ) : (
-               <div className="flex-1 flex flex-col items-center justify-center text-center p-12 opacity-30">
-                  <Info className="w-10 h-10 mb-4" />
-                  <p className="text-xs font-mono uppercase tracking-widest">Select an event in the workspace to view raw normalized telemetry.</p>
+               <div className="flex-1 flex flex-col items-center justify-center text-center p-12 opacity-40">
+                  <Info className="w-10 h-10 mb-4 text-slate-500" />
+                  <p className="text-xs font-mono uppercase tracking-widest text-slate-400">
+                     {isAr ? 'اختر حدثاً في مساحة العمل لعرض بيانات القياس عن بعد المعيارية الخام.' : 'Select an event in the workspace to view raw normalized telemetry.'}
+                  </p>
                </div>
             )}
          </div>

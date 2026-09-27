@@ -67,10 +67,10 @@ export const SocContextInspector: React.FC<SocContextInspectorProps> = ({ select
              </span>
           </div>
           <div>
-            <h3 className="text-sm font-black text-white font-mono uppercase tracking-tight break-words">
+            <h3 className="text-sm font-black text-white font-mono uppercase tracking-tight break-words" dir="ltr">
                {selectedEvent.eventType}
             </h3>
-            <p className="text-[10px] text-slate-500 font-mono mt-1 uppercase tracking-widest">
+            <p className="text-[10px] text-slate-400 font-mono mt-1 uppercase tracking-widest" dir="ltr">
                ID: {selectedEvent.id}
             </p>
           </div>
@@ -78,7 +78,7 @@ export const SocContextInspector: React.FC<SocContextInspectorProps> = ({ select
 
         {/* Core Dimensions */}
         <section className="space-y-2">
-           <h4 className="text-[9px] font-mono font-bold text-slate-600 uppercase tracking-widest">{isAr ? 'الأبعاد الأساسية' : 'CORE_DIMENSIONS'}</h4>
+           <h4 className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">{isAr ? 'الأبعاد الأساسية' : 'CORE_DIMENSIONS'}</h4>
            <div className="space-y-1.5">
               <DimensionItem icon={Globe} label="World" value={selectedEvent.sourceWorld} color="text-cyan-400" />
               <DimensionItem icon={Tag} label="Category" value={selectedEvent.category} color="text-indigo-400" />
@@ -91,7 +91,7 @@ export const SocContextInspector: React.FC<SocContextInspectorProps> = ({ select
 
         {/* Enrichment Context */}
         <section className="space-y-2">
-           <h4 className="text-[9px] font-mono font-bold text-slate-600 uppercase tracking-widest">{isAr ? 'سياق التهديد المعزز' : 'ENRICHED_THREAT_CONTEXT'}</h4>
+           <h4 className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">{isAr ? 'سياق التهديد المعزز' : 'ENRICHED_THREAT_CONTEXT'}</h4>
            <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 space-y-3">
               <EnrichmentRow label="Asset Criticality" value={selectedEvent.assetCriticality || 'LOW'} highlight={selectedEvent.assetCriticality === 'CRITICAL'} />
               <EnrichmentRow label="Identity Privilege" value={selectedEvent.userIsPrivileged ? 'PRIVILEGED' : 'STANDARD'} highlight={selectedEvent.userIsPrivileged} />
@@ -103,21 +103,21 @@ export const SocContextInspector: React.FC<SocContextInspectorProps> = ({ select
         {/* Technical Data */}
         {(selectedEvent.process || selectedEvent.destinationPort) && (
           <section className="space-y-2">
-            <h4 className="text-[9px] font-mono font-bold text-slate-600 uppercase tracking-widest">{isAr ? 'بيانات فنية' : 'TECHNICAL_METADATA'}</h4>
+            <h4 className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">{isAr ? 'بيانات فنية' : 'TECHNICAL_METADATA'}</h4>
             <div className="p-3 rounded-xl bg-slate-950 border border-slate-900 space-y-2 font-mono text-[10px]">
                {selectedEvent.process && (
                  <div className="flex flex-col gap-1">
-                   <span className="text-slate-500 uppercase flex items-center gap-1">
-                     <Terminal className="w-3 h-3" />
+                   <span className="text-slate-400 uppercase flex items-center gap-1">
+                     <Terminal className="w-3 h-3 text-cyan-400" />
                      Process
                    </span>
-                   <span className="text-amber-400 break-all bg-slate-900 p-1.5 rounded border border-slate-800">{selectedEvent.process}</span>
+                   <span className="text-amber-400 break-all bg-slate-900 p-2 rounded-lg border border-slate-800 select-all" dir="ltr">{selectedEvent.process}</span>
                  </div>
                )}
                {selectedEvent.destinationPort && (
                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 uppercase">Port</span>
-                    <span className="text-white font-bold">{selectedEvent.destinationPort}</span>
+                    <span className="text-slate-400 uppercase">Port</span>
+                    <span className="text-white font-bold" dir="ltr">{selectedEvent.destinationPort}</span>
                  </div>
                )}
             </div>
@@ -130,18 +130,18 @@ export const SocContextInspector: React.FC<SocContextInspectorProps> = ({ select
 
 const DimensionItem: React.FC<{ icon: any, label: string, value: string, color?: string }> = ({ icon: Icon, label, value, color = 'text-slate-300' }) => (
   <div className="flex items-center justify-between py-1 border-b border-slate-900 last:border-0">
-    <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-mono">
-       <Icon className="w-3 h-3" />
+    <div className="flex items-center gap-2 text-[10px] text-slate-400 uppercase font-mono">
+       <Icon className="w-3 h-3 text-slate-500" />
        <span>{label}</span>
     </div>
-    <span className={`text-[10px] font-bold font-mono uppercase truncate max-w-[120px] ${color}`}>{value}</span>
+    <span className={`text-[10px] font-bold font-mono uppercase truncate max-w-[140px] ${color}`} dir="ltr">{value}</span>
   </div>
 );
 
 const EnrichmentRow: React.FC<{ label: string, value: string, highlight?: boolean }> = ({ label, value, highlight }) => (
   <div className="flex items-center justify-between gap-2">
-    <span className="text-[10px] text-slate-500 font-mono uppercase truncate">{label}</span>
-    <span className={`text-[10px] font-black uppercase font-mono ${highlight ? 'text-rose-400 animate-pulse' : 'text-slate-400'}`}>
+    <span className="text-[10px] text-slate-400 font-mono uppercase truncate">{label}</span>
+    <span className={`text-[10px] font-black uppercase font-mono ${highlight ? 'text-rose-400 animate-pulse' : 'text-slate-300'}`}>
       {value}
     </span>
   </div>

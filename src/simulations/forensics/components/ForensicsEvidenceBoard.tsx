@@ -69,7 +69,7 @@ const EvidenceCard: React.FC<{
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-3 rounded-xl border transition-all relative group overflow-hidden ${
+      className={`w-full text-left rtl:text-right p-3 rounded-xl border transition-all relative group overflow-hidden ${
         isSelected
           ? 'bg-cyan-500/10 border-cyan-500/50 ring-1 ring-cyan-500/20'
           : 'bg-slate-950 border-slate-800 hover:border-slate-700 hover:bg-slate-900/40'
@@ -77,40 +77,40 @@ const EvidenceCard: React.FC<{
     >
       {/* Selection Glow */}
       {isSelected && (
-        <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
+        <div className="absolute top-0 left-0 rtl:left-auto rtl:right-0 w-1 h-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
       )}
 
       <div className="flex items-start gap-3">
         <div className={`p-2 rounded-lg shrink-0 transition-colors ${
-          isSelected ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-900 text-slate-500'
+          isSelected ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-900 text-slate-400'
         }`}>
           <Icon className="w-4 h-4" />
         </div>
 
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-black text-white font-mono uppercase tracking-tight truncate">
+            <span className="text-[11px] font-black text-white font-mono uppercase tracking-tight truncate" dir="ltr">
               {evidence.id}
             </span>
             <IntegrityMiniBadge status={evidence.integrityStatus} />
           </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <div className="flex items-center gap-1 text-[9px] text-slate-500 uppercase font-bold">
-              <span className="opacity-50">{isAr ? 'النوع:' : 'TYPE:'}</span>
-              <span className="text-slate-400">{evidence.type.replace('_', ' ')}</span>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-bold">
+              <span className="opacity-60">{isAr ? 'النوع:' : 'TYPE:'}</span>
+              <span className="text-slate-300 font-mono">{evidence.type.replace('_', ' ')}</span>
             </div>
-            <div className="flex items-center gap-1 text-[9px] text-slate-500 uppercase font-bold">
-              <span className="opacity-50">{isAr ? 'المستخدم:' : 'USR:'}</span>
-              <span className="text-slate-400 truncate max-w-[60px]">{evidence.sourceUser || 'system'}</span>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-bold">
+              <span className="opacity-60">{isAr ? 'المستخدم:' : 'USR:'}</span>
+              <span className="text-slate-300 truncate max-w-[80px]" dir="ltr">{evidence.sourceUser || 'system'}</span>
             </div>
-            <div className="flex items-center gap-1 text-[9px] text-slate-500 uppercase font-bold">
-              <span className="opacity-50">{isAr ? 'الوقت:' : 'TIME:'}</span>
-              <span className="text-cyan-500/70 tabular-nums">T+{evidence.acquiredAtVirtualTime}ms</span>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-bold">
+              <span className="opacity-60">{isAr ? 'الوقت:' : 'TIME:'}</span>
+              <span className="text-cyan-400 tabular-nums font-mono" dir="ltr">T+{evidence.acquiredAtVirtualTime}ms</span>
             </div>
             {evidence.preserved && (
-              <div className="flex items-center gap-1 text-[8px] text-emerald-500/80 font-black uppercase tracking-tighter">
-                <ShieldCheck className="w-2.5 h-2.5" />
+              <div className="flex items-center gap-1 text-[9px] text-emerald-400 font-black uppercase tracking-tighter">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
                 <span>{isAr ? 'محفوظ' : 'PRESERVED'}</span>
               </div>
             )}

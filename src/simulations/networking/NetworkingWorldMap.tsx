@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSimulationStore, SimulationId } from '../../stores/simulationStore';
-import { Network, Split, Route, Layers, Server, Globe, Zap, ShieldCheck, Award, Binary, Cpu } from 'lucide-react';
+import { Network, Split, Route, Layers, Server, Globe, Zap, ShieldCheck, Award, Binary, Cpu, ArrowLeft } from 'lucide-react';
 
 import { ArpSimulation } from './ArpSimulation';
 import { Ipv4Visualizer } from './Ipv4Visualizer';
@@ -174,16 +174,16 @@ export const NetworkingWorldMap: React.FC = () => {
                       <button
                         key={item.key}
                         onClick={() => setActiveLab(item.key as LabKey)}
-                        className="w-full text-left flex items-center justify-between p-3 rounded-xl bg-slate-950/80 hover:bg-cyan-950/60 border border-slate-800 hover:border-cyan-500/50 transition group"
+                        className="w-full text-left rtl:text-right flex items-center justify-between p-3 rounded-xl bg-slate-950/80 hover:bg-cyan-950/60 border border-slate-800 hover:border-cyan-500/50 transition group"
                       >
                         <div className="flex items-center gap-2.5">
-                          <IconComp className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                          <IconComp className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform shrink-0" />
                           <span className="text-xs font-bold text-slate-200 group-hover:text-cyan-200">
                             {isAr ? item.nameAr : item.nameEn}
                           </span>
                         </div>
                         <span className="text-[10px] font-mono text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {isAr ? 'تشغيل' : 'Launch →'}
+                          {isAr ? '← تشغيل' : 'Launch →'}
                         </span>
                       </button>
                     );
@@ -197,9 +197,10 @@ export const NetworkingWorldMap: React.FC = () => {
         <div className="space-y-4">
           <button
             onClick={() => setActiveLab('overview')}
-            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 bg-slate-900 px-3 py-1.5 rounded border border-slate-800 w-fit"
+            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 w-fit transition-colors"
           >
-            ← {isAr ? ' العودة لخريطة الشبكات' : 'Back to Networking World Map'}
+            <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180" />
+            <span>{isAr ? 'العودة لخريطة الشبكات' : 'Back to Networking World Map'}</span>
           </button>
 
           {activeLab === 'arp' && <ArpSimulation />}

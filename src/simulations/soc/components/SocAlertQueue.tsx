@@ -56,30 +56,30 @@ export const SocAlertQueue: React.FC<SocAlertQueueProps> = ({ alerts }) => {
                 }`}
               >
                 {isSelected && (
-                  <div className="absolute top-0 left-0 bottom-0 w-0.5 bg-cyan-500" />
+                  <div className="absolute top-0 left-0 rtl:left-auto rtl:right-0 bottom-0 w-1 bg-cyan-400" />
                 )}
                 
                 <div className="flex items-center justify-between mb-2">
                   <SeverityBadge severity={alert.severity} showLabel={false} />
-                  <span className="text-[9px] font-mono text-slate-600">
+                  <span className="text-[10px] font-mono text-slate-400" dir="ltr">
                     T+{alert.createdAtVirtualTime}ms
                   </span>
                 </div>
 
-                <div className={`text-[11px] font-bold mb-2 tracking-tight line-clamp-2 transition-colors ${
-                  isSelected ? 'text-white' : 'text-slate-300 group-hover:text-slate-100'
+                <div className={`text-[12px] font-bold mb-2 tracking-tight line-clamp-2 transition-colors ${
+                  isSelected ? 'text-white' : 'text-slate-200 group-hover:text-white'
                 }`}>
                   {isAr ? alert.ruleNameAr : alert.ruleNameEn}
                 </div>
 
-                <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 opacity-70">
-                   <div className="flex items-center gap-1 text-[9px] text-slate-500 uppercase font-mono">
-                     <User className="w-2.5 h-2.5" />
-                     <span className="truncate max-w-[60px]">{alert.entities.users[0] || 'SYSTEM'}</span>
+                <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 opacity-80">
+                   <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-mono">
+                     <User className="w-3 h-3 text-slate-500" />
+                     <span className="truncate max-w-[80px]" dir="ltr">{alert.entities.users[0] || 'SYSTEM'}</span>
                    </div>
-                   <div className="flex items-center gap-1 text-[9px] text-slate-500 uppercase font-mono">
-                     <Globe className="w-2.5 h-2.5" />
-                     <span className="truncate max-w-[60px]">{alert.entities.ips[0] || 'LOCAL'}</span>
+                   <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-mono">
+                     <Globe className="w-3 h-3 text-slate-500" />
+                     <span className="truncate max-w-[80px]" dir="ltr">{alert.entities.ips[0] || 'LOCAL'}</span>
                    </div>
                 </div>
 

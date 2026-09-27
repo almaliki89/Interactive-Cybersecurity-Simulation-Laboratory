@@ -67,37 +67,37 @@ export const SocInvestigationWorkspace: React.FC<SocInvestigationWorkspaceProps>
   return (
     <div className="h-full flex flex-col bg-slate-950 overflow-hidden">
       {/* Investigation Header */}
-      <div className="p-6 border-b border-slate-900 bg-slate-900/10 shrink-0">
-        <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="p-4 sm:p-6 border-b border-slate-900 bg-slate-900/10 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <SeverityBadge severity={activeAlert.severity} />
               <StatusBadge status={currentStatus} />
             </div>
-            <h1 className="text-xl font-black text-white tracking-tight leading-tight">
+            <h1 className="text-lg sm:text-xl font-black text-white tracking-tight leading-tight">
               {isAr ? activeAlert.ruleNameAr : activeAlert.ruleNameEn}
             </h1>
-            <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+            <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400 uppercase tracking-widest">
               <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                T+{activeAlert.createdAtVirtualTime}ms
+                <Clock className="w-3 h-3 text-cyan-400" />
+                <span dir="ltr">T+{activeAlert.createdAtVirtualTime}ms</span>
               </span>
               <span>/</span>
-              <span className="text-cyan-500/70">{activeAlert.id}</span>
+              <span className="text-cyan-400/80 font-mono" dir="ltr">{activeAlert.id}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
              <button 
                onClick={() => updateAlertStatus(activeAlert.id, 'INVESTIGATING')}
-               className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg shadow-rose-950/20"
+               className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg shadow-rose-950/20"
              >
                 <Send className="w-3.5 h-3.5" />
                 {isAr ? 'تصعيد للتحقيق' : 'Escalate'}
              </button>
              <button 
                onClick={() => updateAlertStatus(activeAlert.id, 'CLOSED')}
-               className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-bold text-[11px] uppercase tracking-wider transition-colors"
+               className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white font-bold text-[11px] uppercase tracking-wider transition-colors"
              >
                 {isAr ? 'إغلاق القضية' : 'Close'}
              </button>
@@ -240,14 +240,14 @@ export const SocInvestigationWorkspace: React.FC<SocInvestigationWorkspaceProps>
 
         {/* C. Forensics Handoff if evidence exists */}
         {activeAlert.evidenceEventIds.length > 0 && (
-           <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex items-center justify-between gap-4">
+           <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 rounded-xl bg-indigo-950/50 border border-indigo-800 flex items-center justify-center">
+                 <div className="w-10 h-10 rounded-xl bg-indigo-950/50 border border-indigo-800 flex items-center justify-center shrink-0">
                     <ShieldCheck className="w-5 h-5 text-indigo-400" />
                  </div>
                  <div className="space-y-0.5">
                     <h4 className="text-xs font-bold text-white uppercase">{isAr ? 'الأدلة الجنائية المتاحة' : 'Digital Evidence Available'}</h4>
-                    <p className="text-[10px] text-slate-400 italic">
+                    <p className="text-[10px] text-slate-300 italic">
                        {isAr ? 'تم رصد أدلة مرتبطة في مختبر التحقيق الجنائي الرقمي لهذه الأحداث' : 'Linked artifacts detected in the Forensics Lab for these events.'}
                     </p>
                  </div>
@@ -262,9 +262,9 @@ export const SocInvestigationWorkspace: React.FC<SocInvestigationWorkspaceProps>
                   setForensicsTab('intake'); // Default to intake for context
                   useSimulationStore.getState().setActiveSimulation('forensics');
                 }}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all"
+                className="w-full sm:w-auto justify-center px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md shrink-0"
               >
-                 <ExternalLink className="w-3 h-3" />
+                 <ExternalLink className="w-3.5 h-3.5" />
                  {isAr ? 'فحص الأدلة' : 'Inspect Evidence'}
               </button>
            </div>

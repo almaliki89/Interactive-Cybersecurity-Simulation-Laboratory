@@ -92,4 +92,20 @@ describe('ForensicsCaseWorkspace Testing Library Component Integration', () => {
     expect(screen.getByTestId('mobile-inspector-drawer')).toBeDefined();
     expect(screen.queryByTestId('mobile-evidence-drawer')).toBeNull();
   });
+
+  it('closes open mobile drawer when Escape key is pressed', () => {
+    render(
+      <ForensicsCaseWorkspace>
+        <div>Case Workspace</div>
+      </ForensicsCaseWorkspace>
+    );
+
+    const evidenceBtn = screen.getByTestId('toggle-evidence-btn');
+    fireEvent.click(evidenceBtn);
+    expect(screen.getByTestId('mobile-evidence-drawer')).toBeDefined();
+
+    // Press Escape
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('mobile-evidence-drawer')).toBeNull();
+  });
 });

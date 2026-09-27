@@ -119,16 +119,16 @@ const FilterDropdown: React.FC<{ label: string, options: string[], selected: str
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-1 left-0 min-w-[140px] bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 p-1 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute top-full mt-1 left-0 rtl:left-auto rtl:right-0 min-w-[140px] bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 p-1 animate-in fade-in slide-in-from-top-2 duration-150">
            {options.map(opt => (
              <button
                key={opt}
                onClick={() => toggle(opt)}
-               className={`w-full text-left p-2 rounded-lg text-[10px] font-mono uppercase flex items-center justify-between hover:bg-slate-850 ${
-                 selected.includes(opt) ? 'text-cyan-400 bg-cyan-950/20' : 'text-slate-400'
+               className={`w-full text-left rtl:text-right p-2 rounded-lg text-[10px] font-mono uppercase flex items-center justify-between hover:bg-slate-800 transition-colors ${
+                 selected.includes(opt) ? 'text-cyan-400 bg-cyan-950/20' : 'text-slate-400 hover:text-slate-200'
                }`}
              >
-                {opt}
+                <span>{opt}</span>
                 {selected.includes(opt) && <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />}
              </button>
            ))}

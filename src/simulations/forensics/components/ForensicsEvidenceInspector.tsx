@@ -42,7 +42,7 @@ export const ForensicsEvidenceInspector: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-950 overflow-hidden border-l border-slate-800">
+    <div className="h-full flex flex-col bg-slate-950 overflow-hidden border-l rtl:border-l-0 rtl:border-r border-slate-800">
       <div className="p-4 border-b border-slate-800 bg-slate-900/50">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
@@ -52,7 +52,7 @@ export const ForensicsEvidenceInspector: React.FC = () => {
             <h2 className="text-xs font-black text-white uppercase tracking-wider">
               {isAr ? 'معاينة الدليل' : 'EVIDENCE_INSPECTOR'}
             </h2>
-            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-tighter">
+            <span className="text-[9px] font-mono text-slate-400 uppercase tracking-tighter" dir="ltr">
               {selectedEvidence.id}
             </span>
           </div>
@@ -153,20 +153,22 @@ const IntegrityStatusCard: React.FC<{ status: string; isAr: boolean }> = ({ stat
 
 const MetadataRow: React.FC<{ label: string; value: string; icon: any }> = ({ label, value, icon: Icon }) => (
   <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-900 border border-slate-800">
-    <Icon className="w-3.5 h-3.5 text-slate-500" />
-    <div className="flex flex-col">
-       <span className="text-[8px] font-mono text-slate-600 uppercase tracking-tight">{label}</span>
-       <span className="text-[10px] font-bold text-slate-300 uppercase truncate max-w-[140px]">{value}</span>
+    <Icon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+    <div className="flex flex-col min-w-0">
+       <span className="text-[9px] font-mono text-slate-400 uppercase tracking-tight">{label}</span>
+       <span className="text-[11px] font-bold text-slate-200 uppercase truncate" dir="auto">{value}</span>
     </div>
   </div>
 );
 
 const HashField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="p-2 rounded-lg bg-slate-950 border border-slate-900 flex flex-col gap-1">
+  <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-900 flex flex-col gap-1">
     <div className="flex items-center gap-1.5">
-      <Hash className="w-2.5 h-2.5 text-slate-700" />
-      <span className="text-[8px] font-mono text-slate-600 uppercase">{label}</span>
+      <Hash className="w-3 h-3 text-slate-500" />
+      <span className="text-[9px] font-mono text-slate-400 uppercase">{label}</span>
     </div>
-    <span className="text-[9px] font-mono text-slate-500 break-all leading-tight">{value}</span>
+    <span className="text-[10px] font-mono text-cyan-300/90 break-all leading-relaxed select-all" dir="ltr">
+      {value}
+    </span>
   </div>
 );

@@ -225,8 +225,15 @@ export const GlobalSearchModal: React.FC = () => {
             }
             className="w-full bg-transparent border-0 text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-0 font-mono uppercase tracking-tight"
           />
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 shrink-0">
             <kbd className="hidden sm:flex h-5 px-1.5 items-center rounded bg-slate-800 border border-slate-700 text-[9px] font-mono text-slate-500 uppercase">ESC</kbd>
+            <button
+              onClick={() => setIsSearchOpen(false)}
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              aria-label="Close search"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 

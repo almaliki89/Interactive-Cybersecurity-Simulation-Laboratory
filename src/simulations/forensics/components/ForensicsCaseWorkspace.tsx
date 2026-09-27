@@ -35,6 +35,20 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
     }
   }, [selectedEvidenceId]);
 
+  // Accessibility: Escape key dismisses open mobile drawers
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileNavigatorOpen(false);
+        setMobileEvidenceOpen(false);
+        setMobileInspectorOpen(false);
+        setMobileTechOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const toggleMobileNavigator = () => {
     setMobileNavigatorOpen(!isMobileNavigatorOpen);
     setMobileEvidenceOpen(false);
@@ -74,24 +88,27 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
             <button 
               onClick={toggleMobileNavigator}
               data-testid="toggle-navigator-btn"
-              className="sm:hidden p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-white transition-colors"
+              className={`sm:hidden p-2 rounded-lg transition-colors ${isMobileNavigatorOpen ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-400 hover:text-white'}`}
               title={isAr ? 'قائمة المراحل' : 'Toggle Phases'}
+              aria-label={isAr ? 'قائمة المراحل' : 'Toggle Phases'}
             >
                <Menu className="w-3.5 h-3.5" />
             </button>
             <button 
               onClick={toggleMobileEvidence}
               data-testid="toggle-evidence-btn"
-              className={`p-2 rounded-lg transition-colors ${isEvidenceBoardVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
+              className={`p-2 rounded-lg transition-colors ${isMobileEvidenceOpen || isEvidenceBoardVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-400 hover:text-slate-200'}`}
               title={isAr ? 'تبديل لوحة الأدلة' : 'Toggle Evidence Board'}
+              aria-label={isAr ? 'تبديل لوحة الأدلة' : 'Toggle Evidence Board'}
             >
                <Database className="w-3.5 h-3.5" />
             </button>
             <button 
               onClick={toggleMobileInspector}
               data-testid="toggle-inspector-btn"
-              className={`p-2 rounded-lg transition-colors ${isInspectorVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
+              className={`p-2 rounded-lg transition-colors ${isMobileInspectorOpen || isInspectorVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-400 hover:text-slate-200'}`}
               title={isAr ? 'تبديل المعاين' : 'Toggle Inspector'}
+              aria-label={isAr ? 'تبديل المعاين' : 'Toggle Inspector'}
             >
                <Search className="w-3.5 h-3.5" />
             </button>
@@ -101,7 +118,8 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
             <button 
               onClick={toggleMobileTech}
               data-testid="toggle-tech-btn"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${isMobileTechOpen ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-900 text-slate-500 hover:text-slate-300'}`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${isMobileTechOpen ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-900 text-slate-400 hover:text-slate-200'}`}
+              aria-label={isAr ? 'البيانات التقنية' : 'TECH_DATA'}
             >
                <PanelBottom className="w-3.5 h-3.5" />
                <span className="text-[10px] font-bold uppercase tracking-widest">{isAr ? 'البيانات التقنية' : 'TECH_DATA'}</span>
@@ -119,10 +137,11 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
         {/* Mobile Navigator Drawer Overlay */}
         {isMobileNavigatorOpen && (
           <div data-testid="mobile-navigator-drawer" className="absolute inset-0 z-40 bg-black/80 flex sm:hidden">
-            <div className="w-64 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
+            <div className="w-64 max-w-[calc(100vw-3rem)] bg-slate-950 h-full border-r rtl:border-r-0 rtl:border-l border-slate-800 flex flex-col relative animate-in slide-in-from-left rtl:slide-in-from-right duration-200">
               <button 
                 onClick={() => setMobileNavigatorOpen(false)}
-                className="absolute top-3 right-3 p-1 text-slate-400 hover:text-white"
+                className="absolute top-3 right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-lg text-slate-400 hover:text-white"
+                aria-label="Close Navigator"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -136,7 +155,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
 
         {/* Left-ish: Evidence Board (Collapsible Desktop / Drawer Mobile) */}
         {isEvidenceBoardVisible && (
-          <div className="w-72 shrink-0 border-r border-slate-900 transition-all hidden md:block">
+          <div className="w-72 shrink-0 border-r rtl:border-r-0 rtl:border-l border-slate-900 transition-all hidden md:block">
              <ForensicsEvidenceBoard />
           </div>
         )}
@@ -144,10 +163,11 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
         {/* Mobile Evidence Drawer Overlay */}
         {isMobileEvidenceOpen && (
           <div data-testid="mobile-evidence-drawer" className="absolute inset-0 z-40 bg-black/80 flex md:hidden">
-            <div className="w-72 bg-slate-950 h-full border-r border-slate-800 flex flex-col relative">
+            <div className="w-72 max-w-[calc(100vw-3rem)] bg-slate-950 h-full border-r rtl:border-r-0 rtl:border-l border-slate-800 flex flex-col relative animate-in slide-in-from-left rtl:slide-in-from-right duration-200">
               <button 
                 onClick={() => setMobileEvidenceOpen(false)}
-                className="absolute top-3 right-3 p-1 text-slate-400 hover:text-white z-10"
+                className="absolute top-3 right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-lg text-slate-400 hover:text-white z-10"
+                aria-label="Close Evidence Board"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -166,19 +186,20 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
 
         {/* Right: Inspector (Collapsible Desktop) */}
         {isInspectorVisible && (
-          <div className="w-80 shrink-0 hidden lg:block border-l border-slate-900">
+          <div className="w-80 shrink-0 hidden lg:block border-l rtl:border-l-0 rtl:border-r border-slate-900">
              <ForensicsEvidenceInspector />
           </div>
         )}
 
         {/* Mobile/Tablet Inspector Drawer Overlay */}
         {isMobileInspectorOpen && (
-          <div data-testid="mobile-inspector-drawer" className="absolute inset-0 z-40 bg-black/80 flex lg:hidden justify-end">
+          <div data-testid="mobile-inspector-drawer" className="absolute inset-0 z-40 bg-black/80 flex lg:hidden justify-end rtl:justify-start">
             <div className="flex-1" onClick={() => setMobileInspectorOpen(false)} />
-            <div className="w-80 bg-slate-950 h-full border-l border-slate-800 flex flex-col relative">
+            <div className="w-80 max-w-[calc(100vw-3rem)] bg-slate-950 h-full border-l rtl:border-l-0 rtl:border-r border-slate-800 flex flex-col relative animate-in slide-in-from-right rtl:slide-in-from-left duration-200">
               <button 
                 onClick={() => setMobileInspectorOpen(false)}
-                className="absolute top-3 left-3 p-1 text-slate-400 hover:text-white z-10"
+                className="absolute top-3 left-3 rtl:left-auto rtl:right-3 p-1.5 rounded-lg text-slate-400 hover:text-white z-10"
+                aria-label="Close Inspector"
               >
                 <X className="w-4 h-4" />
               </button>

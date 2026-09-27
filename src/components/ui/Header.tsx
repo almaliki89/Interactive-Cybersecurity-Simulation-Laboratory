@@ -84,6 +84,9 @@ export const Header: React.FC = () => {
     { id: 'tls', nameAr: 'تأسيس قناة TLS 1.3 وسلسلة الثقة', nameEn: 'TLS 1.3 Handshake & PKI', icon: Key, category: 'D. Cryptography' },
     { id: 'cloud_containers', nameAr: 'أمن الحاويات وسحابة AWS/K8s', nameEn: 'Container & Cloud Security', icon: Cloud, category: 'E. Cloud Systems' },
     { id: 'siem', nameAr: 'مركز العمليات SOC وربط SIEM', nameEn: 'SOC Operations & SIEM Rules', icon: Activity, category: 'F. Observability' },
+    { id: 'soc' as SimulationId, nameAr: 'مركز العمليات SOC وهندسة الكشف', nameEn: 'SOC Operations & Detection Engineering', icon: Activity, category: 'F. Observability' },
+    { id: 'cloud' as SimulationId, nameAr: 'أمن الحوسبة السحابية (Nexora Cloud)', nameEn: 'Cloud Security World', icon: Cloud, category: 'E. Cloud Systems' },
+    { id: 'containers' as SimulationId, nameAr: 'أمن الحاويات وكوبرنيتيس', nameEn: 'Container & K8s Security', icon: Boxes, category: 'E. Cloud Systems' },
     { id: 'threat_hunting', nameAr: 'شجرة EDR والتحقيق الجنائي', nameEn: 'EDR Telemetry & Forensics', icon: Laptop, category: 'G. Investigation' },
     { id: 'zero_trust', nameAr: 'محرك قرارات انعدام الثقة ZTA', nameEn: 'Zero Trust Decision Engine', icon: Shield, category: 'H. Architecture' },
   ];
@@ -115,11 +118,19 @@ export const Header: React.FC = () => {
     { id: 'glossary' as SimulationId, labelAr: 'المعجم التقني', labelEn: 'Glossary', icon: BookOpen },
   ];
 
-  const isLabActive = labsList.some((l) => l.id === activeSimulationId) || activeSimulationId === 'devsecops' || activeSimulationId === 'forensics';
+  const isLabActive = labsList.some((l) => l.id === activeSimulationId) || 
+    activeSimulationId === 'devsecops' || 
+    activeSimulationId === 'forensics' || 
+    activeSimulationId === 'soc' || 
+    activeSimulationId === 'cloud' || 
+    activeSimulationId === 'containers';
   
   const activeLab = labsList.find((l) => l.id === activeSimulationId) || 
     (activeSimulationId === 'devsecops' ? { nameAr: 'أمن سلاسل التوريد والـ DevSecOps', nameEn: 'Software Supply Chain & DevSecOps', icon: Workflow, category: 'E. Cloud Systems' } : null) ||
-    (activeSimulationId === 'forensics' ? { nameAr: 'التحقيق الجنائي الرقمي', nameEn: 'Digital Forensics World', icon: Shield, category: 'G. Investigation' } : null);
+    (activeSimulationId === 'forensics' ? { nameAr: 'التحقيق الجنائي الرقمي', nameEn: 'Digital Forensics World', icon: Shield, category: 'G. Investigation' } : null) ||
+    (activeSimulationId === 'soc' ? { nameAr: 'مركز العمليات SOC وهندسة الكشف', nameEn: 'SOC Operations & Detection Engineering', icon: Activity, category: 'F. Observability' } : null) ||
+    (activeSimulationId === 'cloud' ? { nameAr: 'أمن الحوسبة السحابية (Nexora Cloud)', nameEn: 'Cloud Security World', icon: Cloud, category: 'E. Cloud Systems' } : null) ||
+    (activeSimulationId === 'containers' ? { nameAr: 'أمن الحاويات وكوبرنيتيس', nameEn: 'Container & K8s Security', icon: Boxes, category: 'E. Cloud Systems' } : null);
 
   // If in DevSecOps, override identity with sub-lab if not on map
   const displayLabName = (activeSimulationId === 'devsecops' && devSecOpsTab !== 'map')
@@ -128,14 +139,14 @@ export const Header: React.FC = () => {
 
   // Unified Three-Zone Header (Consolidated Phase 1D)
   return (
-    <header className="h-12 border-b border-slate-900 bg-slate-950 px-4 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
+    <header className="h-12 border-b border-slate-900 bg-slate-950 px-3 sm:px-4 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
       {/* Zone 1: Identity / Context */}
-      <div className="flex items-center gap-3 min-w-[240px]">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {isLabActive && activeLab ? (
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             <button
               onClick={() => setActiveSimulation('explorer')}
-              className="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 transition-all shadow-sm"
+              className="w-7 h-7 shrink-0 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 transition-all shadow-sm"
               title={language === 'ar' ? 'العودة للكون' : 'Back to Universe'}
             >
               <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
@@ -145,10 +156,10 @@ export const Header: React.FC = () => {
                 {React.createElement(displayLabName?.icon || activeLab.icon, { className: 'w-4 h-4' })}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-bold text-white uppercase tracking-tight truncate leading-tight">
+                <span className="text-[10px] sm:text-[11px] font-bold text-white uppercase tracking-tight truncate max-w-[130px] sm:max-w-[220px] md:max-w-none leading-tight">
                   {language === 'ar' ? displayLabName?.nameAr || activeLab.nameAr : displayLabName?.nameEn || activeLab.nameEn}
                 </span>
-                <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest leading-none">
+                <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest leading-none truncate max-w-[120px] sm:max-w-none">
                   {activeSimulationId === 'devsecops' ? (devSecOpsTab === 'map' ? 'WORLD HUB' : 'DEVSECOPS LAB') : activeLab.category}
                 </span>
               </div>
@@ -157,7 +168,7 @@ export const Header: React.FC = () => {
         ) : (
           <button
             onClick={() => setActiveSimulation('landing')}
-            className="flex items-center gap-3 hover:opacity-80 transition-all group"
+            className="flex items-center gap-2.5 sm:gap-3 hover:opacity-80 transition-all group shrink-0"
           >
             <div className="w-7 h-7 rounded-lg bg-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-900/20 group-hover:scale-105 transition-transform">
               <Shield className="w-4 h-4 text-white" />
@@ -183,12 +194,12 @@ export const Header: React.FC = () => {
               </span>
             </div>
             <div className="w-px h-3 bg-slate-800" />
-            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums">
+            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums" dir="ltr">
               <span className="text-slate-500 font-bold tracking-tighter">TIME</span>
               <span className="text-cyan-400 font-bold">T+{virtualTime}ms</span>
             </div>
             <div className="w-px h-3 bg-slate-800" />
-            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums">
+            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums" dir="ltr">
               <span className="text-slate-500 font-bold tracking-tighter">SPEED</span>
               <span className="text-purple-400 font-bold">{clockSpeed}x</span>
             </div>
@@ -218,7 +229,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Zone 3: Actions (Right) */}
-      <div className="flex items-center gap-2.5 min-w-[240px] justify-end">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 justify-end">
         <button
           onClick={() => setIsSearchOpen(true)}
           className="h-8 px-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all flex items-center gap-2 group"

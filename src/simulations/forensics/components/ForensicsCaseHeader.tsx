@@ -68,14 +68,14 @@ export const ForensicsCaseHeader: React.FC = () => {
             <span className="text-[9px] font-bold uppercase tracking-wider">
               {isAr ? 'ارتباط SOC نشط' : 'SOC_LINKED'}
             </span>
-            <span className="text-[9px] font-mono opacity-60">[{deepLink.alertId}]</span>
+            <span className="text-[9px] font-mono opacity-60" dir="ltr">[{deepLink.alertId}]</span>
           </div>
         )}
 
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-[9px] font-mono text-slate-400">
           <Clock className="w-3.5 h-3.5 text-cyan-500" />
           <span className="uppercase tracking-widest hidden sm:inline">{isAr ? 'وقت المحاكاة:' : 'VIRTUAL_TIME:'}</span>
-          <span className="text-white font-bold tabular-nums">{(virtualTime / 1000).toFixed(2)}s</span>
+          <span className="text-white font-bold tabular-nums" dir="ltr">{(virtualTime / 1000).toFixed(2)}s</span>
         </div>
       </div>
     </div>

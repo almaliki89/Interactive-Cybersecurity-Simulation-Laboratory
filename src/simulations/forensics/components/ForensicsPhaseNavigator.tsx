@@ -94,7 +94,7 @@ export const ForensicsPhaseNavigator: React.FC = () => {
   const setActiveTab = useForensicsStore((s) => s.setActiveTab);
 
   return (
-    <div className="w-64 shrink-0 border-r border-slate-800 bg-slate-900/50 flex flex-col overflow-hidden">
+    <div className="w-64 max-w-[calc(100vw-3rem)] shrink-0 border-r rtl:border-r-0 rtl:border-l border-slate-800 bg-slate-900/50 flex flex-col overflow-hidden">
       <div className="p-4 border-b border-slate-800">
         <button
           onClick={() => setActiveTab('map')}

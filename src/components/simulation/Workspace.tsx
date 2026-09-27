@@ -86,6 +86,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     }
   }, [challenge]);
 
+  // Accessibility: Escape key dismisses open mobile panels
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLeftOpen(false);
+        setRightOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const layers: Array<{
     id: 'network' | 'application' | 'identity' | 'security' | 'logs' | 'infrastructure';
     nameAr: string;
@@ -102,14 +114,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 select-none font-sans">
       {/* 1. Technical Toolbar (Consolidated) */}
-      <div className="h-8 border-b border-slate-900 bg-slate-900/20 px-4 flex items-center justify-between shrink-0 z-20">
+      <div className="h-9 border-b border-slate-900 bg-slate-900/20 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 overflow-x-auto no-scrollbar">
         {/* Left: Domain Context Indicator & Optional Navigation */}
         <div className="flex items-center gap-3">
           {onBackToHub && (
             <>
               <button
                 onClick={onBackToHub}
-                className="flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest group"
+                className="flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest group shrink-0"
               >
                 <ArrowLeft className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform rtl:rotate-180" />
                 <span>{language === 'ar' ? 'العودة للمركز' : 'Hub'}</span>
@@ -117,26 +129,26 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               <div className="h-3 w-px bg-slate-800" />
             </>
           )}
-          <div className="flex items-center gap-1.5 text-[9px] font-mono text-slate-500 uppercase tracking-widest">
-            <Sliders className="w-3 h-3 text-cyan-500" />
+          <div className="flex items-center gap-1.5 text-[9px] font-mono text-slate-400 uppercase tracking-widest shrink-0">
+            <Sliders className="w-3 h-3 text-cyan-400" />
             <span className="hidden sm:inline">{language === 'ar' ? 'نمط العمل:' : 'MODE:'}</span>
-            <span className="text-slate-300 font-bold">{domainName || 'GENERAL'}</span>
+            <span className="text-slate-200 font-bold">{domainName || 'GENERAL'}</span>
           </div>
           
           <div className="h-3 w-px bg-slate-800" />
 
           {/* Layer Switcher - Compact Segmented Control */}
-          <div className="flex items-center gap-1 p-0.5 bg-slate-950 rounded-md border border-slate-800/60">
+          <div className="flex items-center gap-1 p-0.5 bg-slate-950 rounded-md border border-slate-800/60 shrink-0">
             {layers.map((l) => {
               const isSelected = activeWorkspaceLayer === l.id;
               return (
                 <button
                   key={l.id}
                   onClick={() => setActiveWorkspaceLayer(l.id)}
-                  className={`px-2 py-0.5 text-[8px] font-mono rounded transition-all uppercase ${
+                  className={`px-2 py-0.5 text-[9px] font-mono rounded transition-all uppercase ${
                     isSelected
                       ? 'bg-cyan-600 text-white font-bold shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                      : 'text-slate-600 hover:text-slate-400'
+                      : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   {language === 'ar' ? l.nameAr : l.nameEn}
@@ -147,14 +159,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         </div>
 
         {/* Right: Smart Panel Toggles */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0 ml-2 rtl:ml-0 rtl:mr-2">
           {challenge && (
             <button
               onClick={() => setLeftOpen((prev) => !prev)}
-              className={`h-6 px-2 rounded border transition-all flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-tighter ${
+              className={`h-6 px-2.5 rounded border transition-all flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-tighter ${
                 leftOpen
                   ? 'bg-slate-800 border-slate-700 text-cyan-400 font-bold'
-                  : 'bg-transparent border-transparent text-slate-600 hover:text-slate-400'
+                  : 'bg-transparent border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
               <PanelLeft className="w-3 h-3" />
@@ -164,10 +176,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
           <button
             onClick={() => setRightOpen((prev) => !prev)}
-            className={`h-6 px-2 rounded border transition-all flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-tighter ${
+            className={`h-6 px-2.5 rounded border transition-all flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-tighter ${
               rightOpen
                 ? 'bg-slate-800 border-slate-700 text-cyan-400 font-bold'
-                : 'bg-transparent border-transparent text-slate-600 hover:text-slate-400'
+                : 'bg-transparent border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <PanelRight className="w-3 h-3" />
@@ -272,23 +284,30 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Pane: Challenge Objectives / Scenario (Becomes drawer/sheet on small screens) */}
         {challenge && leftOpen && (
-          <div className="absolute lg:relative z-20 h-full bg-slate-950/95 lg:bg-transparent border-r rtl:border-r-0 rtl:border-l border-slate-900 shadow-2xl lg:shadow-none w-80 shrink-0 animate-in slide-in-from-left duration-150">
-            <div className="flex items-center justify-between p-2.5 border-b border-slate-900 lg:hidden bg-slate-950">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">
-                {language === 'ar' ? 'الأهداف والمتطلبات' : 'Challenge Objectives'}
-              </span>
-              <button
-                onClick={() => setLeftOpen(false)}
-                className="p-1 rounded bg-slate-900 text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <ChallengePanel
-              challenge={challenge}
-              onValidate={onValidateChallenge}
+          <>
+            <div 
+              className="fixed inset-0 bg-black/60 z-10 lg:hidden" 
+              onClick={() => setLeftOpen(false)} 
             />
-          </div>
+            <div className="absolute left-0 rtl:left-auto rtl:right-0 lg:relative z-20 h-full bg-slate-950 lg:bg-transparent border-r rtl:border-r-0 rtl:border-l border-slate-900 shadow-2xl lg:shadow-none w-80 max-w-[calc(100vw-3rem)] shrink-0 animate-in slide-in-from-left rtl:slide-in-from-right duration-150">
+              <div className="flex items-center justify-between p-2.5 border-b border-slate-900 lg:hidden bg-slate-950">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  {language === 'ar' ? 'الأهداف والمتطلبات' : 'Challenge Objectives'}
+                </span>
+                <button
+                  onClick={() => setLeftOpen(false)}
+                  className="p-1 rounded bg-slate-900 text-slate-400 hover:text-white"
+                  aria-label="Close Objectives"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <ChallengePanel
+                challenge={challenge}
+                onValidate={onValidateChallenge}
+              />
+            </div>
+          </>
         )}
 
         {/* Center Pane: Interactive Simulation Stage & Control Deck */}
@@ -306,20 +325,27 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
         {/* Right Pane: Object Inspector (Becomes slide-over drawer/sheet on mobile) */}
         {rightOpen && (
-          <div className="absolute right-0 rtl:right-auto rtl:left-0 lg:relative z-20 h-full bg-slate-950/95 lg:bg-transparent border-l rtl:border-l-0 rtl:border-r border-slate-900 shadow-2xl lg:shadow-none w-80 shrink-0 animate-in slide-in-from-right duration-150">
-            <div className="flex items-center justify-between p-2.5 border-b border-slate-900 lg:hidden bg-slate-950">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">
-                {language === 'ar' ? 'فاحص المكونات' : 'Object Inspector'}
-              </span>
-              <button
-                onClick={() => setRightOpen(false)}
-                className="p-1 rounded bg-slate-900 text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
+          <>
+            <div 
+              className="fixed inset-0 bg-black/60 z-10 lg:hidden" 
+              onClick={() => setRightOpen(false)} 
+            />
+            <div className="absolute right-0 rtl:right-auto rtl:left-0 lg:relative z-20 h-full bg-slate-950 lg:bg-transparent border-l rtl:border-l-0 rtl:border-r border-slate-900 shadow-2xl lg:shadow-none w-80 max-w-[calc(100vw-3rem)] shrink-0 animate-in slide-in-from-right rtl:slide-in-from-left duration-150">
+              <div className="flex items-center justify-between p-2.5 border-b border-slate-900 lg:hidden bg-slate-950">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  {language === 'ar' ? 'فاحص المكونات' : 'Object Inspector'}
+                </span>
+                <button
+                  onClick={() => setRightOpen(false)}
+                  className="p-1 rounded bg-slate-900 text-slate-400 hover:text-white"
+                  aria-label="Close Inspector"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <Inspector />
             </div>
-            <Inspector />
-          </div>
+          </>
         )}
       </div>
 
