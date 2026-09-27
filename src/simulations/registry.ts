@@ -367,8 +367,8 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
   },
   threat_hunting: {
     id: 'threat_hunting',
-    nameAr: 'أمن الأجهزة EDR والتحقيق الجنائي',
-    nameEn: 'EDR Telemetry & Threat Hunting',
+    nameAr: 'صيد التهديدات وهندسة الكشف والاستخبارات',
+    nameEn: 'Threat Hunting, Detection Engineering & Threat Intel',
     domain: 'investigation',
     component: ThreatHuntingSimulation,
     worldId: 28,

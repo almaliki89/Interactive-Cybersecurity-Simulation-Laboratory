@@ -271,7 +271,98 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
     });
   });
 
-  // 3. DEVSECOPS SUPPLY CHAIN WORLD
+  // 3. THREAT HUNTING WORLD (V16)
+  test.describe('Threat Hunting World', () => {
+    test('Threat Hunting Desktop 1440x900 - English & Arabic Render QA', async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await navigateToWorld(page, 'threat_hunting');
+      await switchLanguage(page, 'en');
+
+      const workspace = page.getByTestId('threat-hunting-workspace');
+      await expect(workspace).toBeVisible();
+      await assertNoHorizontalOverflow(page, 'Threat Hunting Desktop EN');
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'threat-hunting-desktop-en.png'),
+        fullPage: false,
+      });
+
+      // Switch tabs: Query Editor
+      const queryTab = page.getByTestId('tab-query');
+      if (await queryTab.isVisible()) {
+        await queryTab.click();
+        const runBtn = page.getByTestId('btn-run-query');
+        if (await runBtn.isVisible()) {
+          await runBtn.click();
+          await page.screenshot({
+            path: path.join(ARTIFACTS_DIR, 'threat-hunting-query-results.png'),
+            fullPage: false,
+          });
+        }
+      }
+
+      // Switch tabs: Detection Builder
+      const detTab = page.getByTestId('tab-detection');
+      if (await detTab.isVisible()) {
+        await detTab.click();
+        const testBtn = page.getByTestId('btn-test-rule');
+        if (await testBtn.isVisible()) {
+          await testBtn.click();
+          await page.screenshot({
+            path: path.join(ARTIFACTS_DIR, 'threat-hunting-detection-builder.png'),
+            fullPage: false,
+          });
+        }
+      }
+
+      // Switch to Arabic RTL
+      await switchLanguage(page, 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await assertNoHorizontalOverflow(page, 'Threat Hunting Desktop AR');
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'threat-hunting-desktop-ar.png'),
+        fullPage: false,
+      });
+    });
+
+    test('Threat Hunting Mobile 390x844 & 360x800 QA, Drawers & RTL', async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.mobile);
+      await navigateToWorld(page, 'threat_hunting');
+      await switchLanguage(page, 'en');
+
+      await assertNoHorizontalOverflow(page, 'Threat Hunting Mobile EN');
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'threat-hunting-mobile-en.png'),
+        fullPage: false,
+      });
+
+      // 1. Mobile Navigator Drawer
+      const navBtn = page.getByTestId('hunt-mobile-nav-btn');
+      if (await navBtn.isVisible()) {
+        await navBtn.click();
+        await expect(page.getByTestId('hunt-mobile-nav-drawer')).toBeVisible();
+        await page.keyboard.press('Escape');
+      }
+
+      // 2. Mobile Inspector Drawer
+      const inspectorBtn = page.getByTestId('hunt-mobile-inspector-btn');
+      if (await inspectorBtn.isVisible()) {
+        await inspectorBtn.click();
+        await expect(page.getByTestId('hunt-mobile-inspector-drawer')).toBeVisible();
+        await page.keyboard.press('Escape');
+      }
+
+      // Switch to Arabic RTL on Small Mobile
+      await page.setViewportSize(VIEWPORTS.smallMobile);
+      await switchLanguage(page, 'ar');
+      await assertNoHorizontalOverflow(page, 'Threat Hunting Small Mobile AR');
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'threat-hunting-mobile-ar.png'),
+        fullPage: false,
+      });
+    });
+  });
+
+  // 4. DEVSECOPS SUPPLY CHAIN WORLD
   test.describe('DevSecOps World', () => {
     test('DevSecOps Desktop 1440x900 - English & Arabic Render QA', async ({ page }) => {
       await page.setViewportSize(VIEWPORTS.desktop);

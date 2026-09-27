@@ -33,6 +33,7 @@ import {
   FileSearch,
   Lock,
   Sparkles,
+  Crosshair,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -87,7 +88,7 @@ export const Header: React.FC = () => {
     { id: 'soc' as SimulationId, nameAr: 'مركز العمليات SOC وهندسة الكشف', nameEn: 'SOC Operations & Detection Engineering', icon: Activity, category: 'F. Observability' },
     { id: 'cloud' as SimulationId, nameAr: 'أمن الحوسبة السحابية (Nexora Cloud)', nameEn: 'Cloud Security World', icon: Cloud, category: 'E. Cloud Systems' },
     { id: 'containers' as SimulationId, nameAr: 'أمن الحاويات وكوبرنيتيس', nameEn: 'Container & K8s Security', icon: Boxes, category: 'E. Cloud Systems' },
-    { id: 'threat_hunting', nameAr: 'شجرة EDR والتحقيق الجنائي', nameEn: 'EDR Telemetry & Forensics', icon: Laptop, category: 'G. Investigation' },
+    { id: 'threat_hunting', nameAr: 'صيد التهديدات وهندسة الكشف والاستخبارات', nameEn: 'Threat Hunting & Detection Engineering', icon: Crosshair, category: 'G. Investigation' },
     { id: 'zero_trust', nameAr: 'محرك قرارات انعدام الثقة ZTA', nameEn: 'Zero Trust Decision Engine', icon: Shield, category: 'H. Architecture' },
   ];
 
