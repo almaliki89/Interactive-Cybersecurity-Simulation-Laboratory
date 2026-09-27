@@ -497,4 +497,43 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
     });
   });
 
+  // 7. OMEGA ULTRA REALITY — ENTERPRISE DIGITAL TWIN CYBER RANGE
+  test.describe('Enterprise Digital Twin Cyber Range', () => {
+    test('Cyber Range Desktop 1440x900 - 3D Digital Twin & 2D Schematic QA', async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await navigateToWorld(page, 'range');
+      await switchLanguage(page, 'en');
+
+      // Assert structural components in Cyber Range Digital Twin
+      await expect(page.locator('header')).toBeVisible();
+      await expect(page.getByText('ENTERPRISE DIGITAL TWIN')).toBeVisible();
+      await expect(page.getByText('NEXORA HQ INVENTORY')).toBeVisible();
+
+      // Check no horizontal overflow
+      await assertNoHorizontalOverflow(page, 'Digital Twin Desktop EN');
+
+      // Screenshot 3D WebGL mode
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'digital-twin-desktop-en.png'),
+        fullPage: false,
+      });
+
+      // Switch to 2D Schematic mode
+      const schematicBtn = page.getByRole('button', { name: '2D Schematic' });
+      await schematicBtn.click();
+      await expect(page.getByText('RACK-01 ELEVATION SCHEMATIC (42U)')).toBeVisible();
+
+      // Switch to Arabic RTL
+      await switchLanguage(page, 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await assertNoHorizontalOverflow(page, 'Digital Twin 2D RTL AR');
+
+      // Screenshot 2D Schematic in Arabic
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'digital-twin-schematic-ar.png'),
+        fullPage: false,
+      });
+    });
+  });
+
 });

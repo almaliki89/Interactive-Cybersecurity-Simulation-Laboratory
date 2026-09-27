@@ -304,6 +304,45 @@ export class WindowsMachine {
   }
 
   /**
+   * Gracefully shuts down the machine state, halting processes and closing sessions
+   */
+  public shutdown(virtualTime: number = 0): void {
+    if (this.status === 'OFFLINE') return;
+
+    this.status = 'OFFLINE';
+    this.lastUpdatedVirtualTime = virtualTime;
+
+    // Terminate all running processes
+    this.processes.forEach((proc) => {
+      proc.status = 'Terminated';
+    });
+
+    // Close all active sessions
+    this.sessions.forEach((session) => {
+      session.status = 'LOGGED_OFF';
+    });
+
+    // Close all sockets
+    this.sockets.forEach((sock) => {
+      sock.state = 'CLOSED';
+    });
+
+    // Emit Event Log 6006: The Event log service was stopped.
+    this.eventLogs.unshift({
+      id: `evt-6006-${this.hostname}-${virtualTime}`,
+      channel: 'System',
+      eventId: 6006,
+      virtualTime,
+      provider: 'EventLog',
+      level: 'Information',
+      task: 'Shutdown',
+      computer: this.hostname,
+      user: 'NT AUTHORITY\\SYSTEM',
+      data: { message: `The Event log service was stopped on ${this.hostname}.` },
+    });
+  }
+
+  /**
    * Spawns a new process in the machine state table
    */
   public spawnProcess(params: {
