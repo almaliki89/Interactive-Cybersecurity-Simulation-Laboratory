@@ -29,12 +29,111 @@ interface DeviceInspectorProps {
 
 export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) => {
   const selectedDeviceId = useDigitalTwinStore((s) => s.selectedDeviceId);
+  const selectedCableId = useDigitalTwinStore((s) => s.selectedCableId);
   const devices = useDigitalTwinStore((s) => s.devices);
+  const cables = useDigitalTwinStore((s) => s.cables);
   const toggleDevicePower = useDigitalTwinStore((s) => s.toggleDevicePower);
+  const disconnectCable = useDigitalTwinStore((s) => s.disconnectCable);
+  const connectCable = useDigitalTwinStore((s) => s.connectCable);
+  const selectCable = useDigitalTwinStore((s) => s.selectCable);
+  const selectDevice = useDigitalTwinStore((s) => s.selectDevice);
   const isInspectingPort = useDigitalTwinStore((s) => s.isInspectingPort);
   const selectPort = useDigitalTwinStore((s) => s.selectPort);
 
   const [activeTab, setActiveTab] = useState<'system' | 'processes' | 'sessions' | 'ports' | 'logs'>('system');
+
+  // If a cable is specifically selected
+  if (selectedCableId && !selectedDeviceId) {
+    const cable = cables[selectedCableId];
+    if (cable) {
+      const isConnected = cable.status === 'CONNECTED';
+      return (
+        <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden" data-testid="cable-inspector">
+          <div className="p-3.5 border-b border-slate-900 bg-slate-900/30 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-rose-500'}`} />
+              <span className="text-xs font-bold font-mono text-white">{cable.id}</span>
+              <span className="text-[9px] font-mono text-cyan-400 bg-cyan-950/50 px-1.5 py-0.5 rounded border border-cyan-800/50">
+                {cable.type}
+              </span>
+            </div>
+            <button onClick={() => selectCable(null)} className="text-slate-500 hover:text-slate-300">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4 flex-1 overflow-y-auto font-mono text-xs">
+            <div className="p-3 rounded-lg bg-slate-900/40 border border-slate-800/80 space-y-2">
+              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Physical Cable Properties</div>
+              <div className="flex justify-between text-slate-300">
+                <span className="text-slate-500">Source:</span>
+                <span className="text-white font-bold">{cable.sourcePort}</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span className="text-slate-500">Destination:</span>
+                <span className="text-white font-bold">{cable.targetPort}</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span className="text-slate-500">Length:</span>
+                <span>{cable.lengthMeters} m</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span className="text-slate-500">Link Speed:</span>
+                <span className="text-emerald-400">{cable.linkSpeedMbps.toLocaleString()} Mbps</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span className="text-slate-500">Status:</span>
+                <span className={`font-bold ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {cable.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Physical Unplug / Plug Control */}
+            <div className="p-3 rounded-lg bg-slate-900/40 border border-slate-800 space-y-2">
+              <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Cable Interaction</div>
+              <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                {language === 'ar'
+                  ? 'فصل الكابل يقطع الاتصال الفيزيائي فوراً ويسقط إشارة المنفذ في المبدل والواجهة.'
+                  : 'Disconnecting the physical cable drops the link layer state down immediately across both device endpoints.'}
+              </p>
+              <button
+                onClick={() => isConnected ? disconnectCable(cable.id) : connectCable(cable.id)}
+                className={`w-full py-2 px-3 rounded text-xs font-bold transition-all shadow-sm ${
+                  isConnected
+                    ? 'bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800'
+                    : 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border border-emerald-800'
+                }`}
+              >
+                {isConnected
+                  ? (language === 'ar' ? 'فصل الكابل فيزيائياً (Disconnect Cable)' : 'Disconnect Cable')
+                  : (language === 'ar' ? 'إعادة توصيل الكابل (Plug In Cable)' : 'Connect Cable')}
+              </button>
+            </div>
+
+            {/* Quick jump to endpoints */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-900">
+              <div className="text-[10px] text-slate-500 uppercase">Endpoints</div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => selectDevice(cable.sourceDeviceId)}
+                  className="flex-1 p-2 rounded bg-slate-900 hover:bg-slate-800 text-[11px] text-left text-cyan-400 border border-slate-800"
+                >
+                  Inspect {cable.sourceDeviceId}
+                </button>
+                <button
+                  onClick={() => selectDevice(cable.targetDeviceId)}
+                  className="flex-1 p-2 rounded bg-slate-900 hover:bg-slate-800 text-[11px] text-left text-cyan-400 border border-slate-800"
+                >
+                  Inspect {cable.targetDeviceId}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
 
   if (!selectedDeviceId) {
     return (

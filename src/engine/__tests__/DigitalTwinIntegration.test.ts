@@ -94,12 +94,12 @@ describe('Digital Twin Foundation & RealityEngine Synchronization', () => {
     expect(port10?.vlan).toBe(20);
     expect(port10?.connectedDevice).toBe('DC01');
 
-    // Port 24 is connected to FIN-WS01 on workstation VLAN 30
+    // Port 24 is patched to PP-01 (which links to FIN-WS01) on workstation VLAN 30
     const port24 = sw.ports?.find((p) => p.portNumber === 24);
     expect(port24).toBeDefined();
     expect(port24?.linkState).toBe('UP');
     expect(port24?.vlan).toBe(30);
-    expect(port24?.connectedDevice).toBe('FIN-WS01');
+    expect(port24?.connectedDevice).toBe('PP-01');
   });
 
   it('supports camera mode and accessible 2D schematic toggles', () => {
@@ -123,5 +123,58 @@ describe('Digital Twin Foundation & RealityEngine Synchronization', () => {
     store.selectDevice('FIN-WS01');
     expect(useDigitalTwinStore.getState().cameraMode).toBe('workstation');
     expect(useDigitalTwinStore.getState().selectedDeviceId).toBe('FIN-WS01');
+  });
+
+  it('manages first-class physical cable topology and disconnect/reconnect simulation', () => {
+    const store = useDigitalTwinStore.getState();
+
+    // Verify initial cable topology
+    expect(store.cables['CAB-UPLINK-01']).toBeDefined();
+    expect(store.cables['CAB-SRV-DC01']).toBeDefined();
+    expect(store.cables['CAB-SRV-FL01']).toBeDefined();
+    expect(store.cables['CAB-PATCH-WS01']).toBeDefined();
+
+    const dcCable = store.cables['CAB-SRV-DC01'];
+    expect(dcCable.status).toBe('CONNECTED');
+    expect(dcCable.linkSpeedMbps).toBe(10000);
+
+    // Switch port 10 is UP initially
+    const swBefore = store.devices['CORE-SW01'];
+    const p10Before = swBefore.ports?.find((p) => p.portNumber === 10);
+    expect(p10Before?.linkState).toBe('UP');
+
+    // Disconnect physical cable CAB-SRV-DC01
+    store.disconnectCable('CAB-SRV-DC01');
+
+    const storeAfterDisconnect = useDigitalTwinStore.getState();
+    const dcCableAfter = storeAfterDisconnect.cables['CAB-SRV-DC01'];
+    expect(dcCableAfter.status).toBe('DISCONNECTED');
+    expect(dcCableAfter.connected).toBe(false);
+
+    // Switch port 10 must now be DOWN
+    const swAfter = storeAfterDisconnect.devices['CORE-SW01'];
+    const p10After = swAfter.ports?.find((p) => p.portNumber === 10);
+    expect(p10After?.linkState).toBe('DOWN');
+
+    // DC01 interface must now be DOWN
+    const dc01After = storeAfterDisconnect.devices['DC01'];
+    const dcNic = dc01After.interfaces?.find((i) => i.connectedCableId === 'CAB-SRV-DC01');
+    expect(dcNic?.status).toBe('DOWN');
+
+    // Reconnect the physical cable
+    store.connectCable('CAB-SRV-DC01');
+    const storeReconnected = useDigitalTwinStore.getState();
+    expect(storeReconnected.cables['CAB-SRV-DC01'].status).toBe('CONNECTED');
+    const p10Restored = storeReconnected.devices['CORE-SW01'].ports?.find((p) => p.portNumber === 10);
+    expect(p10Restored?.linkState).toBe('UP');
+  });
+
+  it('supports camera view transitions including rack-front and rack-rear', () => {
+    const store = useDigitalTwinStore.getState();
+    store.setCameraMode('rack-front');
+    expect(useDigitalTwinStore.getState().cameraMode).toBe('rack-front');
+
+    store.setCameraMode('rack-rear');
+    expect(useDigitalTwinStore.getState().cameraMode).toBe('rack-rear');
   });
 });

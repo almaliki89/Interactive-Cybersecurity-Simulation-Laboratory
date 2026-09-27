@@ -55,7 +55,8 @@ export const CyberRange: React.FC = () => {
       if (e.key === '1') setCameraMode('building');
       if (e.key === '2') setCameraMode('room');
       if (e.key === '3') setCameraMode('rack');
-      if (e.key === '4') setCameraMode('workstation');
+      if (e.key === '4') setCameraMode('rack-rear');
+      if (e.key === '5') setCameraMode('workstation');
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -64,7 +65,8 @@ export const CyberRange: React.FC = () => {
   const cameraButtons: { id: CameraViewMode; labelEn: string; labelAr: string; icon: any }[] = [
     { id: 'building', labelEn: 'Building HQ', labelAr: 'المقر العام', icon: Building },
     { id: 'room', labelEn: 'Server Room', labelAr: 'غرفة الخوادم', icon: Server },
-    { id: 'rack', labelEn: 'RACK-01', labelAr: 'كابينة RACK-01', icon: Box },
+    { id: 'rack', labelEn: 'Rack Front', labelAr: 'واجهة الكابينة', icon: Box },
+    { id: 'rack-rear', labelEn: 'Rack Rear (Cabling)', labelAr: 'خلفية الكابينة', icon: Box },
     { id: 'workstation', labelEn: 'Workstation', labelAr: 'محطة العمل', icon: Laptop },
   ];
 

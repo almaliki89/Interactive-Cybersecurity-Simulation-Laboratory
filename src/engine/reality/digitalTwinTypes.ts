@@ -1,6 +1,6 @@
 /**
- * OMEGA ULTRA REALITY — Enterprise Digital Twin Types
- * Pure deterministic state definitions for hardware, racks, rooms, and physical infrastructure.
+ * OMEGA ULTRA REALITY V1.1 — Enterprise Digital Twin Types
+ * Pure deterministic state definitions for hardware, racks, cables, rooms, and physical infrastructure.
  */
 
 export type RoomId =
@@ -13,7 +13,15 @@ export type RoomId =
   | 'server-room'
   | 'data-center';
 
-export type CameraViewMode = 'building' | 'room' | 'rack' | 'device' | 'workstation' | 'topology';
+export type CameraViewMode =
+  | 'building'
+  | 'room'
+  | 'rack'
+  | 'rack-front'
+  | 'rack-rear'
+  | 'device'
+  | 'workstation'
+  | 'topology';
 
 export type DeviceCategory =
   | 'server'
@@ -23,6 +31,29 @@ export type DeviceCategory =
   | 'pdu'
   | 'ups'
   | 'patch-panel';
+
+export type StateOrigin = 'REALITY_ENGINE' | 'DERIVED' | 'SEEDED_BASELINE';
+
+export type CableType = 'CAT6' | 'CAT6A' | 'FIBER_SM' | 'FIBER_MM';
+
+export type CableColor = 'blue' | 'yellow' | 'aqua' | 'red' | 'purple' | 'gray';
+
+export interface CableState {
+  id: string;
+  type: CableType;
+  sourceDeviceId: string;
+  sourcePort: string; // e.g. "CORE-SW01:Gi1/0/10"
+  targetDeviceId: string;
+  targetPort: string; // e.g. "DC01:NIC1"
+  status: 'CONNECTED' | 'DISCONNECTED';
+  linkSpeedMbps: number;
+  lengthMeters: number;
+  colorLabel: CableColor;
+  connected: boolean;
+  stateOrigin: StateOrigin;
+  // Waypoint paths for physical 3D routing
+  pathKey?: string;
+}
 
 export interface DeviceLedState {
   power: 'green' | 'amber' | 'red' | 'off';
@@ -37,6 +68,8 @@ export interface NetworkInterfaceState {
   mac: string;
   status: 'UP' | 'DOWN';
   speedMbps: number;
+  connectedCableId?: string;
+  stateOrigin: StateOrigin;
 }
 
 export interface SwitchPortState {
@@ -51,6 +84,16 @@ export interface SwitchPortState {
   errors: number;
   connectedDevice?: string;
   connectedPort?: string;
+  connectedCableId?: string;
+  stateOrigin: StateOrigin;
+}
+
+export interface PatchPanelPortState {
+  portNumber: number;
+  label: string;
+  rearDestination: string; // e.g. "FIN-WS01 Wall Drop"
+  frontConnectedCableId?: string;
+  linkActive: boolean;
 }
 
 export interface FirewallZoneState {
@@ -73,18 +116,21 @@ export interface DigitalTwinDevice {
   powerStatus: 'ONLINE' | 'OFFLINE';
   healthStatus: 'HEALTHY' | 'DEGRADED' | 'CRITICAL';
   realityMachineId?: string; // Links to WindowsMachine in RealityEngine
+  poweredBy?: string; // e.g. "PDU-01"
   temperatureCelsius: number;
   fanRpm: number;
   powerWatts: number;
   leds: DeviceLedState;
   interfaces?: NetworkInterfaceState[];
   ports?: SwitchPortState[];
+  patchPanelPorts?: PatchPanelPortState[];
   firewallState?: {
     zones: FirewallZoneState[];
     activeSessions: number;
     blockedPackets: number;
     inspectionThroughputMbps: number;
   };
+  stateOrigin: StateOrigin;
 }
 
 export interface ServerRack {
@@ -116,12 +162,14 @@ export interface BuildingRoom {
 
 export interface DigitalTwinState {
   selectedDeviceId: string | null;
+  selectedCableId: string | null;
   selectedRoomId: RoomId;
   cameraMode: CameraViewMode;
   renderMode: '3d-webgl' | '2d-schematic';
   rooms: Record<RoomId, BuildingRoom>;
   racks: Record<string, ServerRack>;
   devices: Record<string, DigitalTwinDevice>;
+  cables: Record<string, CableState>;
   ambientNoiseMuted: boolean;
   isInspectingPort: number | null;
 }
