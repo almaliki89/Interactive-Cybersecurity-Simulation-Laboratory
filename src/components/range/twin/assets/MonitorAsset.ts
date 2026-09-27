@@ -1,15 +1,29 @@
 /**
- * OMEGA ULTRA REALITY V1.1 — 32" Enterprise 4K Monitor Asset
- * Realistic slim bezel, metal stand, cable routing, and dynamic desktop screen texture.
+ * OMEGA ULTRA REALITY V1.1.1 — 32" Enterprise 4K Monitor Asset
+ * Realistic slim bezel, metal stand, cable routing, and dynamic desktop screen texture
+ * backed directly by RealityEngine / WindowsMachine and DigitalTwin derived state.
  */
 
 import * as THREE from 'three';
+
+export interface WorkstationScreenState {
+  powerStatus: 'ONLINE' | 'OFFLINE';
+  hostname: string;
+  domain: string;
+  ipAddress: string;
+  loggedOnUser: string | null;
+  sessionCount: number;
+  processCount: number;
+  networkStatus: 'CONNECTED' | 'DISCONNECTED';
+  activeInterfaceCount: number;
+  virtualTime: number;
+}
 
 export interface MonitorAssetResult {
   group: THREE.Group;
   screenMaterial: THREE.MeshStandardMaterial;
   powerLed: THREE.Mesh;
-  updateScreenState: (isOnline: boolean, username?: string, hostname?: string) => void;
+  updateScreenState: (state: WorkstationScreenState) => void;
 }
 
 export function createMonitorAsset(): MonitorAssetResult {
@@ -71,18 +85,101 @@ export function createMonitorAsset(): MonitorAssetResult {
   canvas.height = 576;
   const ctx = canvas.getContext('2d');
 
-  const renderCanvasScreen = (isOnline: boolean, username = 'sara.finance', hostname = 'FIN-WS01') => {
+  // Cache last state to avoid redundant canvas rerenders
+  let lastStateKey = '';
+
+  const renderCanvasScreen = (state: WorkstationScreenState) => {
     if (!ctx) return;
-    if (!isOnline) {
-      // Monitor in power-save / sleep
-      ctx.fillStyle = '#030508';
+
+    // 1. OFFLINE -> Black / No-signal screen
+    if (state.powerStatus === 'OFFLINE') {
+      ctx.fillStyle = '#020305';
       ctx.fillRect(0, 0, 1024, 576);
       ctx.fillStyle = '#334155';
-      ctx.font = '22px monospace';
-      ctx.fillText('NO SIGNAL — ENTERING STANDBY', 330, 280);
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText('NO SIGNAL — ENTERING STANDBY', 335, 275);
+      ctx.font = '13px monospace';
+      ctx.fillStyle = '#1e293b';
+      ctx.fillText(`DP-1 [DISCONNECTED] // POWER OFF`, 390, 310);
       return;
     }
 
+    // 2. ONLINE BUT NO ACTIVE LOGGED ON USER -> Enterprise Lock Screen
+    if (!state.loggedOnUser) {
+      // Modern corporate lockscreen background
+      const lockGrad = ctx.createLinearGradient(0, 0, 1024, 576);
+      lockGrad.addColorStop(0, '#040d1a');
+      lockGrad.addColorStop(0.5, '#071527');
+      lockGrad.addColorStop(1, '#020611');
+      ctx.fillStyle = lockGrad;
+      ctx.fillRect(0, 0, 1024, 576);
+
+      // Subtle geometric circuit lines
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.05)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(100, 0); ctx.lineTo(100, 576);
+      ctx.moveTo(924, 0); ctx.lineTo(924, 576);
+      ctx.moveTo(0, 288); ctx.lineTo(1024, 288);
+      ctx.stroke();
+
+      // Top branding banner
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.25)';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(`NEXORA ENTERPRISE ZERO-TRUST WORKSTATION`, 330, 48);
+
+      // Virtual Clock (derived from virtualTime)
+      const totalSeconds = Math.floor(state.virtualTime / 1000);
+      const hours = String(8 + Math.floor(totalSeconds / 3600) % 24).padStart(2, '0');
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 64px sans-serif';
+      ctx.fillText(`${hours}:${minutes}`, 430, 200);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 15px monospace';
+      ctx.fillText(`SIMULATION VIRTUAL TIME: T+${state.virtualTime}ms`, 365, 235);
+
+      // Lock Screen Card
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(362, 270, 300, 190);
+      ctx.strokeRect(362, 270, 300, 190);
+
+      // User avatar placeholder icon
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.arc(512, 320, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('🔒', 500, 328);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('Press Ctrl+Alt+Delete to sign in', 400, 380);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '12px monospace';
+      ctx.fillText(`Host: ${state.hostname}.${state.domain}`, 405, 410);
+      ctx.fillText(`IP: ${state.ipAddress} [${state.networkStatus}]`, 405, 430);
+
+      // Bottom Bar
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 532, 1024, 44);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px monospace';
+      ctx.fillText(`NETWORK: ${state.networkStatus}`, 32, 558);
+      ctx.fillText(`PROCS: ${state.processCount}`, 220, 558);
+      ctx.fillText(`SESSIONS: 0 ACTIVE`, 360, 558);
+      ctx.fillText(`NEXORA IT SECURITY POLICY ENFORCED`, 710, 558);
+      return;
+    }
+
+    // 3. ONLINE + ACTIVE SESSION -> Full Live Enterprise Desktop
     // Gradient Wallpaper
     const grad = ctx.createLinearGradient(0, 0, 1024, 576);
     grad.addColorStop(0, '#06162a');
@@ -95,73 +192,94 @@ export function createMonitorAsset(): MonitorAssetResult {
     ctx.lineWidth = 1;
     for (let x = 0; x < 1024; x += 32) {
       ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, 576);
+      ctx.moveTo(x, 0); ctx.lineTo(x, 576);
       ctx.stroke();
     }
     for (let y = 0; y < 576; y += 32) {
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(1024, y);
+      ctx.moveTo(0, y); ctx.lineTo(1024, y);
       ctx.stroke();
     }
 
     // Corporate Security Banner Watermark
     ctx.fillStyle = 'rgba(148, 163, 184, 0.16)';
     ctx.font = 'bold 36px monospace';
-    ctx.fillText(`NEXORA SECURE WORKSPACE // ${hostname}`, 60, 80);
+    ctx.fillText(`NEXORA SECURE WORKSPACE // ${state.hostname}`, 60, 75);
 
     // PowerShell Terminal Window
     ctx.fillStyle = '#090d16';
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 2;
-    ctx.fillRect(60, 110, 580, 360);
-    ctx.strokeRect(60, 110, 580, 360);
+    ctx.fillRect(60, 100, 580, 380);
+    ctx.strokeRect(60, 100, 580, 380);
 
     // Terminal Titlebar
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(60, 110, 580, 32);
+    ctx.fillRect(60, 100, 580, 32);
     ctx.fillStyle = '#94a3b8';
-    ctx.font = '14px monospace';
-    ctx.fillText(`Administrator: Windows PowerShell (pid 4120)`, 75, 132);
+    ctx.font = '13px monospace';
+    ctx.fillText(`Administrator: Windows PowerShell (Session active)`, 75, 122);
 
-    // Terminal Commands
+    // Live Terminal Commands and Reality State
     ctx.fillStyle = '#38bdf8';
-    ctx.font = '15px monospace';
-    ctx.fillText(`PS C:\\Users\\${username}> whoami /all`, 80, 175);
+    ctx.font = '14px monospace';
+    ctx.fillText(`PS C:\\Users\\${state.loggedOnUser}> whoami`, 80, 165);
     ctx.fillStyle = '#f8fafc';
-    ctx.fillText(`USER: NEXORA\\${username} | SID: S-1-5-21-99887766-2001`, 80, 205);
+    ctx.fillText(`${state.domain}\\${state.loggedOnUser}`, 80, 190);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(`PS C:\\Users\\${state.loggedOnUser}> Get-NetIPAddress -InterfaceAlias "Ethernet*"`, 80, 230);
+    ctx.fillStyle = state.networkStatus === 'CONNECTED' ? '#4ade80' : '#f87171';
+    ctx.fillText(
+      `IPAddress: ${state.ipAddress} | LinkStatus: ${state.networkStatus}`,
+      80,
+      255
+    );
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(`PS C:\\Users\\${state.loggedOnUser}> Get-Process | Measure-Object`, 80, 295);
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`GROUP: NEXORA\\Finance-Staff [Enabled]`, 80, 230);
+    ctx.fillText(`Count    : ${state.processCount} Running Processes`, 80, 320);
+
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText(`PS C:\\Users\\${username}> Test-NetConnection -Port 445 FILE01`, 80, 275);
+    ctx.fillText(`PS C:\\Users\\${state.loggedOnUser}> quser`, 80, 360);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(`USERNAME              SESSIONNAME        ID  STATE   IDLE TIME`, 80, 385);
     ctx.fillStyle = '#4ade80';
-    ctx.fillText(`TcpTestSucceeded : True (SMB port open to 10.10.10.12)`, 80, 305);
+    ctx.fillText(`${state.loggedOnUser.padEnd(21)}console            1   Active          .`, 80, 405);
+
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText(`PS C:\\Users\\${username}> _`, 80, 350);
+    ctx.fillText(`PS C:\\Users\\${state.loggedOnUser}> _`, 80, 445);
 
     // Mini Performance & Security Agent Window on Right
     ctx.fillStyle = '#090d16';
     ctx.strokeStyle = '#1e293b';
-    ctx.fillRect(660, 110, 300, 360);
-    ctx.strokeRect(660, 110, 300, 360);
+    ctx.fillRect(660, 100, 300, 380);
+    ctx.strokeRect(660, 100, 300, 380);
 
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(660, 110, 300, 32);
+    ctx.fillRect(660, 100, 300, 32);
     ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('EDR Sentinel Agent — Realtime', 675, 132);
+    ctx.fillText('EDR Sentinel Agent — Realtime', 675, 122);
 
     ctx.fillStyle = '#4ade80';
     ctx.font = '12px monospace';
-    ctx.fillText('● ENGINE: ACTIVE', 680, 170);
-    ctx.fillText('● BEHAVIOR MONITOR: OK', 680, 195);
-    ctx.fillText('● NETWORK FILTER: ENFORCED', 680, 220);
+    ctx.fillText('● SYSTEM: ONLINE', 680, 160);
+    ctx.fillText(
+      state.networkStatus === 'CONNECTED' ? '● LINK LAYER: UP' : '▲ LINK LAYER: DOWN (UNPLUGGED)',
+      680,
+      185
+    );
+    ctx.fillText('● SECURITY LOGS: ACTIVE', 680, 210);
+
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('CPU LOAD: 6.4%', 680, 260);
-    ctx.fillText('RAM: 5.2 / 16.0 GB (32%)', 680, 285);
-    ctx.fillText('IP: 10.10.30.15', 680, 310);
-    ctx.fillText('GATEWAY: 10.10.30.1', 680, 335);
+    ctx.fillText(`HOST: ${state.hostname}`, 680, 250);
+    ctx.fillText(`DOMAIN: ${state.domain}`, 680, 275);
+    ctx.fillText(`IP: ${state.ipAddress}`, 680, 300);
+    ctx.fillText(`INTERFACES: ${state.activeInterfaceCount} ACTIVE`, 680, 325);
+    ctx.fillText(`SESSIONS: ${state.sessionCount} RUNNING`, 680, 350);
+    ctx.fillText(`V-TIME: T+${state.virtualTime}ms`, 680, 375);
 
     // Windows Taskbar
     ctx.fillStyle = '#090d16';
@@ -175,17 +293,44 @@ export function createMonitorAsset(): MonitorAssetResult {
     // Start Button
     ctx.fillStyle = '#0284c7';
     ctx.fillRect(16, 536, 32, 32);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText('❖', 23, 558);
 
-    // Clock
+    // Active User on Taskbar
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px monospace';
+    ctx.fillText(`${state.loggedOnUser} @ ${state.hostname}`, 64, 556);
+
+    // Virtual Clock on Taskbar
+    const totalSecs = Math.floor(state.virtualTime / 1000);
+    const h = String(8 + Math.floor(totalSecs / 3600) % 24).padStart(2, '0');
+    const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
+    const s = String(totalSecs % 60).padStart(2, '0');
+
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = '14px sans-serif';
-    ctx.fillText('10:42 AM', 930, 552);
+    ctx.font = '13px sans-serif';
+    ctx.fillText(`${h}:${m}:${s}`, 930, 550);
     ctx.fillStyle = '#64748b';
-    ctx.font = '11px sans-serif';
-    ctx.fillText('NEXORA HQ', 930, 568);
+    ctx.font = '10px sans-serif';
+    ctx.fillText(`T+${state.virtualTime}ms`, 930, 566);
   };
 
-  renderCanvasScreen(true);
+  // Initial draw
+  const defaultInitState: WorkstationScreenState = {
+    powerStatus: 'ONLINE',
+    hostname: 'FIN-WS01',
+    domain: 'NEXORA.LOCAL',
+    ipAddress: '10.10.30.15',
+    loggedOnUser: null,
+    sessionCount: 0,
+    processCount: 6,
+    networkStatus: 'CONNECTED',
+    activeInterfaceCount: 1,
+    virtualTime: 0,
+  };
+
+  renderCanvasScreen(defaultInitState);
   const screenTexture = new THREE.CanvasTexture(canvas);
   screenTexture.generateMipmaps = true;
 
@@ -203,10 +348,15 @@ export function createMonitorAsset(): MonitorAssetResult {
   screenMesh.position.set(0, 0.36, 0.018);
   group.add(screenMesh);
 
-  const updateScreenState = (isOnline: boolean, username?: string, hostname?: string) => {
-    renderCanvasScreen(isOnline, username, hostname);
+  const updateScreenState = (state: WorkstationScreenState) => {
+    // Check if state changed to avoid canvas repaint overhead
+    const key = `${state.powerStatus}-${state.hostname}-${state.loggedOnUser}-${state.sessionCount}-${state.processCount}-${state.networkStatus}-${state.virtualTime}`;
+    if (key === lastStateKey) return;
+    lastStateKey = key;
+
+    renderCanvasScreen(state);
     screenTexture.needsUpdate = true;
-    screenMaterial.emissiveIntensity = isOnline ? 0.45 : 0.02;
+    screenMaterial.emissiveIntensity = state.powerStatus === 'ONLINE' ? 0.45 : 0.02;
   };
 
   return { group, screenMaterial, powerLed, updateScreenState };

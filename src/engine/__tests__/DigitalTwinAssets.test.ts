@@ -95,8 +95,30 @@ describe('OMEGA ULTRA REALITY V1.1 — Hardware Assets & Scene Subsystems', () =
     expect(monitor.group).toBeDefined();
     expect(monitor.screenMaterial).toBeDefined();
     // Test update screen
-    monitor.updateScreenState(true, 'sara.finance', 'FIN-WS01');
-    monitor.updateScreenState(false);
+    monitor.updateScreenState({
+      powerStatus: 'ONLINE',
+      hostname: 'FIN-WS01',
+      domain: 'NEXORA.LOCAL',
+      ipAddress: '10.10.30.15',
+      loggedOnUser: 'sara.finance',
+      sessionCount: 1,
+      processCount: 8,
+      networkStatus: 'CONNECTED',
+      activeInterfaceCount: 1,
+      virtualTime: 1000,
+    });
+    monitor.updateScreenState({
+      powerStatus: 'OFFLINE',
+      hostname: 'FIN-WS01',
+      domain: 'NEXORA.LOCAL',
+      ipAddress: '10.10.30.15',
+      loggedOnUser: null,
+      sessionCount: 0,
+      processCount: 0,
+      networkStatus: 'DISCONNECTED',
+      activeInterfaceCount: 0,
+      virtualTime: 2000,
+    });
   });
 
   it('assembles server room and office sectors with anchor coordinates', () => {

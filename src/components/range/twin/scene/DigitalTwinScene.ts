@@ -12,6 +12,9 @@ import { createOfficeRoom, OfficeRoomResult } from './OfficeRoom';
 import { CableRenderer } from '../network/CableRenderer';
 import { LinkStateVisualizer, LedRegistration } from '../network/LinkStateVisualizer';
 import { useDigitalTwinStore } from '../../../../engine/reality/digitalTwinStore';
+import { globalRealityEngine } from '../../../../engine/reality/RealityEngine';
+import { globalSimulationRuntime } from '../../../../engine/runtime/SimulationRuntime';
+import { WorkstationScreenState } from '../assets/MonitorAsset';
 
 export class DigitalTwinScene {
   private container: HTMLElement;
@@ -182,10 +185,33 @@ export class DigitalTwinScene {
       const currentDevices = useDigitalTwinStore.getState().devices;
       this.ledVisualizer.updateLeds(this.allLedRegistry, currentDevices, elapsed);
 
-      // 4. Dynamic Monitor Screen Texture
-      const finState = currentDevices['FIN-WS01'];
-      const isFinOnline = finState ? finState.powerStatus === 'ONLINE' : true;
-      this.officeRoom.workstation.monitor.updateScreenState(isFinOnline, 'sara.finance', 'FIN-WS01');
+      // 4. Dynamic Monitor Screen Texture (derived from RealityEngine WindowsMachine and DigitalTwin state)
+      const finDevice = currentDevices['FIN-WS01'];
+      const finMachine = globalRealityEngine.registry.getMachine('FIN-WS01');
+      const vTime = globalSimulationRuntime.clock.getVirtualTime();
+
+      const isOnline = finDevice ? finDevice.powerStatus === 'ONLINE' : (finMachine ? finMachine.status === 'ONLINE' : false);
+      const activeSessions = finMachine ? finMachine.getActiveSessions() : [];
+      const primarySession = activeSessions.length > 0 ? activeSessions[0] : null;
+      const runningProcesses = finMachine ? finMachine.getRunningProcesses() : [];
+      const interfaces = finDevice?.interfaces || [];
+      const activeNics = interfaces.filter((nic) => nic.status === 'UP');
+      const networkStatus = activeNics.length > 0 ? 'CONNECTED' as const : 'DISCONNECTED' as const;
+
+      const screenState: WorkstationScreenState = {
+        powerStatus: isOnline ? 'ONLINE' : 'OFFLINE',
+        hostname: finMachine ? finMachine.hostname : (finDevice?.id || 'FIN-WS01'),
+        domain: finMachine ? finMachine.domain : 'NEXORA.LOCAL',
+        ipAddress: finMachine ? finMachine.ipAddress : (interfaces[0]?.ip || '10.10.30.15'),
+        loggedOnUser: primarySession ? primarySession.userName : null,
+        sessionCount: activeSessions.length,
+        processCount: runningProcesses.length,
+        networkStatus,
+        activeInterfaceCount: activeNics.length,
+        virtualTime: vTime,
+      };
+
+      this.officeRoom.workstation.monitor.updateScreenState(screenState);
 
       // 5. Cable Photon Pulse on active links
       const cables = useDigitalTwinStore.getState().cables;
