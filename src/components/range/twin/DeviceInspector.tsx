@@ -128,6 +128,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
                   : 'Disconnecting the physical cable drops the link layer state down immediately across both device endpoints.'}
               </p>
               <button
+                data-testid={isConnected ? "cable-disconnect-btn" : "cable-reconnect-btn"}
                 onClick={() => isConnected ? disconnectCable(cable.id) : connectCable(cable.id)}
                 className={`w-full py-2 px-3 rounded text-xs font-bold transition-all shadow-sm ${
                   isConnected
@@ -386,6 +387,35 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
                         <span>TX: {iface.data.txPackets} pkts ({iface.data.txBytes.toLocaleString()} B)</span>
                         <span>RX: {iface.data.rxPackets} pkts ({iface.data.rxBytes.toLocaleString()} B)</span>
                       </div>
+
+                      {iface.connectedCableId && cables[iface.connectedCableId] && (() => {
+                        const cb = cables[iface.connectedCableId!];
+                        const isCbConnected = cb.status === 'CONNECTED';
+                        return (
+                          <div
+                            data-testid={`cable-${cb.id}`}
+                            className="p-2 rounded bg-slate-950/80 border border-slate-800/80 mt-2 space-y-1.5"
+                          >
+                            <div className="flex justify-between items-center text-[10px]">
+                              <span className="text-slate-400 font-bold">PHYSICAL CABLE: {cb.id}</span>
+                              <span className={`font-bold ${isCbConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {isCbConnected ? 'CONNECTED' : 'DISCONNECTED'}
+                              </span>
+                            </div>
+                            <button
+                              data-testid={isCbConnected ? "cable-disconnect-btn" : "cable-reconnect-btn"}
+                              onClick={() => isCbConnected ? disconnectCable(cb.id) : connectCable(cb.id)}
+                              className={`w-full py-1 px-2 rounded text-[10px] font-bold transition-all ${
+                                isCbConnected
+                                  ? 'bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60'
+                                  : 'bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/60'
+                              }`}
+                            >
+                              {isCbConnected ? 'Disconnect Cable' : 'Reconnect Cable'}
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

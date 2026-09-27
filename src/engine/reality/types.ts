@@ -4,6 +4,7 @@
  */
 
 import { IntegrityLevel } from '../../simulations/windows/logic/token';
+import { NetworkEngineSnapshot } from './network/types';
 
 export type MachineStatus = 'ONLINE' | 'OFFLINE' | 'SUSPENDED';
 
@@ -135,4 +136,5 @@ export interface RealityMachineSnapshot {
 export interface RealityEngineSnapshot {
   virtualTime: number;
   machines: Record<string, RealityMachineSnapshot>;
+  network?: NetworkEngineSnapshot;
 }

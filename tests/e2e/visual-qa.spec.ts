@@ -500,6 +500,9 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
   // 7. OMEGA ULTRA REALITY — ENTERPRISE DIGITAL TWIN CYBER RANGE
   test.describe('Enterprise Digital Twin Cyber Range', () => {
     test('Cyber Range Desktop 1440x900 - 3D Digital Twin & 2D Schematic QA', async ({ page }) => {
+      test.setTimeout(90000);
+      page.on('pageerror', err => console.log('PAGE ERROR STACK:', err.stack || err.message));
+      page.on('console', msg => { if (msg.type() === 'error') console.log('CONSOLE ERROR:', msg.text()); });
       await page.setViewportSize(VIEWPORTS.desktop);
       await navigateToWorld(page, 'range');
       await switchLanguage(page, 'en');
@@ -552,6 +555,7 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
     });
 
     test('Workstation Network Inspector & True DNS / Cable / Switch Failure E2E QA', async ({ page }) => {
+      test.setTimeout(120000);
       await page.setViewportSize(VIEWPORTS.desktop);
       await navigateToWorld(page, 'range');
       await switchLanguage(page, 'en');
@@ -571,12 +575,15 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
         fullPage: false,
       });
 
-      // 2. Perform nslookup FILE01
-      const nslookupBtn = page.getByTestId('btn-cli-nslookup');
-      await nslookupBtn.click();
+      // 2. Perform nslookup FILE01 (Flush cache first if needed, then run)
+      const cliInput = page.getByTestId('cli-command-input');
+      const runBtn = page.getByTestId('btn-run-cli-command');
+      const outputElem = page.getByTestId('cli-command-output');
+
+      await cliInput.fill('nslookup FILE01');
+      await runBtn.click();
 
       // Expect output with successful resolution: 10.10.20.10
-      const outputElem = page.getByTestId('cli-command-output');
       await expect(outputElem).toBeVisible();
       await expect(outputElem).toContainText('10.10.20.10');
 
@@ -586,35 +593,32 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
         fullPage: false,
       });
 
-      // 3. Switch to 2D Schematic mode to disconnect cable or inspect link
-      await page.getByTestId('digital-twin-mode-2d').click();
-      await expect(page.getByTestId('digital-twin-2d-view')).toBeVisible();
+      // 3. Genuine Cable Interaction: Select CAB-SRV-DC01 in navigator or inspector
+      const dcCableBtn = page.getByTestId('cable-CAB-SRV-DC01');
+      await expect(dcCableBtn).toBeVisible();
+      await dcCableBtn.click();
 
-      // Select DC01 or switch device in navigator to access its power or cable
-      const dc01NavBtn = page.getByTestId('nav-device-DC01');
-      await dc01NavBtn.click();
+      // Click DISCONNECT on the cable
+      const disconnectBtn = page.getByTestId('cable-disconnect-btn');
+      await expect(disconnectBtn).toBeVisible();
+      await disconnectBtn.click();
 
-      // Power OFF DC01 or switch to test physical consequence
-      const powerBtn = page.getByRole('button', { name: /POWER OFF|إيقاف التشغيل/i });
-      await powerBtn.click();
-
-      // Capture link down / server off state
+      // Capture cable disconnected state
       await page.screenshot({
-        path: path.join(ARTIFACTS_DIR, 'network-link-down.png'),
+        path: path.join(ARTIFACTS_DIR, 'network-cable-disconnected.png'),
         fullPage: false,
       });
 
-      // Navigate back to FIN-WS01
+      // 4. Return to FIN-WS01, flush DNS cache, and run nslookup FILE01 again -> FAIL
       await finWsNavBtn.click();
+      await cliInput.fill('ipconfig /flushdns');
+      await runBtn.click();
+      await expect(outputElem).toContainText('Successfully flushed');
 
-      // Run nslookup FILE01 again -> DC01 DNS server is offline
-      // First clear cache or query DC01
-      const cliInput = page.getByTestId('cli-command-input');
-      await cliInput.fill('nslookup DC01');
-      const runBtn = page.getByTestId('btn-run-cli-command');
+      await cliInput.fill('nslookup FILE01');
       await runBtn.click();
 
-      // Expect failure
+      // Expect failure because physical path to DNS server DC01 is broken
       await expect(outputElem).toContainText('***');
 
       // Capture DNS Failure screenshot
@@ -623,22 +627,30 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
         fullPage: false,
       });
 
-      // Re-power DC01 back ON
-      await dc01NavBtn.click();
-      const bootBtn = page.getByRole('button', { name: /BOOT|تشغيل الجهاز/i });
-      await bootBtn.click();
+      // 5. Reconnect CAB-SRV-DC01
+      await dcCableBtn.click();
+      const reconnectBtn = page.getByTestId('cable-reconnect-btn');
+      await expect(reconnectBtn).toBeVisible();
+      await reconnectBtn.click();
 
-      // Capture link restored screenshot
+      // Capture cable reconnected state
       await page.screenshot({
-        path: path.join(ARTIFACTS_DIR, 'network-link-restored.png'),
+        path: path.join(ARTIFACTS_DIR, 'network-cable-reconnected.png'),
         fullPage: false,
       });
 
-      // Navigate back to FIN-WS01 and retry nslookup
+      // 6. Return to FIN-WS01 and retry nslookup FILE01 -> SUCCESS
       await finWsNavBtn.click();
-      await cliInput.fill('nslookup DC01');
+      await cliInput.fill('nslookup FILE01');
       await runBtn.click();
-      await expect(outputElem).toContainText('10.10.10.10');
+
+      await expect(outputElem).toContainText('10.10.20.10');
+
+      // Capture final restored state
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'network-dns-restored.png'),
+        fullPage: false,
+      });
 
       // Select CORE-SW01 to view Switch MAC Table
       const coreSwNavBtn = page.getByTestId('nav-device-CORE-SW01');

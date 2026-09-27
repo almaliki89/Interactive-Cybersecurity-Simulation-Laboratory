@@ -16,6 +16,7 @@ import {
   Zap,
   ChevronRight,
   Radio,
+  Cable,
 } from 'lucide-react';
 
 interface DeviceNavigatorProps {
@@ -24,12 +25,15 @@ interface DeviceNavigatorProps {
 
 export const DeviceNavigator: React.FC<DeviceNavigatorProps> = ({ language }) => {
   const selectedDeviceId = useDigitalTwinStore((s) => s.selectedDeviceId);
+  const selectedCableId = useDigitalTwinStore((s) => s.selectedCableId);
   const selectedRoomId = useDigitalTwinStore((s) => s.selectedRoomId);
   const selectDevice = useDigitalTwinStore((s) => s.selectDevice);
+  const selectCable = useDigitalTwinStore((s) => s.selectCable);
   const selectRoom = useDigitalTwinStore((s) => s.selectRoom);
   const rooms = useDigitalTwinStore((s) => s.rooms);
   const racks = useDigitalTwinStore((s) => s.racks);
   const devices = useDigitalTwinStore((s) => s.devices);
+  const cables = useDigitalTwinStore((s) => s.cables);
 
   const getDeviceIcon = (category: string) => {
     switch (category) {
@@ -206,6 +210,44 @@ export const DeviceNavigator: React.FC<DeviceNavigatorProps> = ({ language }) =>
             </button>
           );
         })}
+
+        {/* PHYSICAL CABLES & TOPOLOGY RUNS */}
+        <div className="pt-2 border-t border-slate-900 space-y-1">
+          <div className="text-[10px] font-mono text-slate-500 uppercase px-2 py-0.5 tracking-wider flex items-center justify-between">
+            <span>{language === 'ar' ? 'الكابلات والتوصيلات الفيزيائية' : 'PHYSICAL CABLE RUNS'}</span>
+            <span className="text-[9px] text-cyan-400">{Object.keys(cables).length}</span>
+          </div>
+
+          {Object.values(cables).map((cable) => {
+            const isSelected = selectedCableId === cable.id;
+            const isConnected = cable.status === 'CONNECTED';
+            return (
+              <button
+                key={cable.id}
+                data-testid={`cable-${cable.id}`}
+                onClick={() => selectCable(cable.id)}
+                className={`w-full px-2 py-1.5 rounded-md flex items-center justify-between text-left rtl:text-right transition-all group ${
+                  isSelected
+                    ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      isConnected ? 'bg-emerald-400 shadow-sm shadow-emerald-500/50' : 'bg-rose-500'
+                    }`}
+                  />
+                  <Cable className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 shrink-0" />
+                  <span className="text-[10px] font-mono font-bold truncate">{cable.id}</span>
+                </div>
+                <span className="text-[8px] font-mono text-slate-500 group-hover:text-slate-400">
+                  {isConnected ? 'UP' : 'DOWN'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Environmental Footer */}

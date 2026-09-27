@@ -205,6 +205,19 @@ export class SwitchingEngine {
     return Array.from(this.macTable.values());
   }
 
+  public setMacTable(entries: MacTableEntry[]): void {
+    this.macTable.clear();
+    entries.forEach((e) => this.macTable.set(e.macAddress.toUpperCase(), { ...e }));
+  }
+
+  public snapshot(): MacTableEntry[] {
+    return this.getMacTable().map((e) => ({ ...e }));
+  }
+
+  public restore(entries: MacTableEntry[]): void {
+    this.setMacTable(entries);
+  }
+
   public getPorts(): SwitchPortConfig[] {
     return Array.from(this.ports.values());
   }

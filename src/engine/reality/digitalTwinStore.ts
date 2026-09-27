@@ -15,6 +15,8 @@ import {
 } from './digitalTwinTypes';
 import { globalRealityEngine } from './RealityEngine';
 import { globalSimulationRuntime } from '../runtime/SimulationRuntime';
+import { globalNetworkEngine } from './network/NetworkEngine';
+import { globalNetworkConsequenceBridge } from './network/NetworkConsequenceBridge';
 
 interface DigitalTwinActions {
   selectDevice: (deviceId: string | null) => void;
@@ -913,3 +915,7 @@ export const useDigitalTwinStore = create<DigitalTwinState & DigitalTwinActions>
     }
   },
 }));
+
+// Bind store to NetworkEngine and NetworkConsequenceBridge after store creation
+globalNetworkEngine.bindStore(() => useDigitalTwinStore);
+globalNetworkConsequenceBridge.bindStore(() => useDigitalTwinStore);

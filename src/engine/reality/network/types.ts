@@ -172,3 +172,14 @@ export interface TestNetConnectionResult {
   latencyMs: number;
   error?: string;
 }
+
+export interface NetworkEngineSnapshot {
+  interfaces: SimulatedNetworkInterface[];
+  arpCaches: Record<string, ArpCacheEntry[]>;
+  dnsCaches: Record<string, DnsCacheEntry[]>;
+  routes: Record<string, RouteEntry[]>;
+  macTable: MacTableEntry[];
+  connections: NetworkConnection[];
+  firewallRules: FirewallRule[];
+}
+

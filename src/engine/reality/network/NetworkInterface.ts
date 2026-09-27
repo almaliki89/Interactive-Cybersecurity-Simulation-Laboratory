@@ -98,4 +98,12 @@ export class NetworkInterface {
   public toJSON(): SimulatedNetworkInterface {
     return { ...this.data };
   }
+
+  public snapshot(): SimulatedNetworkInterface {
+    return { ...this.data, dnsServers: [...this.data.dnsServers] };
+  }
+
+  public restore(data: SimulatedNetworkInterface): void {
+    Object.assign(this.data, { ...data, dnsServers: [...data.dnsServers] });
+  }
 }

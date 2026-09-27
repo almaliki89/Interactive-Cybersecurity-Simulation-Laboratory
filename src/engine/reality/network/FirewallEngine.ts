@@ -98,6 +98,14 @@ export class FirewallEngine {
     return [...this.rules];
   }
 
+  public snapshot(): FirewallRule[] {
+    return this.rules.map((r) => ({ ...r }));
+  }
+
+  public restore(rules: FirewallRule[]): void {
+    this.rules = rules.map((r) => ({ ...r }));
+  }
+
   public setRuleEnabled(ruleId: string, enabled: boolean): boolean {
     const r = this.rules.find((rule) => rule.id === ruleId);
     if (r) {

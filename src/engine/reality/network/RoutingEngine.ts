@@ -128,4 +128,27 @@ export class RoutingEngine {
 
     return { direct: false, nextHopIp: '', success: false, error: 'NO_ROUTE_TO_HOST' };
   }
+
+  public getAllRoutingTables(): Record<string, RouteEntry[]> {
+    const result: Record<string, RouteEntry[]> = {};
+    this.deviceRoutingTables.forEach((routes, devId) => {
+      result[devId] = routes.map((r) => ({ ...r }));
+    });
+    return result;
+  }
+
+  public restoreAllRoutingTables(tables: Record<string, RouteEntry[]>): void {
+    this.deviceRoutingTables.clear();
+    Object.entries(tables).forEach(([devId, routes]) => {
+      this.deviceRoutingTables.set(devId, routes.map((r) => ({ ...r })));
+    });
+  }
+
+  public snapshot(): Record<string, RouteEntry[]> {
+    return this.getAllRoutingTables();
+  }
+
+  public restore(tables: Record<string, RouteEntry[]>): void {
+    this.restoreAllRoutingTables(tables);
+  }
 }

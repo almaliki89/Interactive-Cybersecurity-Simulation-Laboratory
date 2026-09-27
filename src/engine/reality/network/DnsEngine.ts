@@ -89,4 +89,29 @@ export class DnsEngine {
   public getAllZoneRecords(): DnsRecord[] {
     return Array.from(this.zoneRecords.values());
   }
+
+  public getAllCaches(): Record<string, DnsCacheEntry[]> {
+    const result: Record<string, DnsCacheEntry[]> = {};
+    this.clientCaches.forEach((cache, devId) => {
+      result[devId] = Array.from(cache.values()).map((e) => ({ ...e }));
+    });
+    return result;
+  }
+
+  public restoreAllCaches(caches: Record<string, DnsCacheEntry[]>): void {
+    this.clientCaches.clear();
+    Object.entries(caches).forEach(([devId, entries]) => {
+      const cache = new Map<string, DnsCacheEntry>();
+      entries.forEach((e) => cache.set(e.hostname.toLowerCase(), { ...e }));
+      this.clientCaches.set(devId, cache);
+    });
+  }
+
+  public snapshot(): Record<string, DnsCacheEntry[]> {
+    return this.getAllCaches();
+  }
+
+  public restore(caches: Record<string, DnsCacheEntry[]>): void {
+    this.restoreAllCaches(caches);
+  }
 }

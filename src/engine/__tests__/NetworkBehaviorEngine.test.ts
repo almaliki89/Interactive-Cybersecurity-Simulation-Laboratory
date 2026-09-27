@@ -250,8 +250,8 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
     expect(res.error).toBe('ACCESS_DENIED');
   });
 
-  // 18. Existing connection reacts to switch shutdown
-  it('18. Existing active connections transition to RESET/FAILED when switch or host shuts down', () => {
+  // 18. Established connection automatically resets when CORE-SW01 powers off
+  it('18. Established connection automatically transitions to RESET when CORE-SW01 powers off', () => {
     const conn = globalNetworkEngine.connections.createConnection({
       protocol: 'TCP',
       sourceDevice: 'FIN-WS01',
@@ -264,8 +264,54 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
     });
     expect(conn.state).toBe('ESTABLISHED');
 
-    // Simulate switch shutdown teardown
-    globalNetworkEngine.connections.terminateAllCrossDeviceConnections('Core Switch Powered Off');
+    // Power off switch in digital twin store
+    const store = useDigitalTwinStore.getState();
+    store.toggleDevicePower('CORE-SW01');
+
+    // Automatically transitions to RESET without manually calling terminate
+    expect(conn.state).toBe('RESET');
+    expect(conn.failureReason).toContain('CORE-SW01');
+  });
+
+  // 18b. Established connection automatically resets when physical cable is disconnected
+  it('18b. Established connection automatically transitions to RESET when physical cable is disconnected', () => {
+    const conn = globalNetworkEngine.connections.createConnection({
+      protocol: 'TCP',
+      sourceDevice: 'FIN-WS01',
+      sourceIp: '10.10.30.15',
+      sourcePort: 49201,
+      destinationDevice: 'FILE01',
+      destinationIp: '10.10.20.10',
+      destinationPort: 445,
+      virtualTime: 1000,
+    });
+    expect(conn.state).toBe('ESTABLISHED');
+
+    // Disconnect server cable
+    const store = useDigitalTwinStore.getState();
+    store.disconnectCable('CAB-SRV-FL01');
+
+    // Consequence automatically propagated
+    expect(conn.state).toBe('RESET');
+  });
+
+  // 18c. Established connection automatically resets when PDU-01 is powered off
+  it('18c. Established connection automatically transitions to RESET when PDU-01 powers down rack infrastructure', () => {
+    const conn = globalNetworkEngine.connections.createConnection({
+      protocol: 'TCP',
+      sourceDevice: 'FIN-WS01',
+      sourceIp: '10.10.30.15',
+      sourcePort: 49202,
+      destinationDevice: 'FILE01',
+      destinationIp: '10.10.20.10',
+      destinationPort: 445,
+      virtualTime: 1000,
+    });
+    expect(conn.state).toBe('ESTABLISHED');
+
+    const store = useDigitalTwinStore.getState();
+    store.toggleDevicePower('PDU-01');
+
     expect(conn.state).toBe('RESET');
   });
 
@@ -308,5 +354,94 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
     const runB = runScenario();
 
     expect(runA).toEqual(runB);
+  });
+
+  // 21. NetworkEngine snapshot and restore roundtrip test
+  it('21. NetworkEngine snapshot and restore roundtrip reproduces exact state', () => {
+    globalNetworkEngine.queryDns('FIN-WS01', 'FILE01', 1000);
+    globalNetworkEngine.arp.learn('FIN-WS01', '10.10.30.99', '00:11:22:33:44:55', 1000);
+    globalNetworkEngine.connections.createConnection({
+      protocol: 'TCP',
+      sourceDevice: 'FIN-WS01',
+      sourceIp: '10.10.30.15',
+      sourcePort: 55000,
+      destinationDevice: 'FILE01',
+      destinationIp: '10.10.20.10',
+      destinationPort: 445,
+      virtualTime: 1000,
+    });
+
+    const snap = globalNetworkEngine.snapshot();
+
+    // Mutate state
+    globalNetworkEngine.dns.flushCache();
+    globalNetworkEngine.arp.flush();
+    globalNetworkEngine.connections.clear();
+
+    expect(globalNetworkEngine.dns.getCacheEntries('FIN-WS01').length).toBe(0);
+    expect(globalNetworkEngine.connections.getConnections().length).toBe(0);
+
+    // Restore state
+    globalNetworkEngine.restore(snap);
+
+    expect(globalNetworkEngine.dns.getCacheEntries('FIN-WS01').length).toBe(1);
+    expect(globalNetworkEngine.connections.getConnections().length).toBe(1);
+    expect(globalNetworkEngine.arp.lookup('FIN-WS01', '10.10.30.99', 1500)?.macAddress).toBe('00:11:22:33:44:55');
+  });
+
+  // 22. RealityEngine composite snapshot restores network state
+  it('22. RealityEngine composite snapshot preserves and restores network state', () => {
+    globalNetworkEngine.queryDns('FIN-WS01', 'DC01', 1000);
+
+    const realitySnap = globalRealityEngine.getStateSnapshot();
+    expect(realitySnap.network).toBeDefined();
+
+    // Mutate network
+    globalNetworkEngine.dns.flushCache();
+    expect(globalNetworkEngine.dns.getCacheEntries('FIN-WS01').length).toBe(0);
+
+    // Restore reality snapshot
+    globalRealityEngine.restoreStateSnapshot(realitySnap);
+    expect(globalNetworkEngine.dns.getCacheEntries('FIN-WS01').length).toBe(1);
+  });
+
+  // 23. Deterministic replay test: baseline -> DNS -> SMB -> cable disconnect -> snapshot -> restore -> repeat
+  it('23. Deterministic replay test across mutations, snapshots, and restores', () => {
+    const executeSequence = () => {
+      // 1. Initial DNS query
+      const dns1 = globalNetworkEngine.queryDns('FIN-WS01', 'DC01', 1000);
+      // 2. SMB connection
+      const smb = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+        userName: 'sara.finance',
+        virtualTime: 2000,
+      });
+
+      // 3. Snapshot before disconnect
+      const snap = globalRealityEngine.getStateSnapshot();
+
+      // 4. Cable disconnect consequence
+      const store = useDigitalTwinStore.getState();
+      store.disconnectCable('CAB-SRV-DC01');
+      const dnsFailing = globalNetworkEngine.queryDns('FIN-WS01', 'FILE01', 3000);
+
+      // 5. Restore snapshot
+      globalRealityEngine.restoreStateSnapshot(snap);
+      store.connectCable('CAB-SRV-DC01');
+
+      return {
+        dns1Ip: dns1.resolvedIp,
+        smbSuccess: smb.success,
+        dnsFailingSuccess: dnsFailing.success,
+        postRestoreCacheCount: globalNetworkEngine.dns.getCacheEntries('FIN-WS01').length,
+      };
+    };
+
+    const pass1 = executeSequence();
+    const pass2 = executeSequence();
+
+    expect(pass1).toEqual(pass2);
   });
 });

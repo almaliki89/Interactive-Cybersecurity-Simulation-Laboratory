@@ -97,4 +97,29 @@ export class ArpEngine {
       this.deviceArpCaches.clear();
     }
   }
+
+  public getAllCaches(): Record<string, ArpCacheEntry[]> {
+    const result: Record<string, ArpCacheEntry[]> = {};
+    this.deviceArpCaches.forEach((cache, devId) => {
+      result[devId] = Array.from(cache.values()).map((e) => ({ ...e }));
+    });
+    return result;
+  }
+
+  public restoreAllCaches(caches: Record<string, ArpCacheEntry[]>): void {
+    this.deviceArpCaches.clear();
+    Object.entries(caches).forEach(([devId, entries]) => {
+      const cache = new Map<string, ArpCacheEntry>();
+      entries.forEach((e) => cache.set(e.ipAddress, { ...e }));
+      this.deviceArpCaches.set(devId, cache);
+    });
+  }
+
+  public snapshot(): Record<string, ArpCacheEntry[]> {
+    return this.getAllCaches();
+  }
+
+  public restore(caches: Record<string, ArpCacheEntry[]>): void {
+    this.restoreAllCaches(caches);
+  }
 }

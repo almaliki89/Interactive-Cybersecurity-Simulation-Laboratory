@@ -8,6 +8,7 @@ import { MachineRegistry } from './MachineRegistry';
 import { WindowsMachine } from './windows/WindowsMachine';
 import { RealityEngineSnapshot } from './types';
 import { SimulationRuntime, globalSimulationRuntime } from '../runtime/SimulationRuntime';
+import { globalNetworkEngine } from './network/NetworkEngine';
 
 export class RealityEngine {
   public readonly registry: MachineRegistry;
@@ -302,12 +303,16 @@ export class RealityEngine {
     return {
       virtualTime: this.currentVirtualTime,
       machines: this.registry.getStateSnapshot(),
+      network: globalNetworkEngine.snapshot(),
     };
   }
 
   public restoreStateSnapshot(snapshot: RealityEngineSnapshot): void {
     this.currentVirtualTime = snapshot.virtualTime;
     this.registry.restoreStateSnapshot(snapshot.machines);
+    if (snapshot.network) {
+      globalNetworkEngine.restore(snapshot.network);
+    }
   }
 
   public destroy(): void {

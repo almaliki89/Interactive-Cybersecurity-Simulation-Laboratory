@@ -19,9 +19,9 @@ import {
   PingResult,
   TestNetConnectionResult,
   SimulatedNetworkInterface,
+  NetworkEngineSnapshot,
 } from './types';
 import { PhysicalConnectivityEngine } from '../PhysicalConnectivityEngine';
-import { useDigitalTwinStore } from '../digitalTwinStore';
 import { globalRealityEngine } from '../RealityEngine';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
 
@@ -35,6 +35,7 @@ export class NetworkEngine {
   public readonly smb: SmbEngine;
 
   private interfaces: Map<string, NetworkInterface> = new Map();
+  private storeGetter: (() => any) | null = null;
 
   constructor() {
     this.switching = new SwitchingEngine('CORE-SW01');
@@ -46,6 +47,26 @@ export class NetworkEngine {
     this.smb = new SmbEngine();
 
     this.initDefaultInterfaces();
+  }
+
+  public bindStore(getStore: () => any): void {
+    this.storeGetter = getStore;
+    const store = getStore();
+    if (store && typeof store.subscribe === 'function') {
+      store.subscribe(() => {
+        this.evaluateAllConnections();
+      });
+    }
+  }
+
+  private getStoreState(): any {
+    if (this.storeGetter) {
+      const store = this.storeGetter();
+      if (store && typeof store.getState === 'function') {
+        return store.getState();
+      }
+    }
+    return null;
   }
 
   private initDefaultInterfaces(): void {
@@ -213,7 +234,8 @@ export class NetworkEngine {
     const iface = this.interfaces.get(deviceId);
     if (!iface) return { operState: 'DOWN', reason: 'NO_INTERFACE' };
 
-    const store = useDigitalTwinStore.getState();
+    const store = this.getStoreState();
+    if (!store) return { operState: 'DOWN', reason: 'NO_STORE' };
     const dev = store.devices[deviceId];
     if (!dev || dev.powerStatus !== 'ONLINE') {
       iface.setOperState('DOWN');
@@ -239,6 +261,141 @@ export class NetworkEngine {
   }
 
   /**
+   * Automatically evaluates all active connections against physical,
+   * interface, switch, and power topologies.
+   * Any affected connection transitions deterministically to RESET or FAILED.
+   */
+  public evaluateAllConnections(virtualTime: number = globalSimulationRuntime.clock.getVirtualTime()): void {
+    const store = this.getStoreState();
+    if (!store) return;
+    const connections = this.connections.getConnections();
+
+    connections.forEach((conn) => {
+      if (conn.state !== 'ESTABLISHED' && conn.state !== 'SYN_SENT') {
+        return;
+      }
+
+      // 1. Check Source Device and Interface
+      const srcDev = store.devices[conn.sourceDevice];
+      const srcIfaceState = this.evaluateInterfaceState(conn.sourceDevice);
+      if (!srcDev || srcDev.powerStatus !== 'ONLINE' || srcIfaceState.operState !== 'UP') {
+        const reason = srcIfaceState.reason || `Source device '${conn.sourceDevice}' is offline or interface down`;
+        this.connections.closeConnection(conn.id, 'FAILED', reason);
+        globalSimulationRuntime.dispatch({
+          type: 'NET_CONN_RESET',
+          category: 'NETWORK',
+          source: conn.sourceDevice,
+          target: conn.destinationDevice,
+          severity: 'warn',
+          description: `TCP connection ${conn.id} failed: ${reason}`,
+          payload: { connectionId: conn.id, reason, virtualTime },
+        });
+        return;
+      }
+
+      // 2. Check Destination Device and Interface
+      const dstDev = store.devices[conn.destinationDevice];
+      const dstIfaceState = this.evaluateInterfaceState(conn.destinationDevice);
+      if (!dstDev || dstDev.powerStatus !== 'ONLINE' || dstIfaceState.operState !== 'UP') {
+        const reason = dstIfaceState.reason || `Destination device '${conn.destinationDevice}' is offline or interface down`;
+        this.connections.closeConnection(conn.id, 'RESET', reason);
+        globalSimulationRuntime.dispatch({
+          type: 'NET_CONN_RESET',
+          category: 'NETWORK',
+          source: conn.sourceDevice,
+          target: conn.destinationDevice,
+          severity: 'warn',
+          description: `TCP connection ${conn.id} reset: ${reason}`,
+          payload: { connectionId: conn.id, reason, virtualTime },
+        });
+        return;
+      }
+
+      // 3. Check intermediate CORE-SW01 switch power if cross-device
+      if (conn.sourceDevice !== conn.destinationDevice) {
+        const swDev = store.devices['CORE-SW01'];
+        if (!swDev || swDev.powerStatus !== 'ONLINE') {
+          const reason = 'Core Distribution Switch CORE-SW01 is powered OFFLINE';
+          this.connections.closeConnection(conn.id, 'RESET', reason);
+          globalSimulationRuntime.dispatch({
+            type: 'NET_CONN_RESET',
+            category: 'NETWORK',
+            source: conn.sourceDevice,
+            target: conn.destinationDevice,
+            severity: 'warn',
+            description: `TCP connection ${conn.id} reset: ${reason}`,
+            payload: { connectionId: conn.id, reason, virtualTime },
+          });
+          return;
+        }
+      }
+
+      // 4. Check True Physical Path Reachability
+      const pathResult = PhysicalConnectivityEngine.getPhysicalPath(
+        conn.sourceDevice,
+        conn.destinationDevice,
+        store.devices,
+        store.cables
+      );
+
+      if (!pathResult.available) {
+        const reason = pathResult.brokenAt?.description || `Physical cabling path between '${conn.sourceDevice}' and '${conn.destinationDevice}' is broken`;
+        this.connections.closeConnection(conn.id, 'RESET', reason);
+        globalSimulationRuntime.dispatch({
+          type: 'NET_CONN_RESET',
+          category: 'NETWORK',
+          source: conn.sourceDevice,
+          target: conn.destinationDevice,
+          severity: 'warn',
+          description: `TCP connection ${conn.id} reset: ${reason}`,
+          payload: { connectionId: conn.id, reason, virtualTime },
+        });
+        return;
+      }
+    });
+  }
+
+  /**
+   * Deterministic composite snapshot of the complete network engine state.
+   */
+  public snapshot(): NetworkEngineSnapshot {
+    return {
+      interfaces: this.getAllInterfaces().map((i) => i.snapshot()),
+      arpCaches: this.arp.snapshot(),
+      dnsCaches: this.dns.snapshot(),
+      routes: this.routing.snapshot(),
+      macTable: this.switching.snapshot(),
+      connections: this.connections.snapshot(),
+      firewallRules: this.firewall.snapshot(),
+    };
+  }
+
+  /**
+   * Deterministic restoration of the complete network engine state.
+   */
+  public restore(snapshot: NetworkEngineSnapshot): void {
+    if (!snapshot) return;
+
+    if (snapshot.interfaces) {
+      snapshot.interfaces.forEach((snapIface) => {
+        const iface = this.interfaces.get(snapIface.deviceId);
+        if (iface) {
+          iface.restore(snapIface);
+        } else {
+          this.interfaces.set(snapIface.deviceId, new NetworkInterface(snapIface));
+        }
+      });
+    }
+
+    if (snapshot.arpCaches) this.arp.restore(snapshot.arpCaches);
+    if (snapshot.dnsCaches) this.dns.restore(snapshot.dnsCaches);
+    if (snapshot.routes) this.routing.restore(snapshot.routes);
+    if (snapshot.macTable) this.switching.restore(snapshot.macTable);
+    if (snapshot.connections) this.connections.restore(snapshot.connections);
+    if (snapshot.firewallRules) this.firewall.restore(snapshot.firewallRules);
+  }
+
+  /**
    * Master DNS Query Pipeline
    */
   public queryDns(
@@ -247,7 +404,8 @@ export class NetworkEngine {
     virtualTime: number = globalSimulationRuntime.clock.getVirtualTime()
   ): DnsQueryResult {
     const cleanHost = hostname.trim();
-    const store = useDigitalTwinStore.getState();
+    const store = this.getStoreState();
+    if (!store) return { success: false, hostname: cleanHost, fromCache: false, serverIp: '10.10.10.10', latencyMs: 0, error: 'SERVER_UNREACHABLE' };
 
     // 1. Check local client DNS Cache
     const cached = this.dns.lookupCache(sourceDeviceId, cleanHost, virtualTime);
@@ -461,7 +619,8 @@ export class NetworkEngine {
   }): SmbAccessResult {
     const vTime = params.virtualTime ?? globalSimulationRuntime.clock.getVirtualTime();
     const cleanServer = params.serverHostname.toUpperCase();
-    const store = useDigitalTwinStore.getState();
+    const store = this.getStoreState();
+    if (!store) return { success: false, serverHostname: cleanServer, shareName: params.shareName, user: params.userName, latencyMs: 0, error: 'NETWORK_UNREACHABLE' };
 
     // 1. DNS Name Resolution
     const dnsResult = this.queryDns(params.sourceDeviceId, cleanServer, vTime);
@@ -654,13 +813,13 @@ export class NetworkEngine {
       if (iface) targetDeviceId = iface.deviceId;
     }
 
-    const store = useDigitalTwinStore.getState();
-    const isPhysicalOk = PhysicalConnectivityEngine.isPhysicalPathAvailable(
+    const store = this.getStoreState();
+    const isPhysicalOk = store ? PhysicalConnectivityEngine.isPhysicalPathAvailable(
       sourceDeviceId,
       targetDeviceId,
       store.devices,
       store.cables
-    );
+    ) : true;
 
     if (!isPhysicalOk) {
       return {
@@ -766,9 +925,9 @@ export class NetworkEngine {
       dstPort: port,
     });
 
-    const store = useDigitalTwinStore.getState();
-    const targetDev = store.devices[targetDeviceId];
-    const isOnline = targetDev?.powerStatus === 'ONLINE';
+    const store = this.getStoreState();
+    const targetDev = store?.devices[targetDeviceId];
+    const isOnline = targetDev ? targetDev.powerStatus === 'ONLINE' : true;
 
     const tcpSuccess = pingRes.success && fwEval.allowed && isOnline;
 

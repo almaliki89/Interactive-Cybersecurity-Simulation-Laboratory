@@ -100,4 +100,13 @@ export class ConnectionEngine {
   public clear(): void {
     this.connections.clear();
   }
+
+  public snapshot(): NetworkConnection[] {
+    return Array.from(this.connections.values()).map((c) => ({ ...c }));
+  }
+
+  public restore(connections: NetworkConnection[]): void {
+    this.connections.clear();
+    connections.forEach((c) => this.connections.set(c.id, { ...c }));
+  }
 }
