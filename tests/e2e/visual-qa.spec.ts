@@ -550,6 +550,109 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
       // 6. Expect digital-twin-3d-view visible
       await expect(page.getByTestId('digital-twin-3d-view')).toBeVisible();
     });
+
+    test('Workstation Network Inspector & True DNS / Cable / Switch Failure E2E QA', async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await navigateToWorld(page, 'range');
+      await switchLanguage(page, 'en');
+
+      // 1. Select FIN-WS01 workstation in navigator
+      const finWsNavBtn = page.getByTestId('nav-device-FIN-WS01');
+      await expect(finWsNavBtn).toBeVisible();
+      await finWsNavBtn.click();
+
+      // Verify Network CLI container is visible in inspector
+      const cliContainer = page.getByTestId('network-cli-container');
+      await expect(cliContainer).toBeVisible();
+
+      // Capture baseline screenshot
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'network-inspector-baseline.png'),
+        fullPage: false,
+      });
+
+      // 2. Perform nslookup FILE01
+      const nslookupBtn = page.getByTestId('btn-cli-nslookup');
+      await nslookupBtn.click();
+
+      // Expect output with successful resolution: 10.10.20.10
+      const outputElem = page.getByTestId('cli-command-output');
+      await expect(outputElem).toBeVisible();
+      await expect(outputElem).toContainText('10.10.20.10');
+
+      // Capture DNS Success screenshot
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'network-dns-success.png'),
+        fullPage: false,
+      });
+
+      // 3. Switch to 2D Schematic mode to disconnect cable or inspect link
+      await page.getByTestId('digital-twin-mode-2d').click();
+      await expect(page.getByTestId('digital-twin-2d-view')).toBeVisible();
+
+      // Select DC01 or switch device in navigator to access its power or cable
+      const dc01NavBtn = page.getByTestId('nav-device-DC01');
+      await dc01NavBtn.click();
+
+      // Power OFF DC01 or switch to test physical consequence
+      const powerBtn = page.getByRole('button', { name: /POWER OFF|إيقاف التشغيل/i });
+      await powerBtn.click();
+
+      // Capture link down / server off state
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'network-link-down.png'),
+        fullPage: false,
+      });
+
+      // Navigate back to FIN-WS01
+      await finWsNavBtn.click();
+
+      // Run nslookup FILE01 again -> DC01 DNS server is offline
+      // First clear cache or query DC01
+      const cliInput = page.getByTestId('cli-command-input');
+      await cliInput.fill('nslookup DC01');
+      const runBtn = page.getByTestId('btn-run-cli-command');
+      await runBtn.click();
+
+      // Expect failure
+      await expect(outputElem).toContainText('***');
+
+      // Capture DNS Failure screenshot
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'network-dns-failure.png'),
+        fullPage: false,
+      });
+
+      // Re-power DC01 back ON
+      await dc01NavBtn.click();
+      const bootBtn = page.getByRole('button', { name: /BOOT|تشغيل الجهاز/i });
+      await bootBtn.click();
+
+      // Capture link restored screenshot
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'network-link-restored.png'),
+        fullPage: false,
+      });
+
+      // Navigate back to FIN-WS01 and retry nslookup
+      await finWsNavBtn.click();
+      await cliInput.fill('nslookup DC01');
+      await runBtn.click();
+      await expect(outputElem).toContainText('10.10.10.10');
+
+      // Select CORE-SW01 to view Switch MAC Table
+      const coreSwNavBtn = page.getByTestId('nav-device-CORE-SW01');
+      await coreSwNavBtn.click();
+
+      const macTableCard = page.getByTestId('switch-mac-table-card');
+      await expect(macTableCard).toBeVisible();
+
+      // Capture Switch MAC Table screenshot
+      await page.screenshot({
+        path: path.join(ARTIFACTS_DIR, 'switch-mac-table.png'),
+        fullPage: false,
+      });
+    });
   });
 
 });

@@ -101,6 +101,7 @@ export const DeviceNavigator: React.FC<DeviceNavigatorProps> = ({ language }) =>
               return (
                 <button
                   key={dev.id}
+                  data-testid={`nav-device-${dev.id}`}
                   onClick={() => selectDevice(dev.id)}
                   className={`w-full px-2 py-1.5 rounded-md flex items-center justify-between text-left rtl:text-right transition-all group ${
                     isSelected
@@ -157,6 +158,7 @@ export const DeviceNavigator: React.FC<DeviceNavigatorProps> = ({ language }) =>
               return (
                 <button
                   key={dev.id}
+                  data-testid={`nav-device-${dev.id}`}
                   onClick={() => selectDevice(dev.id)}
                   className={`w-full px-2 py-1.5 rounded-md flex items-center justify-between text-left rtl:text-right transition-all group ${
                     isSelected
