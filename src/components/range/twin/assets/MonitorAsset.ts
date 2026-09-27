@@ -350,7 +350,8 @@ export function createMonitorAsset(): MonitorAssetResult {
 
   const updateScreenState = (state: WorkstationScreenState) => {
     // Check if state changed to avoid canvas repaint overhead
-    const key = `${state.powerStatus}-${state.hostname}-${state.loggedOnUser}-${state.sessionCount}-${state.processCount}-${state.networkStatus}-${state.virtualTime}`;
+    const vSec = Math.floor(state.virtualTime / 1000);
+    const key = `${state.powerStatus}-${state.hostname}-${state.domain}-${state.ipAddress}-${state.loggedOnUser}-${state.sessionCount}-${state.processCount}-${state.networkStatus}-${state.activeInterfaceCount}-${vSec}`;
     if (key === lastStateKey) return;
     lastStateKey = key;
 

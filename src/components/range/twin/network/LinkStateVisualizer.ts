@@ -41,7 +41,8 @@ export class LinkStateVisualizer {
   public updateLeds(
     ledRegistry: Map<string, LedRegistration[]>,
     devices: Record<string, DigitalTwinDevice>,
-    elapsed: number
+    elapsed: number,
+    isReducedMotion?: boolean
   ): void {
     ledRegistry.forEach((leds, deviceId) => {
       const dev = devices[deviceId];
@@ -50,6 +51,15 @@ export class LinkStateVisualizer {
       leds.forEach(({ mesh, type }) => {
         if (!isOnline) {
           mesh.material = this.ledMaterials.off;
+          return;
+        }
+
+        if (isReducedMotion) {
+          if (type === 'power' || type === 'network' || type === 'activity') {
+            mesh.material = this.ledMaterials.green;
+          } else if (type === 'storage') {
+            mesh.material = this.ledMaterials.amber;
+          }
           return;
         }
 

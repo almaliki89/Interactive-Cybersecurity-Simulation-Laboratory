@@ -132,10 +132,15 @@ export class CableRenderer {
     this.group.add(boot);
   }
 
-  public updateCablePulse(elapsed: number, activeCables: string[]): void {
+  public updateCablePulse(elapsed: number, activeCables: string[], isReducedMotion?: boolean): void {
     this.cableMeshes.forEach((mesh, cableId) => {
       const isActive = activeCables.includes(cableId);
       if (isActive && mesh.material instanceof THREE.MeshStandardMaterial) {
+        if (isReducedMotion) {
+          mesh.material.emissive.set(mesh.material.color);
+          mesh.material.emissiveIntensity = 0.15;
+          return;
+        }
         // Subtle photon pulse along active cables
         const pulse = 0.5 + 0.5 * Math.sin(elapsed * 10);
         mesh.material.emissive.set(mesh.material.color);

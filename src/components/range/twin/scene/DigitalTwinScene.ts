@@ -36,6 +36,9 @@ export class DigitalTwinScene {
   private clock: THREE.Clock = new THREE.Clock();
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private pointer: THREE.Vector2 = new THREE.Vector2();
+  private unsubscribeStore: (() => void) | null = null;
+  private cachedDevices: Record<string, any>;
+  private cachedCables: Record<string, any>;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -99,10 +102,22 @@ export class DigitalTwinScene {
     this.scene.add(this.cableRenderer.group);
     this.ledVisualizer = new LinkStateVisualizer();
 
-    // Initial cable build
-    const initialCables = useDigitalTwinStore.getState().cables;
-    this.cableRenderer.renderCables(initialCables, this.allAnchors);
+    // Initial state cache & cable build
+    const storeState = useDigitalTwinStore.getState();
+    this.cachedDevices = storeState.devices;
+    this.cachedCables = storeState.cables;
+    this.cableRenderer.renderCables(this.cachedCables, this.allAnchors);
     this.allInteractiveObjects.push(...this.cableRenderer.interactiveCables);
+
+    // Initial screen texture render
+    this.updateScreenTextureFromReality();
+
+    // Subscribe to store updates to avoid calling getState() on every frame
+    this.unsubscribeStore = useDigitalTwinStore.subscribe((state) => {
+      this.cachedDevices = state.devices;
+      this.cachedCables = state.cables;
+      this.updateScreenTextureFromReality();
+    });
 
     // 8. Event Listeners
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
@@ -110,6 +125,16 @@ export class DigitalTwinScene {
 
     // 9. Start Render Loop
     this.startLoop();
+  }
+
+  private isReducedMotion(): boolean {
+    if (typeof window === 'undefined') return false;
+    return Boolean(
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ||
+      (navigator as any)?.webdriver ||
+      navigator.userAgent.includes('HeadlessChrome') ||
+      (window as any).__PLAYWRIGHT__
+    );
   }
 
   public updateView(
@@ -121,7 +146,7 @@ export class DigitalTwinScene {
   }
 
   public updateCables(): void {
-    const cables = useDigitalTwinStore.getState().cables;
+    const cables = this.cachedCables || useDigitalTwinStore.getState().cables;
     this.cableRenderer.renderCables(cables, this.allAnchors);
 
     // Re-index interactive cables
@@ -131,6 +156,37 @@ export class DigitalTwinScene {
       ...this.cableRenderer.interactiveCables,
     ];
   }
+
+  public updateScreenTextureFromReality = (): void => {
+    const finDevice = this.cachedDevices ? this.cachedDevices['FIN-WS01'] : null;
+    const finMachine = globalRealityEngine.registry.getMachine('FIN-WS01');
+    const vTime = globalSimulationRuntime.clock.getVirtualTime();
+
+    const isOnline = finDevice
+      ? finDevice.powerStatus === 'ONLINE'
+      : (finMachine ? finMachine.status === 'ONLINE' : false);
+    const activeSessions = finMachine ? finMachine.getActiveSessions() : [];
+    const primarySession = activeSessions.length > 0 ? activeSessions[0] : null;
+    const runningProcesses = finMachine ? finMachine.getRunningProcesses() : [];
+    const interfaces = finDevice?.interfaces || [];
+    const activeNics = interfaces.filter((nic: any) => nic.status === 'UP');
+    const networkStatus = activeNics.length > 0 ? ('CONNECTED' as const) : ('DISCONNECTED' as const);
+
+    const screenState: WorkstationScreenState = {
+      powerStatus: isOnline ? 'ONLINE' : 'OFFLINE',
+      hostname: finMachine ? finMachine.hostname : (finDevice?.id || 'FIN-WS01'),
+      domain: finMachine ? finMachine.domain : 'NEXORA.LOCAL',
+      ipAddress: finMachine ? finMachine.ipAddress : (interfaces[0]?.ip || '10.10.30.15'),
+      loggedOnUser: primarySession ? primarySession.userName : null,
+      sessionCount: activeSessions.length,
+      processCount: runningProcesses.length,
+      networkStatus,
+      activeInterfaceCount: activeNics.length,
+      virtualTime: vTime,
+    };
+
+    this.officeRoom.workstation.monitor.updateScreenState(screenState);
+  };
 
   private handlePointerDown = (event: MouseEvent): void => {
     // Only raycast on primary left-click without significant dragging
@@ -172,53 +228,30 @@ export class DigitalTwinScene {
 
       const delta = this.clock.getDelta();
       const elapsed = this.clock.getElapsedTime();
+      const reduced = this.isReducedMotion();
 
       // 1. Camera interpolation
-      this.cameraController.update(delta);
+      this.cameraController.update(delta, reduced);
 
       // 2. Server Rack Fan Blades Rotation
-      this.serverRoom.rack.fanBlades.forEach((blade) => {
-        blade.rotation.y += delta * 12;
-      });
+      if (!reduced) {
+        this.serverRoom.rack.fanBlades.forEach((blade) => {
+          blade.rotation.y += delta * 12;
+        });
+      }
 
       // 3. Hardware LEDs synchronization
-      const currentDevices = useDigitalTwinStore.getState().devices;
-      this.ledVisualizer.updateLeds(this.allLedRegistry, currentDevices, elapsed);
+      if (this.cachedDevices) {
+        this.ledVisualizer.updateLeds(this.allLedRegistry, this.cachedDevices, elapsed, reduced);
+      }
 
-      // 4. Dynamic Monitor Screen Texture (derived from RealityEngine WindowsMachine and DigitalTwin state)
-      const finDevice = currentDevices['FIN-WS01'];
-      const finMachine = globalRealityEngine.registry.getMachine('FIN-WS01');
-      const vTime = globalSimulationRuntime.clock.getVirtualTime();
-
-      const isOnline = finDevice ? finDevice.powerStatus === 'ONLINE' : (finMachine ? finMachine.status === 'ONLINE' : false);
-      const activeSessions = finMachine ? finMachine.getActiveSessions() : [];
-      const primarySession = activeSessions.length > 0 ? activeSessions[0] : null;
-      const runningProcesses = finMachine ? finMachine.getRunningProcesses() : [];
-      const interfaces = finDevice?.interfaces || [];
-      const activeNics = interfaces.filter((nic) => nic.status === 'UP');
-      const networkStatus = activeNics.length > 0 ? 'CONNECTED' as const : 'DISCONNECTED' as const;
-
-      const screenState: WorkstationScreenState = {
-        powerStatus: isOnline ? 'ONLINE' : 'OFFLINE',
-        hostname: finMachine ? finMachine.hostname : (finDevice?.id || 'FIN-WS01'),
-        domain: finMachine ? finMachine.domain : 'NEXORA.LOCAL',
-        ipAddress: finMachine ? finMachine.ipAddress : (interfaces[0]?.ip || '10.10.30.15'),
-        loggedOnUser: primarySession ? primarySession.userName : null,
-        sessionCount: activeSessions.length,
-        processCount: runningProcesses.length,
-        networkStatus,
-        activeInterfaceCount: activeNics.length,
-        virtualTime: vTime,
-      };
-
-      this.officeRoom.workstation.monitor.updateScreenState(screenState);
-
-      // 5. Cable Photon Pulse on active links
-      const cables = useDigitalTwinStore.getState().cables;
-      const activeCables = Object.values(cables)
-        .filter((c) => c.status === 'CONNECTED')
-        .map((c) => c.id);
-      this.cableRenderer.updateCablePulse(elapsed, activeCables);
+      // 4. Cable Photon Pulse on active links
+      if (this.cachedCables) {
+        const activeCables = Object.values(this.cachedCables)
+          .filter((c: any) => c.status === 'CONNECTED')
+          .map((c: any) => c.id);
+        this.cableRenderer.updateCablePulse(elapsed, activeCables, reduced);
+      }
 
       // Render Scene
       this.renderer.render(this.scene, this.cameraController.camera);
@@ -230,6 +263,10 @@ export class DigitalTwinScene {
   public dispose(): void {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
+    }
+    if (this.unsubscribeStore) {
+      this.unsubscribeStore();
+      this.unsubscribeStore = null;
     }
     window.removeEventListener('resize', this.handleResize);
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);

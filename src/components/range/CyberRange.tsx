@@ -40,6 +40,15 @@ export const CyberRange: React.FC = () => {
   const ambientNoiseMuted = useDigitalTwinStore((s) => s.ambientNoiseMuted);
   const setAmbientNoiseMuted = useDigitalTwinStore((s) => s.setAmbientNoiseMuted);
   const syncWithRealityEngine = useDigitalTwinStore((s) => s.syncWithRealityEngine);
+  const racks = useDigitalTwinStore((s) => s.racks);
+  const devices = useDigitalTwinStore((s) => s.devices);
+
+  const rack01 = racks['RACK-01'];
+  const dc01 = devices['DC01'];
+  const coreSw = devices['CORE-SW01'];
+  const totalPowerWatts = rack01?.totalPowerWatts ?? 0;
+  const temperatureCelsius = rack01?.temperatureCelsius ?? 20.5;
+  const upPortsCount = coreSw?.ports ? coreSw.ports.filter((p) => p.linkState === 'UP').length : 0;
 
   // Sync state on mount and clock ticks
   useEffect(() => {
@@ -116,6 +125,7 @@ export const CyberRange: React.FC = () => {
           {/* 3D WebGL vs 2D Accessible Schematic Toggle */}
           <div className="flex items-center p-0.5 bg-slate-900 rounded-lg border border-slate-800">
             <button
+              data-testid="digital-twin-mode-3d"
               onClick={() => setRenderMode('3d-webgl')}
               className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors ${
                 renderMode === '3d-webgl'
@@ -126,6 +136,7 @@ export const CyberRange: React.FC = () => {
               3D WebGL
             </button>
             <button
+              data-testid="digital-twin-mode-2d"
               onClick={() => setRenderMode('2d-schematic')}
               className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors ${
                 renderMode === '2d-schematic'
@@ -183,9 +194,24 @@ export const CyberRange: React.FC = () => {
             <span className="text-slate-400">NEXORA HEADQUARTERS</span>
           </div>
           <div className="hidden md:flex items-center gap-3">
-            <span>RACK-01: <strong className="text-slate-300">42U ACTIVE</strong></span>
-            <span>DC01: <strong className="text-slate-300">ONLINE (10.10.10.10)</strong></span>
-            <span>CORE-SW01: <strong className="text-emerald-400">48-PORT UP</strong></span>
+            <span>
+              RACK-01:{' '}
+              <strong className={rack01?.pduOnline ? 'text-slate-300' : 'text-rose-400'}>
+                {rack01?.pduOnline ? '42U ACTIVE' : '42U OFFLINE'}
+              </strong>
+            </span>
+            <span>
+              DC01:{' '}
+              <strong className={dc01?.powerStatus === 'ONLINE' ? 'text-slate-300' : 'text-rose-400'}>
+                {dc01?.powerStatus === 'ONLINE' ? 'ONLINE (10.10.10.10)' : 'OFFLINE'}
+              </strong>
+            </span>
+            <span>
+              CORE-SW01:{' '}
+              <strong className={upPortsCount > 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                {upPortsCount}-PORT UP
+              </strong>
+            </span>
           </div>
         </div>
 
@@ -196,8 +222,8 @@ export const CyberRange: React.FC = () => {
               {clockStatus.toUpperCase()}
             </span>
           </div>
-          <div>POWER: <strong className="text-amber-400">1.84 kW</strong></div>
-          <div>TEMP: <strong className="text-cyan-400">20.5 °C</strong></div>
+          <div>POWER: <strong className="text-amber-400">{(totalPowerWatts / 1000).toFixed(2)} kW</strong></div>
+          <div>TEMP: <strong className="text-cyan-400">{temperatureCelsius.toFixed(1)} °C</strong></div>
         </div>
       </div>
     </div>

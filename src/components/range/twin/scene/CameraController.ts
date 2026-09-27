@@ -82,10 +82,14 @@ export class CameraController {
     }
   }
 
-  public update(_delta?: number): void {
-    // Smooth damp lerp towards target
-    this.currentPos.lerp(this.targetPos, 0.08);
-    this.currentLookAt.lerp(this.targetLookAt, 0.08);
+  public update(_delta?: number, isReducedMotion?: boolean): void {
+    if (isReducedMotion || this.currentPos.distanceTo(this.targetPos) < 0.001) {
+      this.currentPos.copy(this.targetPos);
+      this.currentLookAt.copy(this.targetLookAt);
+    } else {
+      this.currentPos.lerp(this.targetPos, 0.12);
+      this.currentLookAt.lerp(this.targetLookAt, 0.12);
+    }
     this.camera.position.copy(this.currentPos);
     this.camera.lookAt(this.currentLookAt);
   }

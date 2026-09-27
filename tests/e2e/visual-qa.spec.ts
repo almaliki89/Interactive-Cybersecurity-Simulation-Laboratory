@@ -509,6 +509,9 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
       await expect(page.getByText('ENTERPRISE DIGITAL TWIN')).toBeVisible();
       await expect(page.getByText('NEXORA HQ INVENTORY')).toBeVisible();
 
+      // 1. Expect 3D view visible
+      await expect(page.getByTestId('digital-twin-3d-view')).toBeVisible();
+
       // Check no horizontal overflow
       await assertNoHorizontalOverflow(page, 'Digital Twin Desktop EN');
 
@@ -518,12 +521,16 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
         fullPage: false,
       });
 
-      // Switch to 2D Schematic mode
-      const schematicBtn = page.getByRole('button', { name: '2D Schematic' });
-      await schematicBtn.click();
+      // 2. Click digital-twin-mode-2d
+      await page.getByTestId('digital-twin-mode-2d').click();
+
+      // 3. Expect digital-twin-2d-view visible
+      await expect(page.getByTestId('digital-twin-2d-view')).toBeVisible();
+
+      // 4. Expect RACK-01 ELEVATION SCHEMATIC (42U) visible
       await expect(page.getByText('RACK-01 ELEVATION SCHEMATIC (42U)')).toBeVisible();
 
-      // Switch to Arabic RTL
+      // Switch to Arabic RTL and verify schematic layout
       await switchLanguage(page, 'ar');
       await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
       await assertNoHorizontalOverflow(page, 'Digital Twin 2D RTL AR');
@@ -533,6 +540,15 @@ test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
         path: path.join(ARTIFACTS_DIR, 'digital-twin-schematic-ar.png'),
         fullPage: false,
       });
+
+      // Switch back to English
+      await switchLanguage(page, 'en');
+
+      // 5. Click digital-twin-mode-3d
+      await page.getByTestId('digital-twin-mode-3d').click();
+
+      // 6. Expect digital-twin-3d-view visible
+      await expect(page.getByTestId('digital-twin-3d-view')).toBeVisible();
     });
   });
 

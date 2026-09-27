@@ -32,7 +32,10 @@ export const SchematicView2D: React.FC<SchematicView2DProps> = ({ language }) =>
   };
 
   return (
-    <div className="w-full h-full p-4 overflow-y-auto bg-slate-950 flex flex-col md:flex-row gap-6 select-none custom-scrollbar">
+    <div
+      data-testid="digital-twin-2d-view"
+      className="w-full h-full p-4 overflow-y-auto bg-slate-950 flex flex-col md:flex-row gap-6 select-none custom-scrollbar"
+    >
       {/* 1. RACK-01 42U Physical Elevation Diagram */}
       <div className="flex-1 max-w-xl mx-auto flex flex-col">
         <div className="flex items-center justify-between mb-2">
@@ -42,8 +45,8 @@ export const SchematicView2D: React.FC<SchematicView2DProps> = ({ language }) =>
             </span>
           </div>
           <div className="text-[10px] font-mono text-slate-400">
-            LOAD: <span className="text-amber-400 font-bold">1.84 kW</span> | TEMP:{' '}
-            <span className="text-cyan-400 font-bold">21.4 °C</span>
+            LOAD: <span className="text-amber-400 font-bold">{((rack?.totalPowerWatts ?? 0) / 1000).toFixed(2)} kW</span> | TEMP:{' '}
+            <span className="text-cyan-400 font-bold">{(rack?.temperatureCelsius ?? 20.5).toFixed(1)} °C</span>
           </div>
         </div>
 

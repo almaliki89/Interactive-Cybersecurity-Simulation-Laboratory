@@ -48,7 +48,7 @@ export const DigitalTwinCanvas: React.FC = () => {
     <div
       ref={containerRef}
       className="w-full h-full relative cursor-crosshair select-none bg-slate-950 overflow-hidden"
-      data-testid="digital-twin-viewport"
+      data-testid="digital-twin-3d-view"
     />
   );
 };
