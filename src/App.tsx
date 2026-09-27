@@ -1,6 +1,6 @@
 import React, { useEffect, Suspense } from 'react';
 import { Header } from './components/ui/Header';
-import { useSimulationStore } from './stores/simulationStore';
+import { useSimulationStore, SimulationId } from './stores/simulationStore';
 import { GlobalSearchModal } from './components/search/GlobalSearchModal';
 import { getRegisteredSimulation, simulationRegistry } from './simulations/registry';
 import { globalSimulationRuntime } from './engine/runtime/SimulationRuntime';
@@ -119,9 +119,11 @@ export default function App() {
   // Deep linking via hash
   useEffect(() => {
     const handleHash = () => {
-      const hash = window.location.hash.replace('#', '') as any;
+      const hash = window.location.hash.replace('#', '') as SimulationId;
       if (hash && simulationRegistry[hash as keyof typeof simulationRegistry]) {
-        setActiveSimulation(hash);
+        if (useSimulationStore.getState().activeSimulationId !== hash) {
+          setActiveSimulation(hash);
+        }
       }
     };
 
@@ -133,7 +135,10 @@ export default function App() {
   // Sync hash with active sim
   useEffect(() => {
     if (activeSimulationId) {
-      window.location.hash = activeSimulationId;
+      const currentHash = window.location.hash.replace('#', '');
+      if (currentHash !== activeSimulationId) {
+        window.location.hash = activeSimulationId;
+      }
     }
   }, [activeSimulationId]);
 

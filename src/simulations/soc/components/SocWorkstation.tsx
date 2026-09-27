@@ -169,7 +169,7 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-black select-none">
       {/* Analyst Toolbar */}
-      <div className="h-12 border-b border-slate-900 bg-slate-950 px-4 flex items-center justify-between shrink-0 z-20 overflow-x-auto no-scrollbar">
+      <div data-testid="soc-mobile-toolbar" className="h-12 border-b border-slate-900 bg-slate-950 px-4 flex items-center justify-between shrink-0 z-20 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-3 sm:gap-6">
            <div className="flex items-center gap-2 pr-3 sm:pr-4 border-r rtl:border-r-0 rtl:border-l border-slate-900 shrink-0">
               {onBackToMap && (
@@ -193,7 +193,7 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
               <button 
                 onClick={toggleQueue}
                 data-testid="soc-toggle-queue-btn"
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 min-h-[36px] min-w-[36px] rounded-lg flex items-center justify-center transition-colors ${
                   isMobileQueueOpen || isQueueVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-400 hover:text-slate-200'
                 }`}
                 title={isAr ? 'تبديل القائمة' : 'Toggle Queue'}
@@ -204,7 +204,7 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
               <button 
                 onClick={toggleInspector}
                 data-testid="soc-toggle-inspector-btn"
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 min-h-[36px] min-w-[36px] rounded-lg flex items-center justify-center transition-colors ${
                   isMobileInspectorOpen || isInspectorVisible ? 'bg-cyan-500/10 text-cyan-400' : 'bg-slate-900 text-slate-400 hover:text-slate-200'
                 }`}
                 title={isAr ? 'تبديل المعاين' : 'Toggle Inspector'}
@@ -254,7 +254,7 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Pane: Desktop Alert Queue */}
         {isQueueVisible && (
-          <div className="w-80 shrink-0 border-r rtl:border-r-0 rtl:border-l border-slate-900 transition-all hidden lg:block">
+          <div data-testid="soc-alert-queue" className="w-80 shrink-0 border-r rtl:border-r-0 rtl:border-l border-slate-900 transition-all hidden lg:block">
              <SocAlertQueue alerts={filteredAlerts} />
           </div>
         )}
@@ -279,7 +279,7 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
         )}
 
         {/* Center Pane: Dynamic Workspace */}
-        <div className="flex-1 min-w-0 flex flex-col bg-slate-950 border-r rtl:border-r-0 rtl:border-l border-slate-900">
+        <div data-testid="soc-investigation-pane" className="flex-1 min-w-0 flex flex-col bg-slate-950 border-r rtl:border-r-0 rtl:border-l border-slate-900">
            {/* Mobile view when QUEUE tab is active and no alert selected */}
            {activeTab === 'QUEUE' && !selectedAlertId && (
              <div className="flex-1 flex flex-col overflow-hidden lg:hidden">
@@ -319,7 +319,7 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
 
         {/* Right Pane: Desktop Context Inspector */}
         {isInspectorVisible && (
-          <div className="w-80 shrink-0 border-l rtl:border-l-0 rtl:border-r border-slate-900 transition-all hidden lg:block">
+          <div data-testid="soc-inspector" className="w-80 shrink-0 border-l rtl:border-l-0 rtl:border-r border-slate-900 transition-all hidden lg:block">
              <SocContextInspector selectedEvent={selectedEvent} />
           </div>
         )}

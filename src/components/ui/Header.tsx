@@ -311,7 +311,9 @@ export const Header: React.FC = () => {
 
         <button
           onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-          className="h-8 px-2.5 rounded-lg border border-slate-800 bg-slate-900 text-[10px] font-bold text-cyan-500 hover:text-white transition-all shadow-sm flex items-center justify-center min-w-[32px]"
+          data-testid="lang-toggle-btn"
+          aria-label={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+          className="h-8 px-3 rounded-lg border border-slate-800 bg-slate-900 text-[10px] font-bold text-cyan-500 hover:text-white transition-all shadow-sm flex items-center justify-center min-w-[36px]"
         >
           {language === 'ar' ? 'EN' : 'ع'}
         </button>

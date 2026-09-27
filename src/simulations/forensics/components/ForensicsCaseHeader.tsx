@@ -28,7 +28,7 @@ export const ForensicsCaseHeader: React.FC = () => {
         <div className="flex items-center gap-2 text-cyan-400">
           <FileSearch className="w-5 h-5" />
           <div className="flex flex-col">
-            <span className="text-[10px] font-black text-white leading-tight uppercase tracking-wider">
+            <span className="text-[10px] font-black text-white leading-tight uppercase tracking-wider" dir="ltr">
               {forensicsCase.id}
             </span>
             <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">

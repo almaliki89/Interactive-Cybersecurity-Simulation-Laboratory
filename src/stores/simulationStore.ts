@@ -182,7 +182,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
 
   return {
     language: (getStoredItem('omega_language') as Language) || 'ar',
-    activeSimulationId: 'landing',
+    activeSimulationId: (typeof window !== 'undefined' && window.location.hash.replace('#', '')) ? (window.location.hash.replace('#', '') as SimulationId) : 'landing',
     selectedMacroDomainId: null,
     selectedWorldId: null,
     mode: 'guided',

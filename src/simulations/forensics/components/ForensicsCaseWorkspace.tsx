@@ -78,7 +78,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-black select-none">
+    <div data-testid="forensics-workspace" className="flex-1 flex flex-col h-full overflow-hidden bg-black select-none">
       {/* 1. Header */}
       <ForensicsCaseHeader />
 
@@ -166,6 +166,7 @@ export const ForensicsCaseWorkspace: React.FC<{ children: React.ReactNode }> = (
             <div className="w-72 max-w-[calc(100vw-3rem)] bg-slate-950 h-full border-r rtl:border-r-0 rtl:border-l border-slate-800 flex flex-col relative animate-in slide-in-from-left rtl:slide-in-from-right duration-200">
               <button 
                 onClick={() => setMobileEvidenceOpen(false)}
+                data-testid="close-evidence-drawer-btn"
                 className="absolute top-3 right-3 rtl:right-auto rtl:left-3 p-1.5 rounded-lg text-slate-400 hover:text-white z-10"
                 aria-label="Close Evidence Board"
               >
