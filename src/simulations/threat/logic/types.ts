@@ -70,6 +70,7 @@ export interface QueryCondition {
 export interface QueryGroup {
   logical: 'AND' | 'OR';
   conditions: (QueryCondition | QueryGroup)[];
+  inverted?: boolean;
 }
 
 export interface QueryAST {
