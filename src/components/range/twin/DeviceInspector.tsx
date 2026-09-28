@@ -29,7 +29,19 @@ import {
   Share2,
   FolderLock,
   Globe,
+  Users,
 } from 'lucide-react';
+
+type InspectorTab =
+  | 'system'
+  | 'sessions'
+  | 'processes'
+  | 'network'
+  | 'ports'
+  | 'logs'
+  | 'kerberos'
+  | 'ad'
+  | 'dc01';
 
 interface DeviceInspectorProps {
   language: 'ar' | 'en';
@@ -48,10 +60,37 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
   const isInspectingPort = useDigitalTwinStore((s) => s.isInspectingPort);
   const selectPort = useDigitalTwinStore((s) => s.selectPort);
 
-  const [activeTab, setActiveTab] = useState<'system' | 'network' | 'processes' | 'sessions' | 'ports' | 'logs'>('network');
+  const [activeTab, setActiveTab] = useState<InspectorTab>('network');
   const [cliInput, setCliInput] = useState<string>('nslookup FILE01');
   const [cliOutput, setCliOutput] = useState<string>('');
   const [smbShareTestResult, setSmbShareTestResult] = useState<string | null>(null);
+
+  const [logonUsername, setLogonUsername] = useState<string>('sara.finance');
+  const [logonPassword, setLogonPassword] = useState<string>('P@ssword123!');
+  const [logonError, setLogonResultError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  const handleWorkstationLogon = (user: string, pass: string) => {
+    setLogonResultError(null);
+    const res = globalRealityEngine.attemptLogon({
+      targetHost: selectedDeviceId!,
+      userName: user,
+      passwordCorrect: pass === 'P@ssword123!' || pass === 'secret' || pass === 'password',
+      logonType: 'Interactive',
+    });
+    if (!res.success) {
+      setLogonResultError(res.failureReason || 'BAD_PASSWORD');
+    } else {
+      setLogonResultError(null);
+    }
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleWorkstationLogoff = (sessId: number) => {
+    globalRealityEngine.logoffSession(selectedDeviceId!, sessId);
+    setLogonResultError(null);
+    setRefreshKey((prev) => prev + 1);
+  };
 
   const handleRunCommand = (cmdToRun?: string) => {
     const cmd = cmdToRun || cliInput;
@@ -259,6 +298,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
       <div className="flex border-b border-slate-900 bg-slate-900/20 text-[10px] font-mono overflow-x-auto">
         <button
           onClick={() => setActiveTab('network')}
+          data-testid="tab-network-inspector"
           className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
             activeTab === 'network'
               ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -270,6 +310,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
         <button
           onClick={() => setActiveTab('system')}
+          data-testid="tab-system-inspector"
           className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
             activeTab === 'system'
               ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -283,6 +324,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
           <>
             <button
               onClick={() => setActiveTab('processes')}
+              data-testid="tab-processes-inspector"
               className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === 'processes'
                   ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -293,6 +335,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
             </button>
             <button
               onClick={() => setActiveTab('sessions')}
+              data-testid="tab-sessions-inspector"
               className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === 'sessions'
                   ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -303,6 +346,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
             </button>
             <button
               onClick={() => setActiveTab('logs')}
+              data-testid="tab-logs-inspector"
               className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === 'logs'
                   ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -751,33 +795,144 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
         {/* ================= TAB 3: USER SESSIONS ================= */}
         {activeTab === 'sessions' && realityMachine && (
-          <div className="space-y-2 font-mono">
-            <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
-              ACTIVE AUTHENTICATED SESSIONS
-            </div>
+          <div className="space-y-3 font-mono">
             {sessions.length === 0 ? (
-              <div className="p-4 text-center text-slate-600 text-xs">
-                {language === 'ar' ? 'لا توجد جلسات نشطة' : 'No active sessions'}
-              </div>
-            ) : (
-              sessions.map((sess) => (
-                <div
-                  key={sess.sessionId}
-                  className="p-2.5 rounded bg-slate-900/40 border border-slate-900 space-y-1"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-cyan-300">{sess.userName}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-400">
-                      {sess.status}
-                    </span>
+              device.category === 'workstation' ? (
+                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-3 font-sans text-xs">
+                  <div className="flex flex-col items-center justify-center py-2 space-y-1">
+                    <div className="w-12 h-12 rounded-full bg-cyan-950 border border-cyan-800/80 flex items-center justify-center text-cyan-400">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <div className="text-white font-bold text-center">
+                      {language === 'ar' ? 'سجل الدخول إلى مجال NEXORA' : 'NEXORA Domain Sign In'}
+                    </div>
+                    <div className="text-[10px] text-slate-500 text-center">
+                      {language === 'ar' ? 'سجل الدخول باستخدام بيانات اعتماد المجال الخاصة بك' : 'Sign in to your domain-joined workstation'}
+                    </div>
                   </div>
-                  <div className="flex justify-between text-[10px] text-slate-400">
-                    <span>Logon: {sess.logonType}</span>
-                    <span>Package: {sess.authPackage}</span>
+
+                  {logonError && (
+                    <div data-testid="domain-login-error" className="p-2.5 rounded bg-rose-950/40 border border-rose-900 text-rose-300 text-[10px] font-mono flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{language === 'ar' ? `فشل تسجيل الدخول: ${logonError}` : `Logon Failed: ${logonError}`}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">
+                        {language === 'ar' ? 'اسم المستخدم / UPN' : 'Username / UPN'}
+                      </label>
+                      <input
+                        type="text"
+                        data-testid="domain-username-input"
+                        value={logonUsername}
+                        onChange={(e) => setLogonUsername(e.target.value)}
+                        placeholder="sara.finance or omar.hr"
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">
+                        {language === 'ar' ? 'كلمة المرور' : 'Password'}
+                      </label>
+                      <input
+                        type="password"
+                        data-testid="domain-password-input"
+                        value={logonPassword}
+                        onChange={(e) => setLogonPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+                      />
+                    </div>
+
+                    {/* Preset Fast Selection Links */}
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      <button
+                        onClick={() => { setLogonUsername('sara.finance'); setLogonPassword('P@ssword123!'); }}
+                        className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-[9px] text-cyan-400 border border-slate-800"
+                      >
+                        Sara (Finance)
+                      </button>
+                      <button
+                        onClick={() => { setLogonUsername('omar.hr'); setLogonPassword('P@ssword123!'); }}
+                        className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-[9px] text-purple-400 border border-slate-800"
+                      >
+                        Omar (HR)
+                      </button>
+                      <button
+                        onClick={() => { setLogonUsername('administrator'); setLogonPassword('P@ssword123!'); }}
+                        className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-[9px] text-amber-400 border border-slate-800"
+                      >
+                        Administrator
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => handleWorkstationLogon(logonUsername, logonPassword)}
+                      data-testid="domain-login-btn"
+                      className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-md mt-2 font-mono"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      <span>{language === 'ar' ? 'تسجيل الدخول' : 'SIGN IN'}</span>
+                    </button>
                   </div>
-                  <div className="text-[9px] text-slate-500">Source: {sess.sourceIp || '127.0.0.1'}</div>
                 </div>
-              ))
+              ) : (
+                <div className="p-4 text-center text-slate-600 text-xs">
+                  {language === 'ar' ? 'لا توجد جلسات نشطة' : 'No active sessions'}
+                </div>
+              )
+            ) : (
+              <div className="space-y-2">
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 flex justify-between items-center">
+                  <span>ACTIVE AUTHENTICATED SESSIONS</span>
+                  <span data-testid="logged-in-user" className="text-cyan-400 font-bold font-mono">
+                    {sessions[0].userName}
+                  </span>
+                </div>
+                {sessions.map((sess) => (
+                  <div
+                    key={sess.sessionId}
+                    className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2 font-mono"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-white text-xs">{sess.userName}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-400 font-bold uppercase">
+                        {sess.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-slate-400">
+                      <div>
+                        <span className="text-slate-500">Logon: </span>
+                        <span className="text-slate-200">{sess.logonType}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Package: </span>
+                        <span className="text-slate-200">{sess.authPackage}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">IP Source: </span>
+                        <span className="text-slate-200">{sess.sourceIp || '127.0.0.1'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Token ID: </span>
+                        <span className="text-slate-300 text-[9px] truncate">{sess.tokenId}</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-800/60 flex justify-end">
+                      <button
+                        onClick={() => handleWorkstationLogoff(sess.sessionId)}
+                        data-testid="domain-logoff-btn"
+                        className="px-2.5 py-1 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-[10px] font-bold"
+                      >
+                        {language === 'ar' ? 'تسجيل الخروج' : 'Sign Out / Logoff'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}

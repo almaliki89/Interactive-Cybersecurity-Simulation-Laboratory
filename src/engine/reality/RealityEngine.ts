@@ -102,7 +102,7 @@ export class RealityEngine {
     passwordCorrect: boolean;
     logonType?: 'Interactive' | 'Network' | 'RemoteInteractive';
     sourceIp?: string;
-  }): { success: boolean; machine: WindowsMachine; session: any } {
+  }): { success: boolean; machine: WindowsMachine; session: any; failureReason?: string } {
     const machine = this.registry.getMachine(params.targetHost);
     if (!machine) {
       throw new Error(`Target machine '${params.targetHost}' not found in Reality Engine registry`);
@@ -130,7 +130,7 @@ export class RealityEngine {
 
       success = adResult.success;
       if (!success) {
-        failureReason = adResult.failureReason === 'BAD_PASSWORD' ? 'BadPassword' : 'UserDisabled';
+        failureReason = adResult.failureReason || 'UserDisabled';
       } else {
         userSid = adResult.userSid;
       }
@@ -210,6 +210,7 @@ export class RealityEngine {
       success,
       machine,
       session,
+      failureReason,
     };
   }
 

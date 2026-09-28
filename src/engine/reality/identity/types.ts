@@ -47,7 +47,7 @@ export interface DirectoryGroup {
   sid: string;
   name: string;
   type: 'Security' | 'Distribution';
-  scope: 'DomainLocal' | 'Global' | 'Universal';
+  scope: 'DomainLocal' | 'Global' | 'Universal' | 'Builtin';
   members: string[]; // User, Group, or Computer SIDs/Names
   ou: string;
   description?: string;

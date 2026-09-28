@@ -42,7 +42,7 @@ export const ActiveDirectoryConsole: React.FC<ActiveDirectoryConsoleProps> = ({ 
   const userGroups = selectedUser ? globalActiveDirectoryEngine.groupResolver.resolveUserGroupNames(selectedUser) : [];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-200 font-sans text-xs overflow-hidden select-none border border-slate-800/80 rounded-xl shadow-2xl">
+    <div data-testid="ad-console" className="flex-1 flex flex-col h-full bg-slate-950 text-slate-200 font-sans text-xs overflow-hidden select-none border border-slate-800/80 rounded-xl shadow-2xl">
       {/* Header Banner */}
       <div className="p-3 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">

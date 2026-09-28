@@ -30,7 +30,7 @@ export const KerberosInspector: React.FC<KerberosInspectorProps> = ({ workstatio
   };
 
   return (
-    <div className="p-3 bg-slate-950 text-slate-200 font-sans text-xs space-y-3 font-mono border-t border-slate-900">
+    <div data-testid="kerberos-inspector" className="p-3 bg-slate-950 text-slate-200 font-sans text-xs space-y-3 font-mono border-t border-slate-900">
       {/* Header Bar */}
       <div className="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
         <div className="flex items-center gap-2">
@@ -50,6 +50,7 @@ export const KerberosInspector: React.FC<KerberosInspectorProps> = ({ workstatio
 
         <button
           onClick={handlePurge}
+          data-testid="kerberos-purge-btn"
           className="px-2.5 py-1 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-[10px] font-bold flex items-center gap-1 transition-colors"
           title="Simulate 'klist purge'"
         >
@@ -59,7 +60,7 @@ export const KerberosInspector: React.FC<KerberosInspectorProps> = ({ workstatio
       </div>
 
       {/* Ticket List */}
-      <div className="space-y-2">
+      <div data-testid="kerberos-ticket-list" className="space-y-2">
         <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex justify-between items-center">
           <span>Cached Kerberos Tickets ({tickets.length})</span>
           <span>Virtual Time: +{vTime}s</span>

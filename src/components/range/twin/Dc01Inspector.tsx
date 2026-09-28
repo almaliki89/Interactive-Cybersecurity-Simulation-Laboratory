@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { globalActiveDirectoryEngine } from '../../../engine/reality/identity/ActiveDirectoryEngine';
+import { useDigitalTwinStore } from '../../../engine/reality/digitalTwinStore';
 import { Building, Shield, Activity, Users, Key, AlertTriangle, CheckCircle2, Database, Server } from 'lucide-react';
 
 interface Dc01InspectorProps {
@@ -19,8 +20,11 @@ export const Dc01Inspector: React.FC<Dc01InspectorProps> = ({ language = 'en' })
   const computers = globalActiveDirectoryEngine.store.getAllComputers();
   const spns = globalActiveDirectoryEngine.spnRegistry.getAllSpns();
 
+  const dcDevice = useDigitalTwinStore((s) => s.devices['DC01']);
+  const isDcOnline = dcDevice ? dcDevice.powerStatus === 'ONLINE' : false;
+
   return (
-    <div className="p-3 bg-slate-950 text-slate-200 font-sans text-xs space-y-3 font-mono border-t border-slate-900">
+    <div data-testid="dc01-inspector" className="p-3 bg-slate-950 text-slate-200 font-sans text-xs space-y-3 font-mono border-t border-slate-900">
       {/* Banner */}
       <div className="p-3 rounded-lg bg-cyan-950/40 border border-cyan-800/80 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -39,10 +43,17 @@ export const Dc01Inspector: React.FC<Dc01InspectorProps> = ({ language = 'en' })
         </div>
 
         <div className="text-right text-[10px]">
-          <div className="text-emerald-400 font-bold flex items-center gap-1 justify-end">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>AD DS ONLINE</span>
-          </div>
+          {isDcOnline ? (
+            <div className="text-emerald-400 font-bold flex items-center gap-1 justify-end">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{isAr ? 'نشط' : 'AD DS ONLINE'}</span>
+            </div>
+          ) : (
+            <div className="text-rose-400 font-bold flex items-center gap-1 justify-end">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>{isAr ? 'غير متصل' : 'AD DS OFFLINE'}</span>
+            </div>
+          )}
           <div className="text-slate-500">Domain Functional Level 2022</div>
         </div>
       </div>
