@@ -701,7 +701,7 @@ export const useDigitalTwinStore = create<DigitalTwinState & DigitalTwinActions>
       set({ selectedCableId: null });
       return;
     }
-    set({ selectedCableId: cableId });
+    set({ selectedCableId: cableId, selectedDeviceId: null });
   },
 
   selectRoom: (roomId) => {

@@ -234,6 +234,8 @@ export const DeviceNavigator: React.FC<DeviceNavigatorProps> = ({ language }) =>
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span
+                    data-testid={`cable-status-${cable.id}`}
+                    data-state={cable.status}
                     className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                       isConnected ? 'bg-emerald-400 shadow-sm shadow-emerald-500/50' : 'bg-rose-500'
                     }`}

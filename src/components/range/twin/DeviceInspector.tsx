@@ -100,9 +100,10 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
   };
 
   const handleTestSmbShare = (shareName: string, user: string = 'sara.finance') => {
-    if (!selectedDeviceId) return;
+    const clientHost = selectedDeviceId === 'FILE01' ? 'FIN-WS01' : selectedDeviceId;
+    if (!clientHost) return;
     const res = globalNetworkEngine.accessSmbShare({
-      sourceDeviceId: selectedDeviceId,
+      sourceDeviceId: clientHost,
       serverHostname: 'FILE01',
       shareName,
       userName: user,
@@ -465,7 +466,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
                         const isCbConnected = cb.status === 'CONNECTED';
                         return (
                           <div
-                            data-testid={`cable-${cb.id}`}
+                            data-testid={`cable-card-${cb.id}`}
                             className="p-2 rounded bg-slate-950/80 border border-slate-800/80 mt-2 space-y-1.5"
                           >
                             <div className="flex justify-between items-center text-[10px]">

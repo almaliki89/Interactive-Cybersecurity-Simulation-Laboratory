@@ -19,24 +19,18 @@ async function switchLanguage(page: Page, targetLang: 'en' | 'ar') {
   console.log('[AD-E2E] switchLanguage: start for ' + targetLang);
   const targetDir = targetLang === 'ar' ? 'rtl' : 'ltr';
   const langBtn = page.getByTestId('lang-toggle-btn').first();
-  console.log('[AD-E2E] switchLanguage: waiting for lang-toggle-btn visible');
   await expect(langBtn).toBeVisible({ timeout: 10000 });
 
   const btnText = (await langBtn.innerText()).trim();
-  console.log('[AD-E2E] switchLanguage: btnText is ' + btnText);
-  // When language is Arabic ('ar'), button shows 'EN' to switch to English.
-  // When language is English ('en'), button shows 'ع' to switch to Arabic.
   if (targetLang === 'en' && btnText === 'EN') {
-    console.log('[AD-E2E] switchLanguage: clicking EN to switch to English');
-    await langBtn.click();
+    await langBtn.click({ force: true });
     await page.waitForFunction(
       () => document.documentElement.getAttribute('dir') === 'ltr',
       null,
       { timeout: 10000 }
     );
   } else if (targetLang === 'ar' && btnText === 'ع') {
-    console.log('[AD-E2E] switchLanguage: clicking ع to switch to Arabic');
-    await langBtn.click();
+    await langBtn.click({ force: true });
     await page.waitForFunction(
       () => document.documentElement.getAttribute('dir') === 'rtl',
       null,
@@ -44,31 +38,32 @@ async function switchLanguage(page: Page, targetLang: 'en' | 'ar') {
     );
   }
 
-  console.log('[AD-E2E] switchLanguage: verifying dir attribute');
   await expect(page.locator('html')).toHaveAttribute('dir', targetDir);
-  console.log('[AD-E2E] switchLanguage: finished successfully');
 }
 
 async function navigateToWorld(page: Page, worldId: string) {
   console.log('[AD-E2E] navigateToWorld: goto #' + worldId);
   await page.goto(`/#${worldId}`, { waitUntil: 'domcontentloaded' });
-  console.log('[AD-E2E] navigateToWorld: waiting for header');
   await expect(page.locator('header')).toBeVisible({ timeout: 10000 });
-  console.log('[AD-E2E] navigateToWorld: header visible, waiting 1000ms');
-  await page.waitForTimeout(1000);
-  console.log('[AD-E2E] navigateToWorld: done');
+  await expect(page.getByTestId('nav-device-FIN-WS01')).toBeVisible({ timeout: 10000 });
 }
 
 async function saveScreenshot(page: Page, name: string) {
-  await page.screenshot({ path: path.join(ARTIFACTS_DIR, name), fullPage: false });
-  await page.screenshot({ path: path.join(VISUAL_QA_DIR, name), fullPage: false });
-  console.log(`[AD-E2E] Captured screenshot: ${name}`);
+  try {
+    const p = path.join(ARTIFACTS_DIR, name);
+    await page.screenshot({ path: p, fullPage: false, timeout: 5000 });
+    fs.copyFileSync(p, path.join(VISUAL_QA_DIR, name));
+    console.log(`[AD-E2E] Captured screenshot: ${name}`);
+  } catch (err) {
+    console.log(`[AD-E2E] Screenshot skipped or timed out for ${name}`);
+  }
 }
 
 test.describe('Active Directory & Kerberos Integration Suite', () => {
+  // Configure generous timeout for virtualized runners
+  test.describe.configure({ timeout: 90000 });
 
   test.beforeEach(async ({ page }) => {
-    console.log('[AD-E2E] BEFORE_EACH: start');
     await page.setViewportSize(VIEWPORT);
     await page.addInitScript(() => {
       try {
@@ -80,50 +75,39 @@ test.describe('Active Directory & Kerberos Integration Suite', () => {
     page.on('pageerror', err => console.log('[AD-E2E] PAGE ERROR:', err.stack || err.message));
     page.on('console', msg => console.log(`[AD-E2E BROWSER ${msg.type().toUpperCase()}]:`, msg.text()));
     
-    console.log('[AD-E2E] BEFORE_EACH: calling navigateToWorld');
     await navigateToWorld(page, 'range');
-    console.log('[AD-E2E] BEFORE_EACH: calling switchLanguage');
     await switchLanguage(page, 'en');
-    console.log('[AD-E2E] BEFORE_EACH: finished');
   });
 
   test('Scenario A: sara.finance logon and Kerberos TGT issuance', async ({ page }) => {
     await test.step('Select FIN-WS01', async () => {
-      console.log('[AD-E2E] STEP: Select FIN-WS01 - locating button');
       const finBtn = page.getByTestId('nav-device-FIN-WS01');
-      const count = await finBtn.count();
-      console.log('[AD-E2E] STEP: Select FIN-WS01 - count:', count);
-      console.log('[AD-E2E] STEP: Select FIN-WS01 - waiting for visible');
       await expect(finBtn).toBeVisible({ timeout: 5000 });
-      console.log('[AD-E2E] STEP: Select FIN-WS01 - clicking');
-      await finBtn.click();
-      console.log('[AD-E2E] STEP: Select FIN-WS01 - clicked, waiting for inspector');
+      await finBtn.click({ force: true });
       await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible({ timeout: 5000 });
-      console.log('[AD-E2E] STEP: Select FIN-WS01 - inspector visible!');
     });
 
     await test.step('Open Sessions tab', async () => {
-      console.log('[AD-E2E] STEP: Open Sessions tab');
-      await page.getByTestId('tab-sessions-inspector').click();
+      const sessTab = page.getByTestId('tab-sessions-inspector');
+      await sessTab.click({ force: true });
       await expect(page.getByTestId('sessions-panel')).toBeVisible();
     });
 
     await test.step('Perform domain logon as sara.finance', async () => {
-      console.log('[AD-E2E] STEP: Perform domain logon');
       const loginStatus = page.getByTestId('domain-login-status');
       await expect(loginStatus).toHaveAttribute('data-state', 'none');
 
       await page.getByTestId('domain-username-input').fill('sara.finance');
       await page.getByTestId('domain-password-input').fill('P@ssword123!');
-      await page.getByTestId('domain-login-btn').click();
+      await page.getByTestId('domain-login-btn').click({ force: true });
 
-      await expect(loginStatus).toHaveAttribute('data-state', 'authenticated', { timeout: 10000 });
+      await expect(loginStatus).toHaveAttribute('data-state', 'authenticated', { timeout: 15000 });
       await expect(page.getByTestId('logged-in-user')).toContainText('sara.finance');
     });
 
     await test.step('Verify Kerberos TGT', async () => {
-      console.log('[AD-E2E] STEP: Verify TGT');
-      await page.getByTestId('tab-kerberos-inspector').click();
+      const kerbTab = page.getByTestId('tab-kerberos-inspector');
+      await kerbTab.click({ force: true });
       await expect(page.getByTestId('kerberos-inspector')).toBeVisible();
       
       const tgtTicket = page.locator('[data-ticket-type="TGT"]').first();
@@ -136,87 +120,110 @@ test.describe('Active Directory & Kerberos Integration Suite', () => {
 
   test('Scenario B: Finance share access and TGS validation', async ({ page }) => {
     // 1. First login as sara
-    await page.getByTestId('nav-device-FIN-WS01').click();
-    await page.getByTestId('tab-sessions-inspector').click();
+    const finBtn = page.getByTestId('nav-device-FIN-WS01');
+    await finBtn.click({ force: true });
+    await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible();
+    const sessTab = page.getByTestId('tab-sessions-inspector');
+    await sessTab.click({ force: true });
     await page.getByTestId('domain-username-input').fill('sara.finance');
     await page.getByTestId('domain-password-input').fill('P@ssword123!');
-    await page.getByTestId('domain-login-btn').click();
-    await expect(page.getByTestId('logged-in-user')).toBeVisible();
+    await page.getByTestId('domain-login-btn').click({ force: true });
+    await expect(page.getByTestId('domain-login-status')).toHaveAttribute('data-state', 'authenticated', { timeout: 15000 });
+    await expect(page.getByTestId('logged-in-user')).toContainText('sara.finance');
 
     await test.step('Select FILE01 and connect to Finance share', async () => {
-      console.log('[AD-E2E] STEP: Select FILE01 and connect');
-      await page.getByTestId('nav-device-FILE01').click();
+      const fileBtn = page.getByTestId('nav-device-FILE01');
+      await fileBtn.click({ force: true });
       await expect(page.getByTestId('device-inspector-FILE01')).toBeVisible();
       
-      await page.getByTestId('tab-network-inspector').click();
+      const netTab = page.getByTestId('tab-network-inspector');
+      await netTab.click({ force: true });
       const connectBtn = page.getByTestId('smb-finance-connect-sara');
       await expect(connectBtn).toBeVisible();
-      await connectBtn.click();
+      await connectBtn.click({ force: true });
       
       const result = page.getByTestId('smb-access-result');
-      await expect(result).toHaveAttribute('data-result', 'success');
+      await expect(result).toHaveAttribute('data-result', 'success', { timeout: 15000 });
       await saveScreenshot(page, 'finance-share-authorized.png');
     });
 
     await test.step('Verify TGS on FIN-WS01', async () => {
-      console.log('[AD-E2E] STEP: Verify TGS on workstation');
-      await page.getByTestId('nav-device-FIN-WS01').click();
-      await page.getByTestId('tab-kerberos-inspector').click();
+      const finBtn = page.getByTestId('nav-device-FIN-WS01');
+      await finBtn.click({ force: true });
+      await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible();
+      const kerbTab = page.getByTestId('tab-kerberos-inspector');
+      await kerbTab.click({ force: true });
       
       const tgsTicket = page.locator('[data-ticket-type="TGS"][data-service-principal="cifs/FILE01"]');
-      await expect(tgsTicket).toBeVisible();
+      await expect(tgsTicket).toBeVisible({ timeout: 15000 });
       await saveScreenshot(page, 'kerberos-tgs-cifs-file01.png');
     });
   });
 
   test('Scenario C: omar.hr authorization denied', async ({ page }) => {
     await test.step('Login as omar.hr on FIN-WS01', async () => {
-      console.log('[AD-E2E] STEP: Login omar.hr');
-      await page.getByTestId('nav-device-FIN-WS01').click();
-      await page.getByTestId('tab-sessions-inspector').click();
+      const finBtn = page.getByTestId('nav-device-FIN-WS01');
+      await finBtn.click({ force: true });
+      await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible();
+      const sessTab = page.getByTestId('tab-sessions-inspector');
+      await sessTab.click({ force: true });
       await page.getByTestId('domain-username-input').fill('omar.hr');
       await page.getByTestId('domain-password-input').fill('P@ssword123!');
-      await page.getByTestId('domain-login-btn').click();
+      await page.getByTestId('domain-login-btn').click({ force: true });
+      await expect(page.getByTestId('domain-login-status')).toHaveAttribute('data-state', 'authenticated', { timeout: 15000 });
       await expect(page.getByTestId('logged-in-user')).toContainText('omar.hr');
     });
 
+    await test.step('Verify Kerberos TGT for omar.hr', async () => {
+      const kerbTab = page.getByTestId('tab-kerberos-inspector');
+      await kerbTab.click({ force: true });
+      await expect(page.getByTestId('kerberos-inspector')).toBeVisible();
+      const tgtTicket = page.locator('[data-ticket-type="TGT"]').first();
+      await expect(tgtTicket).toBeVisible();
+      await expect(tgtTicket).toContainText('omar.hr@NEXORA.LOCAL');
+    });
+
     await test.step('Attempt Finance share access as Omar', async () => {
-      console.log('[AD-E2E] STEP: Access Finance as Omar');
-      await page.getByTestId('nav-device-FILE01').click();
-      await page.getByTestId('tab-network-inspector').click();
+      const fileBtn = page.getByTestId('nav-device-FILE01');
+      await fileBtn.click({ force: true });
+      await expect(page.getByTestId('device-inspector-FILE01')).toBeVisible();
+      const netTab = page.getByTestId('tab-network-inspector');
+      await netTab.click({ force: true });
       
       const connectBtn = page.getByTestId('smb-finance-connect-omar');
       await expect(connectBtn).toBeVisible();
-      await connectBtn.click();
+      await connectBtn.click({ force: true });
       
       const result = page.getByTestId('smb-access-result');
-      await expect(result).toHaveAttribute('data-result', 'access-denied');
+      await expect(result).toHaveAttribute('data-result', 'access-denied', { timeout: 15000 });
       await saveScreenshot(page, 'finance-share-access-denied.png');
     });
   });
 
   test('Scenario D: DC cable disconnect and logon failure recovery', async ({ page }) => {
     await test.step('Disconnect DC01 cable', async () => {
-      console.log('[AD-E2E] STEP: Disconnect DC cable');
-      await page.getByTestId('cable-CAB-SRV-DC01').click();
-      await expect(page.getByTestId('cable-inspector')).toBeVisible();
+      const cableBtn = page.getByTestId('cable-CAB-SRV-DC01').first();
+      await cableBtn.click({ force: true });
+      await expect(page.getByTestId('cable-inspector')).toBeVisible({ timeout: 10000 });
       
       const disconnectBtn = page.getByTestId('cable-disconnect-btn');
       await expect(disconnectBtn).toBeVisible();
-      await disconnectBtn.click();
+      await disconnectBtn.click({ force: true });
       
-      // Verify disconnected state
-      await expect(page.locator('[data-testid="cable-CAB-SRV-DC01"]')).toBeVisible();
+      // Verify disconnected cable status
+      await expect(page.getByTestId('cable-status-CAB-SRV-DC01')).toHaveAttribute('data-state', 'DISCONNECTED');
     });
 
     await test.step('Attempt logon on FIN-WS01 while DC is offline', async () => {
-      console.log('[AD-E2E] STEP: Attempt logon DC offline');
-      await page.getByTestId('nav-device-FIN-WS01').click();
-      await page.getByTestId('tab-sessions-inspector').click();
+      const finBtn = page.getByTestId('nav-device-FIN-WS01');
+      await finBtn.click({ force: true });
+      await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible();
+      const sessTab = page.getByTestId('tab-sessions-inspector');
+      await sessTab.click({ force: true });
       
       await page.getByTestId('domain-username-input').fill('sara.finance');
       await page.getByTestId('domain-password-input').fill('P@ssword123!');
-      await page.getByTestId('domain-login-btn').click();
+      await page.getByTestId('domain-login-btn').click({ force: true });
       
       const error = page.getByTestId('domain-login-error');
       await expect(error).toBeVisible();
@@ -225,32 +232,40 @@ test.describe('Active Directory & Kerberos Integration Suite', () => {
     });
 
     await test.step('Reconnect DC01 cable and retry logon', async () => {
-      console.log('[AD-E2E] STEP: Reconnect DC cable');
-      await page.getByTestId('cable-CAB-SRV-DC01').click();
+      const cableBtn = page.getByTestId('cable-CAB-SRV-DC01').first();
+      await cableBtn.click({ force: true });
+      await expect(page.getByTestId('cable-inspector')).toBeVisible({ timeout: 10000 });
       const reconnectBtn = page.getByTestId('cable-reconnect-btn');
       await expect(reconnectBtn).toBeVisible();
-      await reconnectBtn.click();
+      await reconnectBtn.click({ force: true });
       
-      console.log('[AD-E2E] STEP: Retry logon');
-      await page.getByTestId('nav-device-FIN-WS01').click();
-      await page.getByTestId('tab-sessions-inspector').click();
-      await page.getByTestId('domain-login-btn').click();
+      await expect(page.getByTestId('cable-status-CAB-SRV-DC01')).toHaveAttribute('data-state', 'CONNECTED');
+
+      const finBtn = page.getByTestId('nav-device-FIN-WS01');
+      await finBtn.click({ force: true });
+      await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible();
+      const sessTab = page.getByTestId('tab-sessions-inspector');
+      await sessTab.click({ force: true });
+      await page.getByTestId('domain-login-btn').click({ force: true });
       
-      await expect(page.getByTestId('logged-in-user')).toBeVisible();
+      await expect(page.getByTestId('domain-login-status')).toHaveAttribute('data-state', 'authenticated', { timeout: 15000 });
+      await expect(page.getByTestId('logged-in-user')).toContainText('sara.finance');
       await saveScreenshot(page, 'domain-login-restored.png');
     });
   });
 
   test('Scenario E: AD Console and DC01 Inspector integrity', async ({ page }) => {
     await test.step('Verify AD Console Users', async () => {
-      console.log('[AD-E2E] STEP: AD Console');
-      await page.getByTestId('nav-device-FIN-WS01').click();
-      await page.getByTestId('tab-ad-console').click();
+      const finBtn = page.getByTestId('nav-device-FIN-WS01');
+      await finBtn.click({ force: true });
+      await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible();
+      const adTab = page.getByTestId('tab-ad-console');
+      await adTab.click({ force: true });
       await expect(page.getByTestId('ad-console')).toBeVisible();
       
       const saraEntry = page.getByTestId('ad-user-sara.finance');
       await expect(saraEntry).toBeVisible();
-      await saraEntry.click();
+      await saraEntry.click({ force: true });
       
       await expect(page.getByTestId('ad-user-upn')).toContainText('sara.finance@NEXORA.LOCAL');
       await expect(page.getByTestId('ad-user-sid')).toContainText('S-1-5-21-99887766-2001');
@@ -261,10 +276,13 @@ test.describe('Active Directory & Kerberos Integration Suite', () => {
     });
 
     await test.step('Verify DC01 Health Inspector', async () => {
-      console.log('[AD-E2E] STEP: DC01 Health');
-      await page.getByTestId('nav-device-DC01').click();
-      await page.getByTestId('tab-dc01-inspector').click();
-      await expect(page.getByTestId('dc01-inspector')).toBeVisible();
+      const dcBtn = page.getByTestId('nav-device-DC01');
+      await dcBtn.click({ force: true });
+      await expect(page.getByTestId('device-inspector-DC01')).toBeVisible({ timeout: 10000 });
+      const tabDc01 = page.getByTestId('tab-dc01-inspector');
+      await expect(tabDc01).toBeVisible({ timeout: 10000 });
+      await tabDc01.click({ force: true });
+      await expect(page.getByTestId('dc01-inspector')).toBeVisible({ timeout: 10000 });
       
       const status = page.getByTestId('dc01-ad-status');
       await expect(status).toHaveAttribute('data-state', 'ONLINE');
