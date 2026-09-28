@@ -85,7 +85,7 @@ export class ActiveDirectoryEngine {
   public performDomainLogon(params: {
     workstationHost: string;
     userName: string;
-    passwordProvided: string | boolean;
+    passwordProvided: string;
     vTime?: number;
     registry?: any;
   }): DomainLogonResult {

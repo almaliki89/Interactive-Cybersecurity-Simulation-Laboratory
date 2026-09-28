@@ -117,6 +117,7 @@ export const ActiveDirectoryConsole: React.FC<ActiveDirectoryConsoleProps> = ({ 
               return (
                 <div
                   key={u.id}
+                  data-testid={`ad-user-${u.samAccountName}`}
                   onClick={() => setSelectedUser(u.samAccountName)}
                   className={`p-2.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between ${
                     isSelected
@@ -214,7 +215,7 @@ export const ActiveDirectoryConsole: React.FC<ActiveDirectoryConsoleProps> = ({ 
         </div>
 
         {/* Right Details Inspector */}
-        <div className="w-1/2 p-3 overflow-y-auto bg-slate-900/20 font-mono text-xs">
+        <div className="w-1/2 p-3 overflow-y-auto bg-slate-900/20 font-mono text-xs" data-testid="ad-user-details">
           {userObj ? (
             <div className="space-y-3">
               <div className="pb-2 border-b border-slate-800">
@@ -224,13 +225,13 @@ export const ActiveDirectoryConsole: React.FC<ActiveDirectoryConsoleProps> = ({ 
                     {userObj.samAccountName}
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">{userObj.upn}</div>
+                <div className="text-[11px] text-slate-400 mt-0.5" data-testid="ad-user-upn">{userObj.upn}</div>
               </div>
 
               <div className="space-y-1.5 text-[11px]">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Object SID:</span>
-                  <span className="text-slate-300 font-mono text-[10px]">{userObj.sid}</span>
+                  <span className="text-slate-300 font-mono text-[10px]" data-testid="ad-user-sid">{userObj.sid}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">OU Location:</span>
@@ -238,7 +239,7 @@ export const ActiveDirectoryConsole: React.FC<ActiveDirectoryConsoleProps> = ({ 
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Account Enabled:</span>
-                  <span className="text-emerald-400 font-bold">{userObj.enabled ? 'YES' : 'NO'}</span>
+                  <span className="text-emerald-400 font-bold" data-testid="ad-user-enabled">{userObj.enabled ? 'YES' : 'NO'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">UAC Flags:</span>
@@ -246,7 +247,7 @@ export const ActiveDirectoryConsole: React.FC<ActiveDirectoryConsoleProps> = ({ 
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-800 space-y-1.5">
+              <div className="pt-2 border-t border-slate-800 space-y-1.5" data-testid="ad-user-groups">
                 <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Group Memberships ({userGroups.length})</div>
                 <div className="space-y-1">
                   {userGroups.map((gName) => (

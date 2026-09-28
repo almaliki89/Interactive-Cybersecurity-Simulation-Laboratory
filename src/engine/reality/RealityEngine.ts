@@ -99,7 +99,7 @@ export class RealityEngine {
     targetHost: string;
     userName: string;
     userSid?: string;
-    passwordCorrect: boolean;
+    password?: string;
     logonType?: 'Interactive' | 'Network' | 'RemoteInteractive';
     sourceIp?: string;
   }): { success: boolean; machine: WindowsMachine; session: any; failureReason?: string } {
@@ -110,7 +110,7 @@ export class RealityEngine {
 
     const vTime = this.currentVirtualTime;
 
-    let success = params.passwordCorrect;
+    let success = false;
     let failureReason = 'BadPassword';
     let userSid = params.userSid;
 
@@ -123,7 +123,7 @@ export class RealityEngine {
       const adResult = globalActiveDirectoryEngine.performDomainLogon({
         workstationHost: params.targetHost,
         userName: params.userName,
-        passwordProvided: params.passwordCorrect,
+        passwordProvided: params.password || '',
         vTime,
         registry: this.registry,
       });
@@ -143,6 +143,10 @@ export class RealityEngine {
     } else {
       // Fallback for local non-domain users
       const user = machine.getUserByName(params.userName) || (params.userSid ? machine.getUser(params.userSid) : undefined);
+      
+      const passwordOk = params.password === 'P@ssword123!' || params.password === 'secret' || params.password === 'password';
+      success = passwordOk;
+      
       if (success) {
         if (!user) {
           success = false;

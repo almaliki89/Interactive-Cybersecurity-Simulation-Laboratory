@@ -32,6 +32,7 @@ export class DigitalTwinScene {
   private allLedRegistry: Map<string, LedRegistration[]> = new Map();
   private allAnchors: Map<string, THREE.Vector3> = new Map();
 
+  private lastRenderTime: number = 0;
   private animationFrameId: number | null = null;
   private clock: THREE.Clock = new THREE.Clock();
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
@@ -58,9 +59,10 @@ export class DigitalTwinScene {
       alpha: false,
     });
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const isReduced = this.isReducedMotion();
+    this.renderer.setPixelRatio(isReduced ? 1 : Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = !isReduced;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
 
@@ -229,6 +231,14 @@ export class DigitalTwinScene {
       const delta = this.clock.getDelta();
       const elapsed = this.clock.getElapsedTime();
       const reduced = this.isReducedMotion();
+
+      if (reduced) {
+        // In headless testing (Playwright) or reduced motion, throttle render to avoid GPU stalls on CPU software WebGL
+        if (elapsed - this.lastRenderTime < 0.1) {
+          return;
+        }
+        this.lastRenderTime = elapsed;
+      }
 
       // 1. Camera interpolation
       this.cameraController.update(delta, reduced);

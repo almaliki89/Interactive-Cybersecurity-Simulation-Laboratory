@@ -173,7 +173,7 @@ describe('OMEGA REALITY ENGINE V1.0 — Windows Machine & Core Engine Suite', ()
         targetHost: 'FIN-WS01',
         userName: 'sara.finance',
         userSid: 'S-1-5-21-2001',
-        passwordCorrect: false,
+        password: 'wrong',
       });
 
       expect(failRes.success).toBe(false);
@@ -188,7 +188,7 @@ describe('OMEGA REALITY ENGINE V1.0 — Windows Machine & Core Engine Suite', ()
         targetHost: 'FIN-WS01',
         userName: 'sara.finance',
         userSid: 'S-1-5-21-2001',
-        passwordCorrect: true,
+        password: 'P@ssword123!',
       });
 
       expect(successRes.success).toBe(true);
@@ -224,7 +224,7 @@ describe('OMEGA REALITY ENGINE V1.0 — Windows Machine & Core Engine Suite', ()
         targetHost: 'IT-WS01',
         userName: 'ali.it',
         userSid: 'S-1-5-21-2003',
-        passwordCorrect: true,
+        password: 'P@ssword123!',
       });
 
       reality.executeProcess({

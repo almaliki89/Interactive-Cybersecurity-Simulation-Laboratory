@@ -84,6 +84,9 @@ export const KerberosInspector: React.FC<KerberosInspectorProps> = ({ workstatio
             return (
               <div
                 key={t.ticketId}
+                data-testid={`kerberos-ticket-${t.ticketId}`}
+                data-ticket-type={t.ticketType}
+                data-service-principal={t.servicePrincipal}
                 className={`p-2.5 rounded-lg border space-y-1.5 transition-all ${
                   isExpired
                     ? 'bg-rose-950/20 border-rose-900/60 text-rose-300'

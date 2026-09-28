@@ -28,10 +28,14 @@ import {
   Box,
 } from 'lucide-react';
 
+const RangeTimeBadge: React.FC = () => {
+  const virtualTime = useSimulationStore((s) => s.virtualTime);
+  return <span className="text-slate-300">T+{virtualTime || 0}ms</span>;
+};
+
 export const CyberRange: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const clockStatus = useSimulationStore((s) => s.clockStatus);
-  const virtualTime = useSimulationStore((s) => s.virtualTime);
 
   const cameraMode = useDigitalTwinStore((s) => s.cameraMode);
   const setCameraMode = useDigitalTwinStore((s) => s.setCameraMode);
@@ -50,10 +54,10 @@ export const CyberRange: React.FC = () => {
   const temperatureCelsius = rack01?.temperatureCelsius ?? 20.5;
   const upPortsCount = coreSw?.ports ? coreSw.ports.filter((p) => p.linkState === 'UP').length : 0;
 
-  // Sync state on mount and clock ticks
+  // Sync state on mount
   useEffect(() => {
     syncWithRealityEngine();
-  }, [virtualTime, syncWithRealityEngine]);
+  }, [syncWithRealityEngine]);
 
   // Keyboard navigation shortcuts (1: Building, 2: Server Room, 3: Rack-01, 4: Workstation)
   useEffect(() => {
@@ -94,7 +98,7 @@ export const CyberRange: React.FC = () => {
           <div className="hidden sm:flex items-center gap-1.5 font-mono text-[10px] text-slate-400 bg-slate-900/60 border border-slate-800 px-2 py-0.5 rounded">
             <span className="text-cyan-400 font-bold">REALITY ENGINE V1.1</span>
             <span className="text-slate-600">·</span>
-            <span className="text-slate-300">T+{virtualTime}ms</span>
+            <RangeTimeBadge />
           </div>
         </div>
 

@@ -75,7 +75,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
     const res = globalRealityEngine.attemptLogon({
       targetHost: selectedDeviceId!,
       userName: user,
-      passwordCorrect: pass === 'P@ssword123!' || pass === 'secret' || pass === 'password',
+      password: pass,
       logonType: 'Interactive',
     });
     if (!res.success) {
@@ -240,7 +240,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
   const eventLogs = realityMachine ? realityMachine.getEventLogs() : [];
 
   return (
-    <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden">
+    <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden" data-testid={`device-inspector-${selectedDeviceId}`}>
       {/* Device Header */}
       <div className="p-3.5 border-b border-slate-900 bg-slate-900/30 space-y-2">
         <div className="flex items-start justify-between gap-2">
@@ -627,12 +627,14 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
                       <div className="text-[10px] text-slate-400">{sh.description}</div>
                       <div className="flex gap-1.5 pt-1">
                         <button
+                          data-testid={`smb-${sh.name.toLowerCase()}-connect-sara`}
                           onClick={() => handleTestSmbShare(sh.name, 'sara.finance')}
                           className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-[9px] text-cyan-300 border border-slate-800"
                         >
                           Connect as Sara
                         </button>
                         <button
+                          data-testid={`smb-${sh.name.toLowerCase()}-connect-omar`}
                           onClick={() => handleTestSmbShare(sh.name, 'omar.hr')}
                           className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-[9px] text-purple-300 border border-slate-800"
                         >
@@ -643,7 +645,11 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
                   ))}
                 </div>
                 {smbShareTestResult && (
-                  <div className="p-2 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-300">
+                  <div 
+                    data-testid="smb-access-result"
+                    data-result={smbShareTestResult.includes('✅') ? 'success' : 'access-denied'}
+                    className="p-2 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-300"
+                  >
                     {smbShareTestResult}
                   </div>
                 )}
@@ -795,10 +801,10 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
         {/* ================= TAB 3: USER SESSIONS ================= */}
         {activeTab === 'sessions' && realityMachine && (
-          <div className="space-y-3 font-mono">
+          <div className="space-y-3 font-mono" data-testid="sessions-panel">
             {sessions.length === 0 ? (
               device.category === 'workstation' ? (
-                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-3 font-sans text-xs">
+                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-3 font-sans text-xs" data-testid="domain-login-status" data-state={logonError ? "failed" : "none"}>
                   <div className="flex flex-col items-center justify-center py-2 space-y-1">
                     <div className="w-12 h-12 rounded-full bg-cyan-950 border border-cyan-800/80 flex items-center justify-center text-cyan-400">
                       <Users className="w-6 h-6" />
@@ -850,18 +856,21 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
                     {/* Preset Fast Selection Links */}
                     <div className="flex flex-wrap gap-1 pt-1">
                       <button
+                        data-testid="preset-sara"
                         onClick={() => { setLogonUsername('sara.finance'); setLogonPassword('P@ssword123!'); }}
                         className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-[9px] text-cyan-400 border border-slate-800"
                       >
                         Sara (Finance)
                       </button>
                       <button
+                        data-testid="preset-omar"
                         onClick={() => { setLogonUsername('omar.hr'); setLogonPassword('P@ssword123!'); }}
                         className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-[9px] text-purple-400 border border-slate-800"
                       >
                         Omar (HR)
                       </button>
                       <button
+                        data-testid="preset-administrator"
                         onClick={() => { setLogonUsername('administrator'); setLogonPassword('P@ssword123!'); }}
                         className="px-2 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-[9px] text-amber-400 border border-slate-800"
                       >
@@ -885,7 +894,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
                 </div>
               )
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2" data-testid="domain-login-status" data-state="authenticated">
                 <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 flex justify-between items-center">
                   <span>ACTIVE AUTHENTICATED SESSIONS</span>
                   <span data-testid="logged-in-user" className="text-cyan-400 font-bold font-mono">

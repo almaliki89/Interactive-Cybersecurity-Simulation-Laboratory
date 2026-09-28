@@ -39,7 +39,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 
@@ -57,7 +57,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: false,
+      password: 'wrong',
       logonType: 'Interactive',
     });
 
@@ -80,7 +80,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 
@@ -95,7 +95,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
     });
 
     const token = res.machine.getToken(res.session.tokenId)!;
@@ -106,7 +106,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
     });
 
     const token = res.machine.getToken(res.session.tokenId)!;
@@ -118,7 +118,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\administrator',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
     });
 
     const token = res.machine.getToken(res.session.tokenId)!;
@@ -130,14 +130,14 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const resNormal = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
     });
     const tokenNormal = resNormal.machine.getToken(resNormal.session.tokenId)!;
 
     const resAdmin = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\administrator',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
     });
     const tokenAdmin = resAdmin.machine.getToken(resAdmin.session.tokenId)!;
 
@@ -150,7 +150,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 
@@ -167,7 +167,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 
@@ -192,7 +192,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 
@@ -213,7 +213,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 
@@ -244,7 +244,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     const res = reality.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 
@@ -278,7 +278,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     realityA.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 
@@ -288,7 +288,7 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     realityB.attemptLogon({
       targetHost: 'FIN-WS01',
       userName: 'NEXORA\\sara.finance',
-      passwordCorrect: true,
+      password: 'P@ssword123!',
       logonType: 'Interactive',
     });
 

@@ -36,6 +36,35 @@ import {
   Crosshair,
 } from 'lucide-react';
 
+const TelemetryDisplay: React.FC = () => {
+  const virtualTime = useSimulationStore((s) => s.virtualTime);
+  const clockSpeed = useSimulationStore((s) => s.clockSpeed);
+  const clockStatus = useSimulationStore((s) => s.clockStatus);
+
+  return (
+    <div className="flex items-center gap-5 px-5 py-1 rounded-full bg-slate-900/40 border border-slate-800/60 shadow-inner">
+      <div className="flex items-center gap-2">
+        <div className={`w-1.5 h-1.5 rounded-full ${
+          clockStatus === 'running' ? 'bg-omega-success shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-omega-warning'
+        }`} />
+        <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">
+          {clockStatus === 'running' ? 'Active' : 'Halted'}
+        </span>
+      </div>
+      <div className="w-px h-3 bg-slate-800" />
+      <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums" dir="ltr">
+        <span className="text-slate-500 font-bold tracking-tighter">TIME</span>
+        <span className="text-cyan-400 font-bold" data-testid="header-virtual-time">T+{(virtualTime || 0).toFixed(0)}ms</span>
+      </div>
+      <div className="w-px h-3 bg-slate-800" />
+      <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums" dir="ltr">
+        <span className="text-slate-500 font-bold tracking-tighter">SPEED</span>
+        <span className="text-purple-400 font-bold">{clockSpeed}x</span>
+      </div>
+    </div>
+  );
+};
+
 export const Header: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const setLanguage = useSimulationStore((s) => s.setLanguage);
@@ -47,8 +76,6 @@ export const Header: React.FC = () => {
   
   // Real-time runtime subscription from store
   const clockStatus = useSimulationStore((s) => s.clockStatus);
-  const clockSpeed = useSimulationStore((s) => s.clockSpeed);
-  const virtualTime = useSimulationStore((s) => s.virtualTime);
 
   // DevSecOps Sub-navigation Store
   const devSecOpsTab = useDevSecOpsStore((s) => s.activeTab);
@@ -185,26 +212,7 @@ export const Header: React.FC = () => {
       {/* Zone 2: Navigation / Telemetry (Center) */}
       <div className="hidden md:flex flex-1 justify-center px-4">
         {isLabActive ? (
-          <div className="flex items-center gap-5 px-5 py-1 rounded-full bg-slate-900/40 border border-slate-800/60 shadow-inner">
-            <div className="flex items-center gap-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${
-                clockStatus === 'running' ? 'bg-omega-success shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-omega-warning'
-              }`} />
-              <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">
-                {clockStatus === 'running' ? 'Active' : 'Halted'}
-              </span>
-            </div>
-            <div className="w-px h-3 bg-slate-800" />
-            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums" dir="ltr">
-              <span className="text-slate-500 font-bold tracking-tighter">TIME</span>
-              <span className="text-cyan-400 font-bold">T+{virtualTime}ms</span>
-            </div>
-            <div className="w-px h-3 bg-slate-800" />
-            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums" dir="ltr">
-              <span className="text-slate-500 font-bold tracking-tighter">SPEED</span>
-              <span className="text-purple-400 font-bold">{clockSpeed}x</span>
-            </div>
-          </div>
+          <TelemetryDisplay />
         ) : (
           <nav className="flex items-center gap-1 p-0.5 bg-slate-900/30 rounded-xl border border-slate-900/50">
             {universeNav.map((item) => {

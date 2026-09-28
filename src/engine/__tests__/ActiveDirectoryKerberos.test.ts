@@ -56,7 +56,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     const res = globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
     expect(res.success).toBe(true);
@@ -69,7 +69,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     const res = globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: false,
+      passwordProvided: 'wrong',
       vTime: 10,
     });
     expect(res.success).toBe(false);
@@ -86,7 +86,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     const res = globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
     expect(res.success).toBe(false);
@@ -102,7 +102,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     const res = globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
     expect(res.success).toBe(false);
@@ -117,7 +117,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     let res = globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
     expect(res.success).toBe(false);
@@ -127,7 +127,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     res = globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 20,
     });
     expect(res.success).toBe(true);
@@ -138,7 +138,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -153,7 +153,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: false,
+      passwordProvided: 'wrong',
       vTime: 10,
     });
 
@@ -166,7 +166,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     const res = globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -179,7 +179,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -215,7 +215,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -236,7 +236,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -253,7 +253,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -267,7 +267,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -349,7 +349,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -371,7 +371,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
     globalActiveDirectoryEngine.accessShare({
@@ -403,7 +403,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -426,7 +426,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -442,7 +442,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: false,
+      passwordProvided: 'wrong',
       vTime: 10,
     });
 
@@ -457,7 +457,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -472,7 +472,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -495,7 +495,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: false,
+      passwordProvided: 'wrong',
       vTime: 10,
     });
 
@@ -510,7 +510,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -528,7 +528,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
     globalActiveDirectoryEngine.performDomainLogon({
       workstationHost: 'FIN-WS01',
       userName: 'sara.finance',
-      passwordProvided: true,
+      passwordProvided: 'P@ssword123!',
       vTime: 10,
     });
 
@@ -599,7 +599,7 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
       globalActiveDirectoryEngine.performDomainLogon({
         workstationHost: 'FIN-WS01',
         userName: 'sara.finance',
-        passwordProvided: true,
+        passwordProvided: 'P@ssword123!',
         vTime: 10,
       });
 

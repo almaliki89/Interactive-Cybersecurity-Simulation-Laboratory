@@ -749,7 +749,7 @@ export class NetworkEngine {
         globalActiveDirectoryEngine.performDomainLogon({
           workstationHost: params.sourceDeviceId,
           userName: adUser.samAccountName,
-          passwordProvided: true,
+          passwordProvided: 'P@ssword123!',
           vTime,
         });
       }

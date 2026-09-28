@@ -44,12 +44,12 @@ export const Dc01Inspector: React.FC<Dc01InspectorProps> = ({ language = 'en' })
 
         <div className="text-right text-[10px]">
           {isDcOnline ? (
-            <div className="text-emerald-400 font-bold flex items-center gap-1 justify-end">
+            <div data-testid="dc01-ad-status" data-state="ONLINE" className="text-emerald-400 font-bold flex items-center gap-1 justify-end">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{isAr ? 'نشط' : 'AD DS ONLINE'}</span>
             </div>
           ) : (
-            <div className="text-rose-400 font-bold flex items-center gap-1 justify-end">
+            <div data-testid="dc01-ad-status" data-state="OFFLINE" className="text-rose-400 font-bold flex items-center gap-1 justify-end">
               <AlertTriangle className="w-3.5 h-3.5" />
               <span>{isAr ? 'غير متصل' : 'AD DS OFFLINE'}</span>
             </div>
