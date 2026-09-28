@@ -619,4 +619,239 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
 
     expect(JSON.stringify(snap1)).toBe(JSON.stringify(snap2));
   });
+
+  // =========================================================================
+  // V1.3.4 REGRESSION TESTS (Items 1 - 12)
+  // =========================================================================
+  describe('V1.3.4 Regression Tests', () => {
+    it('1. no session -> SMB denied with NO_AUTHENTICATED_SESSION', () => {
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+      });
+      expect(res.success).toBe(false);
+      expect(res.authenticationSucceeded).toBe(false);
+      expect(res.authorizationSucceeded).toBe(false);
+      expect(res.failureReason).toBe('NO_AUTHENTICATED_SESSION');
+    });
+
+    it('2. session + TGT -> SMB auth works', () => {
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+      });
+      expect(res.authenticationSucceeded).toBe(true);
+    });
+
+    it('3. Sara -> Finance allow', () => {
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+      });
+      expect(res.success).toBe(true);
+      expect(res.authenticationSucceeded).toBe(true);
+      expect(res.authorizationSucceeded).toBe(true);
+      expect(res.user).toBe('sara.finance');
+      expect(res.serviceSpn).toBe('cifs/FILE01');
+    });
+
+    it('4. Omar -> Finance deny', () => {
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'omar.hr',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+      });
+      expect(res.success).toBe(false);
+      expect(res.authenticationSucceeded).toBe(true);
+      expect(res.authorizationSucceeded).toBe(false);
+      expect(res.failureReason).toBe('ACCESS_DENIED');
+    });
+
+    it('5. no TGT -> SMB denied with NO_TGT', () => {
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+
+      // Purge Kerberos cache
+      globalActiveDirectoryEngine.getTicketCache('FIN-WS01').purge();
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+      });
+      expect(res.success).toBe(false);
+      expect(res.failureReason).toBe('NO_TGT');
+    });
+
+    it('6. missing SPN -> fail', () => {
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+
+      // Remove SPN for cifs/FILE01
+      (globalActiveDirectoryEngine.spnRegistry as any).spns.delete('CIFS/FILE01');
+      (globalActiveDirectoryEngine.spnRegistry as any).spns.delete('cifs/file01');
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+      });
+      expect(res.success).toBe(false);
+      expect(res.failureReason).toBe('SPN_NOT_FOUND');
+    });
+
+    it('7. DC offline + cached TGS behavior', () => {
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+
+      // Access share to obtain and cache TGS
+      const resInitial = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+        virtualTime: 15,
+      });
+      expect(resInitial.success).toBe(true);
+
+      // Power off DC01
+      const dc01 = globalRealityEngine.registry.getMachine('DC01')!;
+      dc01.shutdown(20);
+
+      // Subsequent access with cached TGS succeeds
+      const resCached = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+        virtualTime: 25,
+      });
+      expect(resCached.success).toBe(true);
+      expect(resCached.authorizationSucceeded).toBe(true);
+    });
+
+    it('8. DC offline + no cached TGS fail', () => {
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+
+      // Pre-resolve DNS while DC01 is still online so DNS resolution succeeds
+      globalNetworkEngine.queryDns('FIN-WS01', 'FILE01', 12);
+
+      // Shut down DC01 before TGS is requested
+      const dc01 = globalRealityEngine.registry.getMachine('DC01')!;
+      dc01.shutdown(15);
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+        virtualTime: 20,
+      });
+      expect(res.success).toBe(false);
+      expect(res.failureReason).toBe('DOMAIN_CONTROLLER_UNREACHABLE');
+    });
+
+    it('9. no hidden login created by SMB', () => {
+      const finWs = globalRealityEngine.registry.getMachine('FIN-WS01')!;
+      // Clear sessions
+      finWs.getSessions().forEach((s) => finWs.logoffSession(s.sessionId, 0));
+      expect(finWs.getSessions().filter((s) => s.status === 'ACTIVE').length).toBe(0);
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+      });
+      expect(res.success).toBe(false);
+      expect(res.failureReason).toBe('NO_AUTHENTICATED_SESSION');
+      // Verify no session was silently created
+      expect(finWs.getSessions().filter((s) => s.status === 'ACTIVE').length).toBe(0);
+    });
+
+    it('10. no hardcoded password in network engine', () => {
+      // Trying to pass an arbitrary username that does not match active session must be rejected
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'omar.hr',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+        userName: 'sara.finance', // Attempting to spoof identity
+      });
+      expect(res.success).toBe(false);
+      expect(res.failureReason).toBe('NO_AUTHENTICATED_SESSION');
+    });
+
+    it('11. cable disconnect login fail', () => {
+      const store = useDigitalTwinStore.getState();
+      store.disconnectCable('CAB-SRV-DC01');
+
+      const res = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+      expect(res.success).toBe(false);
+      expect(res.failureReason).toBe('DOMAIN_CONTROLLER_UNREACHABLE');
+    });
+
+    it('12. reconnect login succeeds', () => {
+      const store = useDigitalTwinStore.getState();
+      store.disconnectCable('CAB-SRV-DC01');
+      store.connectCable('CAB-SRV-DC01');
+
+      const res = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 10,
+      });
+      expect(res.success).toBe(true);
+      expect(res.tgt).toBeDefined();
+    });
+  });
 });

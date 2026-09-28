@@ -141,6 +141,14 @@ export interface SmbShare {
 
 export interface SmbAccessResult {
   success: boolean;
+  authenticationSucceeded: boolean;
+  authorizationSucceeded: boolean;
+  failureReason?: string;
+  userPrincipal?: string;
+  userSid?: string;
+  serviceSpn?: string;
+  ticketId?: string;
+  effectiveRights?: string;
   serverHostname: string;
   shareName: string;
   user: string;

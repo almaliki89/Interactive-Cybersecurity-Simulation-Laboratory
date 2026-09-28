@@ -16,6 +16,7 @@ import {
   DnsQueryResult,
   DnsFailureReason,
   SmbAccessResult,
+  SmbFailureReason,
   PingResult,
   TestNetConnectionResult,
   SimulatedNetworkInterface,
@@ -626,25 +627,45 @@ export class NetworkEngine {
     sourceDeviceId: string;
     serverHostname: string;
     shareName: string;
-    userName: string;
+    userName?: string;
     virtualTime?: number;
   }): SmbAccessResult {
     const vTime = params.virtualTime ?? globalSimulationRuntime.clock.getVirtualTime();
     const cleanServer = params.serverHostname.toUpperCase();
     const store = this.getStoreState();
-    if (!store) return { success: false, serverHostname: cleanServer, shareName: params.shareName, user: params.userName, latencyMs: 0, error: 'NETWORK_UNREACHABLE' };
+    
+    const defaultUser = params.userName || '';
+
+    // Handle offline/missing store early
+    if (!store) {
+      return {
+        success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'NETWORK_UNREACHABLE',
+        serverHostname: cleanServer,
+        shareName: params.shareName,
+        user: defaultUser,
+        error: 'NETWORK_UNREACHABLE',
+        errorDetails: 'Simulation store state is unavailable',
+        latencyMs: 0,
+      };
+    }
 
     // 1. DNS Name Resolution
     const dnsResult = this.queryDns(params.sourceDeviceId, cleanServer, vTime);
     if (!dnsResult.success || !dnsResult.resolvedIp) {
       return {
         success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'NAME_RESOLUTION_FAILED',
         serverHostname: cleanServer,
         shareName: params.shareName,
-        user: params.userName,
+        user: defaultUser,
         error: 'NAME_RESOLUTION_FAILED',
         errorDetails: `The network path was not found. Failed to resolve '${cleanServer}' (${dnsResult.errorDetails})`,
-        latencyMs: dnsResult.latencyMs,
+        latencyMs: dnsResult.latencyMs || 1.5,
       };
     }
 
@@ -656,9 +677,12 @@ export class NetworkEngine {
     if (!isFileServerOnline) {
       return {
         success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'HOST_OFFLINE',
         serverHostname: cleanServer,
         shareName: params.shareName,
-        user: params.userName,
+        user: defaultUser,
         error: 'HOST_OFFLINE',
         errorDetails: `Target server '${cleanServer}' is powered OFFLINE`,
         latencyMs: 15.0,
@@ -676,9 +700,12 @@ export class NetworkEngine {
     if (!isPhysicalOk) {
       return {
         success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'PHYSICAL_PATH_UNAVAILABLE',
         serverHostname: cleanServer,
         shareName: params.shareName,
-        user: params.userName,
+        user: defaultUser,
         error: 'PHYSICAL_PATH_UNAVAILABLE',
         errorDetails: `Physical cabling path to '${cleanServer}' is broken or disconnected`,
         latencyMs: 15.0,
@@ -690,9 +717,12 @@ export class NetworkEngine {
     if (!swDev || swDev.powerStatus !== 'ONLINE') {
       return {
         success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'NETWORK_UNREACHABLE',
         serverHostname: cleanServer,
         shareName: params.shareName,
-        user: params.userName,
+        user: defaultUser,
         error: 'NETWORK_UNREACHABLE',
         errorDetails: `Network unreachable: Core Distribution Switch is OFFLINE`,
         latencyMs: 20.0,
@@ -711,9 +741,12 @@ export class NetworkEngine {
     if (!fwEval.allowed) {
       return {
         success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'FIREWALL_DENIED',
         serverHostname: cleanServer,
         shareName: params.shareName,
-        user: params.userName,
+        user: defaultUser,
         error: 'FIREWALL_DENIED',
         errorDetails: `Firewall blocked TCP Port 445 SMB connection to ${dnsResult.resolvedIp}`,
         latencyMs: 2.0,
@@ -727,44 +760,89 @@ export class NetworkEngine {
     if (!isLanmanServerRunning) {
       return {
         success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'SERVICE_UNAVAILABLE',
         serverHostname: cleanServer,
         shareName: params.shareName,
-        user: params.userName,
+        user: defaultUser,
         error: 'SERVICE_UNAVAILABLE',
         errorDetails: `LanmanServer service is stopped on '${cleanServer}'`,
         latencyMs: 5.0,
       };
     }
 
-    // 7. Active Directory Kerberos Service Ticket & ACL Authorization
-    const adUser = globalActiveDirectoryEngine.store.findUser(params.userName);
-    const userSid = adUser ? adUser.sid : `S-1-5-21-synth-${params.userName}`;
-    const sharePath = `\\\\${cleanServer}\\${params.shareName}`;
+    // 7. Resolve Real Authenticated Session on the Workstation
+    const workstationMachine = globalRealityEngine.registry.getMachine(params.sourceDeviceId);
+    const activeSession = workstationMachine?.getSessions().find((s) => s.status === 'ACTIVE');
 
-    // Auto-logon fallback for legacy tests where domain logon was not explicitly performed
-    if (adUser) {
-      const cache = globalActiveDirectoryEngine.getTicketCache(params.sourceDeviceId);
-      const tgt = cache.getTgt(`${adUser.samAccountName}@NEXORA.LOCAL`);
-      if (!tgt) {
-        globalActiveDirectoryEngine.performDomainLogon({
-          workstationHost: params.sourceDeviceId,
-          userName: adUser.samAccountName,
-          passwordProvided: 'P@ssword123!',
-          vTime,
-        });
-      }
+    if (!activeSession) {
+      return {
+        success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'NO_AUTHENTICATED_SESSION',
+        serverHostname: cleanServer,
+        shareName: params.shareName,
+        user: defaultUser,
+        error: 'ACCESS_DENIED',
+        errorDetails: `No active authenticated domain session found on workstation '${params.sourceDeviceId}'`,
+        latencyMs: 4.5,
+      };
     }
 
+    // If keeping userName for compatibility, ignore/reject if it does not match active session identity
+    if (params.userName && params.userName.toLowerCase() !== activeSession.userName.toLowerCase()) {
+      return {
+        success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'NO_AUTHENTICATED_SESSION',
+        serverHostname: cleanServer,
+        shareName: params.shareName,
+        user: params.userName,
+        error: 'ACCESS_DENIED',
+        errorDetails: `Requested user '${params.userName}' does not match active session user '${activeSession.userName}' on '${params.sourceDeviceId}'`,
+        latencyMs: 4.5,
+      };
+    }
+
+    const sessionUserName = activeSession.userName;
+    const sessionUserSid = activeSession.userSid;
+
+    // Require Valid TGT (Do not automatically create one)
+    const cache = globalActiveDirectoryEngine.getTicketCache(params.sourceDeviceId);
+    const userPrincipal = sessionUserName.includes('@') ? sessionUserName : `${sessionUserName}@NEXORA.LOCAL`;
+    const tgt = cache.getTgt(userPrincipal);
+
+    if (!tgt) {
+      return {
+        success: false,
+        authenticationSucceeded: false,
+        authorizationSucceeded: false,
+        failureReason: 'NO_TGT',
+        serverHostname: cleanServer,
+        shareName: params.shareName,
+        user: sessionUserName,
+        error: 'SERVICE_UNAVAILABLE',
+        errorDetails: `No valid TGT found in workstation ticket cache for user '${sessionUserName}'`,
+        latencyMs: 4.5,
+      };
+    }
+
+    const sharePath = `\\\\${cleanServer}\\${params.shareName}`;
+
+    // Perform Enterprise AD access share evaluation
     const adAccess = globalActiveDirectoryEngine.accessShare({
       workstationHost: params.sourceDeviceId,
-      userSid,
+      userSid: sessionUserSid,
       sharePath,
       requestedRight: 'READ',
       vTime,
     });
 
     if (!adAccess.success) {
-      let errReason: any = 'SERVICE_UNAVAILABLE';
+      let errReason: SmbFailureReason = 'SERVICE_UNAVAILABLE';
       let errDetails = `Kerberos authentication / authorization failed on ${sharePath}`;
 
       if (adAccess.failureReason === 'ACCESS_DENIED') {
@@ -784,15 +862,21 @@ export class NetworkEngine {
         source: params.sourceDeviceId,
         target: cleanServer,
         severity: 'warn',
-        description: `SMB access failed on ${sharePath} for '${params.userName}': ${errDetails}`,
+        description: `SMB access failed on ${sharePath} for '${sessionUserName}': ${errDetails}`,
         payload: { ...params, error: errReason, details: errDetails },
       });
 
       return {
         success: false,
+        authenticationSucceeded: adAccess.failureReason === 'ACCESS_DENIED', // Auth succeeded, but Authz failed
+        authorizationSucceeded: false,
+        failureReason: adAccess.failureReason || 'SERVICE_UNAVAILABLE',
+        userPrincipal,
+        userSid: sessionUserSid,
+        serviceSpn: adAccess.serviceSpn,
         serverHostname: cleanServer,
         shareName: params.shareName,
-        user: params.userName,
+        user: sessionUserName,
         error: errReason,
         errorDetails: errDetails,
         latencyMs: 4.5,
@@ -817,15 +901,22 @@ export class NetworkEngine {
       source: params.sourceDeviceId,
       target: cleanServer,
       severity: 'info',
-      description: `SMB session opened on \\\\${cleanServer}\\${params.shareName} by user '${params.userName}'`,
+      description: `SMB session opened on \\\\${cleanServer}\\${params.shareName} by user '${sessionUserName}'`,
       payload: { ...params, share: params.shareName, path: `\\\\${cleanServer}\\${params.shareName}` },
     });
 
     return {
       success: true,
+      authenticationSucceeded: true,
+      authorizationSucceeded: true,
+      userPrincipal,
+      userSid: sessionUserSid,
+      serviceSpn: adAccess.serviceSpn,
+      ticketId: adAccess.ticketUsed?.ticketId,
+      effectiveRights: 'READ',
       serverHostname: cleanServer,
       shareName: params.shareName,
-      user: params.userName,
+      user: sessionUserName,
       targetPath: `\\\\${cleanServer}\\${params.shareName}`,
       latencyMs: 3.8,
     };

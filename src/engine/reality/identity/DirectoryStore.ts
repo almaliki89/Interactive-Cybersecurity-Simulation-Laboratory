@@ -335,12 +335,6 @@ export class DirectoryStore {
       this.users.set(copy.sid, copy);
       this.users.set(copy.samAccountName.toLowerCase(), copy);
       this.users.set(copy.upn.toLowerCase(), copy);
-      // Compatibility alias with legacy tests
-      if (copy.samAccountName === 'sara.finance') this.users.set('S-1-5-21-99887766-2001', copy);
-      if (copy.samAccountName === 'omar.hr') this.users.set('S-1-5-21-99887766-2002', copy);
-      if (copy.samAccountName === 'ali.it') this.users.set('S-1-5-21-99887766-2003', copy);
-      if (copy.samAccountName === 'administrator') this.users.set('S-1-5-21-99887766-500', copy);
-      if (copy.samAccountName === 'svc_backup') this.users.set('S-1-5-21-99887766-2004', copy);
     });
     BASELINE_COMPUTERS.forEach((cmp) => {
       const copy = { ...cmp };

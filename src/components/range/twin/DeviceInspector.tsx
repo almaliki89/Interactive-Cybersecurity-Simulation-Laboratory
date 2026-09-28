@@ -64,6 +64,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
   const [cliInput, setCliInput] = useState<string>('nslookup FILE01');
   const [cliOutput, setCliOutput] = useState<string>('');
   const [smbShareTestResult, setSmbShareTestResult] = useState<string | null>(null);
+  const [smbAccessResult, setSmbAccessResult] = useState<any | null>(null);
 
   const [logonUsername, setLogonUsername] = useState<string>('sara.finance');
   const [logonPassword, setLogonPassword] = useState<string>('P@ssword123!');
@@ -108,6 +109,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
       shareName,
       userName: user,
     });
+    setSmbAccessResult(res);
     if (res.success) {
       setSmbShareTestResult(`✅ Connected to \\\\FILE01\\${shareName} as ${user} (${res.latencyMs}ms)`);
     } else {
@@ -296,10 +298,11 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-900 bg-slate-900/20 text-[10px] font-mono overflow-x-auto">
+      <div className="flex overflow-x-auto no-scrollbar border-b border-slate-900 bg-slate-900/20 text-[10px] font-mono relative z-20 pointer-events-auto">
         <button
           onClick={() => setActiveTab('network')}
           data-testid="tab-network-inspector"
+          data-state={activeTab === 'network' ? 'active' : 'inactive'}
           className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
             activeTab === 'network'
               ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -312,6 +315,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
         <button
           onClick={() => setActiveTab('system')}
           data-testid="tab-system-inspector"
+          data-state={activeTab === 'system' ? 'active' : 'inactive'}
           className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
             activeTab === 'system'
               ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -326,6 +330,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
             <button
               onClick={() => setActiveTab('processes')}
               data-testid="tab-processes-inspector"
+              data-state={activeTab === 'processes' ? 'active' : 'inactive'}
               className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === 'processes'
                   ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -337,6 +342,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
             <button
               onClick={() => setActiveTab('sessions')}
               data-testid="tab-sessions-inspector"
+              data-state={activeTab === 'sessions' ? 'active' : 'inactive'}
               className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === 'sessions'
                   ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -348,6 +354,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
             <button
               onClick={() => setActiveTab('logs')}
               data-testid="tab-logs-inspector"
+              data-state={activeTab === 'logs' ? 'active' : 'inactive'}
               className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
                 activeTab === 'logs'
                   ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -361,6 +368,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
         <button
           onClick={() => setActiveTab('kerberos')}
+          data-state={activeTab === 'kerberos' ? 'active' : 'inactive'}
           className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
             activeTab === 'kerberos'
               ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -373,6 +381,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
         <button
           onClick={() => setActiveTab('ad')}
+          data-state={activeTab === 'ad' ? 'active' : 'inactive'}
           className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
             activeTab === 'ad'
               ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -386,6 +395,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
         {device.id === 'DC01' && (
           <button
             onClick={() => setActiveTab('dc01')}
+            data-state={activeTab === 'dc01' ? 'active' : 'inactive'}
             className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
               activeTab === 'dc01'
                 ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
@@ -645,13 +655,66 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
                     </div>
                   ))}
                 </div>
-                {smbShareTestResult && (
+                {smbAccessResult && (
                   <div 
                     data-testid="smb-access-result"
-                    data-result={smbShareTestResult.includes('✅') ? 'success' : 'access-denied'}
-                    className="p-2 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-300"
+                    data-result={smbAccessResult.success ? 'success' : 'access-denied'}
+                    data-auth-success={smbAccessResult.authenticationSucceeded ? 'true' : 'false'}
+                    data-authz-success={smbAccessResult.authorizationSucceeded ? 'true' : 'false'}
+                    data-failure-reason={smbAccessResult.failureReason || ''}
+                    className="p-3.5 rounded-lg bg-slate-950 border border-slate-800 text-[10px] font-mono space-y-2.5"
                   >
-                    {smbShareTestResult}
+                    <div className="flex items-center justify-between border-b border-slate-900 pb-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">SMB ACCESS LOG</span>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                        smbAccessResult.success 
+                          ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800' 
+                          : 'bg-rose-950/80 text-rose-400 border border-rose-800'
+                      }`}>
+                        {smbAccessResult.success ? 'SUCCESS (0x0)' : `DENIED (${smbAccessResult.failureReason})`}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10px]">
+                      <div>
+                        <span className="text-slate-500 uppercase text-[8px]">Client Host:</span>
+                        <div className="text-slate-300 font-bold font-mono">{selectedDeviceId === 'FILE01' ? 'FIN-WS01' : selectedDeviceId}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase text-[8px]">Server Host:</span>
+                        <div className="text-slate-300 font-mono">FILE01</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase text-[8px]">Share Path:</span>
+                        <div className="text-slate-300 font-mono font-bold">\\\\FILE01\\{smbAccessResult.shareName}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase text-[8px]">Identity:</span>
+                        <div className="text-slate-300 font-mono">{smbAccessResult.userPrincipal || 'ANONYMOUS'}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase text-[8px]">Kerberos TGS:</span>
+                        <div className="text-slate-300 font-mono truncate">{smbAccessResult.serviceSpn || 'NONE'}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase text-[8px]">Ticket ID:</span>
+                        <div className="text-slate-300 font-mono truncate">{smbAccessResult.ticketId || 'NONE'}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase text-[8px]">Rights:</span>
+                        <div className="text-slate-300 font-mono font-bold text-cyan-400">{smbAccessResult.effectiveRights || 'NONE'}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase text-[8px]">Latency:</span>
+                        <div className="text-slate-300 font-mono">{smbAccessResult.latencyMs} ms</div>
+                      </div>
+                    </div>
+
+                    {!smbAccessResult.success && (
+                      <div className="pt-1.5 border-t border-slate-900 text-[10px] text-rose-300 font-sans leading-relaxed">
+                        {smbAccessResult.errorDetails || 'Access Denied'}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

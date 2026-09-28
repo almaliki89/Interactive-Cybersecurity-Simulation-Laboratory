@@ -195,6 +195,12 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
 
   // 14. FILE01 port 445 service access works
   it('14. FILE01 port 445 SMB service access succeeds for authorized user sara.finance on Finance share', () => {
+    globalRealityEngine.attemptLogon({
+      targetHost: 'FIN-WS01',
+      userName: 'sara.finance',
+      password: 'P@ssword123!',
+      logonType: 'Interactive',
+    });
     const res = globalNetworkEngine.accessSmbShare({
       sourceDeviceId: 'FIN-WS01',
       serverHostname: 'FILE01',
@@ -207,6 +213,12 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
 
   // 15. FILE01 offline makes SMB fail
   it('15. Powering FILE01 offline makes SMB access fail with HOST_OFFLINE', () => {
+    globalRealityEngine.attemptLogon({
+      targetHost: 'FIN-WS01',
+      userName: 'sara.finance',
+      password: 'P@ssword123!',
+      logonType: 'Interactive',
+    });
     const store = useDigitalTwinStore.getState();
     store.toggleDevicePower('FILE01');
 
@@ -222,6 +234,12 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
 
   // 16. LanmanServer stopped makes SMB fail
   it('16. Stopping the LanmanServer service on FILE01 makes SMB fail with SERVICE_UNAVAILABLE', () => {
+    globalRealityEngine.attemptLogon({
+      targetHost: 'FIN-WS01',
+      userName: 'sara.finance',
+      password: 'P@ssword123!',
+      logonType: 'Interactive',
+    });
     const fileMachine = globalRealityEngine.registry.getMachine('FILE01');
     const lanman = fileMachine?.getServices().find((s) => s.name === 'LanmanServer');
     if (lanman) {
@@ -240,6 +258,18 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
 
   // 17. Unauthorized Finance share returns ACCESS_DENIED
   it('17. Unauthorized user omar.hr attempting to access Finance share returns ACCESS_DENIED', () => {
+    const finWs = globalRealityEngine.registry.getMachine('FIN-WS01')!;
+    finWs.getSessions().forEach((s) => {
+      if (s.status === 'ACTIVE') finWs.logoffSession(s.sessionId, 10);
+    });
+
+    globalRealityEngine.attemptLogon({
+      targetHost: 'FIN-WS01',
+      userName: 'omar.hr',
+      password: 'P@ssword123!',
+      logonType: 'Interactive',
+    });
+
     const res = globalNetworkEngine.accessSmbShare({
       sourceDeviceId: 'FIN-WS01',
       serverHostname: 'FILE01',
@@ -332,6 +362,13 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
       globalNetworkEngine.dns.flushCache();
       globalNetworkEngine.arp.flush();
 
+      globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: 'P@ssword123!',
+        logonType: 'Interactive',
+      });
+
       const dns1 = globalNetworkEngine.queryDns('FIN-WS01', 'DC01', 1000);
       const dns2 = globalNetworkEngine.queryDns('FIN-WS01', 'FILE01', 2000);
       const smb = globalNetworkEngine.accessSmbShare({
@@ -408,6 +445,12 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
   // 23. Deterministic replay test: baseline -> DNS -> SMB -> cable disconnect -> snapshot -> restore -> repeat
   it('23. Deterministic replay test across mutations, snapshots, and restores', () => {
     const executeSequence = () => {
+      globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: 'P@ssword123!',
+        logonType: 'Interactive',
+      });
       // 1. Initial DNS query
       const dns1 = globalNetworkEngine.queryDns('FIN-WS01', 'DC01', 1000);
       // 2. SMB connection
