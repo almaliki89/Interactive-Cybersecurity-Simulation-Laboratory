@@ -708,7 +708,7 @@ export class WindowsMachine {
       level: 'Information',
       task: 'Logon',
       computer: this.hostname,
-      user: resolvedUser.username,
+      user: params.userName.includes('@') ? params.userName : (params.authPackage === 'Kerberos' ? `${resolvedUser.username}@NEXORA.LOCAL` : resolvedUser.username),
       data: {
         targetUserName: resolvedUser.username,
         targetDomainName: this.domain,

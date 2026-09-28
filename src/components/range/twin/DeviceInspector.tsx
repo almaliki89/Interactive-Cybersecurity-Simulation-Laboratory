@@ -7,6 +7,9 @@ import React, { useState } from 'react';
 import { useDigitalTwinStore } from '../../../engine/reality/digitalTwinStore';
 import { globalRealityEngine } from '../../../engine/reality/RealityEngine';
 import { globalNetworkEngine } from '../../../engine/reality/network/NetworkEngine';
+import { KerberosInspector } from './KerberosInspector';
+import { ActiveDirectoryConsole } from './ActiveDirectoryConsole';
+import { Dc01Inspector } from './Dc01Inspector';
 import {
   Power,
   Cpu,
@@ -311,16 +314,41 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
           </>
         )}
 
-        {device.ports && (
+        <button
+          onClick={() => setActiveTab('kerberos')}
+          className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
+            activeTab === 'kerberos'
+              ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
+              : 'border-transparent text-slate-500 hover:text-slate-300'
+          }`}
+          data-testid="tab-kerberos-inspector"
+        >
+          Kerberos
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ad')}
+          className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
+            activeTab === 'ad'
+              ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
+              : 'border-transparent text-slate-500 hover:text-slate-300'
+          }`}
+          data-testid="tab-ad-console"
+        >
+          AD Console
+        </button>
+
+        {device.id === 'DC01' && (
           <button
-            onClick={() => setActiveTab('ports')}
+            onClick={() => setActiveTab('dc01')}
             className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
-              activeTab === 'ports'
+              activeTab === 'dc01'
                 ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
                 : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
+            data-testid="tab-dc01-inspector"
           >
-            {language === 'ar' ? 'المنافذ (48)' : 'Ports (48)'}
+            DC01 Health
           </button>
         )}
       </div>
@@ -839,6 +867,23 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
               </div>
             )}
           </div>
+        )}
+
+        {/* ================= TAB: KERBEROS TICKETS ================= */}
+        {activeTab === 'kerberos' && (
+          <KerberosInspector workstationHost={device.id} language={language} />
+        )}
+
+        {/* ================= TAB: ACTIVE DIRECTORY CONSOLE ================= */}
+        {activeTab === 'ad' && (
+          <div className="h-[450px]">
+            <ActiveDirectoryConsole language={language} />
+          </div>
+        )}
+
+        {/* ================= TAB: DC01 HEALTH ================= */}
+        {activeTab === 'dc01' && device.id === 'DC01' && (
+          <Dc01Inspector language={language} />
         )}
 
         {/* ================= TAB 5: EVENT LOGS ================= */}

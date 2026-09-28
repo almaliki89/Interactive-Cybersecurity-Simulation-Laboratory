@@ -1,16 +1,39 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RealityEngine } from '../RealityEngine';
+import { RealityEngine, globalRealityEngine } from '../RealityEngine';
 import { WindowsMachine } from '../windows/WindowsMachine';
-import { SimulationRuntime } from '../../runtime/SimulationRuntime';
+import { SimulationRuntime, globalSimulationRuntime } from '../../runtime/SimulationRuntime';
 import { WELL_KNOWN_SIDS } from '../../../simulations/windows/logic/identity';
+import { useDigitalTwinStore } from '../digitalTwinStore';
+import { globalNetworkEngine } from '../network/NetworkEngine';
+import { globalActiveDirectoryEngine } from '../identity/ActiveDirectoryEngine';
 
 describe('OMEGA REALITY ENGINE V1.0 — Windows Machine & Core Engine Suite', () => {
   let runtime: SimulationRuntime;
   let reality: RealityEngine;
 
   beforeEach(() => {
-    runtime = new SimulationRuntime();
-    reality = new RealityEngine(runtime);
+    runtime = globalSimulationRuntime;
+    reality = globalRealityEngine;
+    reality.initEnterpriseEnvironment();
+
+    // Reset baseline RealityEngine and DigitalTwinStore state
+    useDigitalTwinStore.getState().syncWithRealityEngine();
+
+    // Ensure all cables are connected and devices online
+    const store = useDigitalTwinStore.getState();
+    Object.keys(store.cables).forEach((cId) => {
+      store.connectCable(cId);
+    });
+    Object.keys(store.devices).forEach((dId) => {
+      if (store.devices[dId].powerStatus !== 'ONLINE') {
+        store.toggleDevicePower(dId);
+      }
+    });
+
+    // Flush client caches to start from clean state
+    globalNetworkEngine.dns.flushCache();
+    globalNetworkEngine.arp.flush();
+    globalNetworkEngine.connections.clear();
   });
 
   describe('1. WindowsMachine System Model', () => {

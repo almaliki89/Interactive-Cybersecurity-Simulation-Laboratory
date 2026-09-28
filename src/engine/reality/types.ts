@@ -133,8 +133,11 @@ export interface RealityMachineSnapshot {
   tokens?: RealityAccessToken[];
 }
 
+import { ActiveDirectorySnapshot } from './identity/types';
+
 export interface RealityEngineSnapshot {
   virtualTime: number;
   machines: Record<string, RealityMachineSnapshot>;
   network?: NetworkEngineSnapshot;
+  identity?: ActiveDirectorySnapshot;
 }

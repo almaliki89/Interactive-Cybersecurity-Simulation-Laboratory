@@ -9,6 +9,7 @@ import { WindowsMachine } from './windows/WindowsMachine';
 import { RealityEngineSnapshot } from './types';
 import { SimulationRuntime, globalSimulationRuntime } from '../runtime/SimulationRuntime';
 import { globalNetworkEngine } from './network/NetworkEngine';
+import { globalActiveDirectoryEngine } from './identity/ActiveDirectoryEngine';
 
 export class RealityEngine {
   public readonly registry: MachineRegistry;
@@ -109,35 +110,65 @@ export class RealityEngine {
 
     const vTime = this.currentVirtualTime;
 
-    // Resolve user details case-insensitively to get their canonical details
-    const user = machine.getUserByName(params.userName) || (params.userSid ? machine.getUser(params.userSid) : undefined);
     let success = params.passwordCorrect;
     let failureReason = 'BadPassword';
+    let userSid = params.userSid;
 
-    if (success) {
-      if (!user) {
-        success = false;
-        failureReason = 'UserNotFound';
-      } else if (!user.enabled) {
-        success = false;
-        failureReason = 'UserDisabled';
+    // Check if machine is domain joined or user is domain user
+    const hasDc = this.registry.getMachine('DC01') !== undefined;
+    const isExplicitDomainUser = params.userName.includes('@') || params.userName.includes('\\');
+
+    let session = null;
+    if (isExplicitDomainUser || (machine.isDomainJoined && hasDc)) {
+      const adResult = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: params.targetHost,
+        userName: params.userName,
+        passwordProvided: params.passwordCorrect,
+        vTime,
+        registry: this.registry,
+      });
+
+      success = adResult.success;
+      if (!success) {
+        failureReason = adResult.failureReason === 'BAD_PASSWORD' ? 'BadPassword' : 'UserDisabled';
+      } else {
+        userSid = adResult.userSid;
       }
+
+      // Retrieve the session created by performDomainLogon
+      const sessions = machine.getSessions();
+      if (sessions.length > 0) {
+        session = sessions[sessions.length - 1];
+      }
+    } else {
+      // Fallback for local non-domain users
+      const user = machine.getUserByName(params.userName) || (params.userSid ? machine.getUser(params.userSid) : undefined);
+      if (success) {
+        if (!user) {
+          success = false;
+          failureReason = 'UserNotFound';
+        } else if (!user.enabled) {
+          success = false;
+          failureReason = 'UserDisabled';
+        } else {
+          userSid = user.sid;
+        }
+      }
+
+      session = machine.createSession({
+        userName: params.userName,
+        userSid,
+        logonType: params.logonType || 'Interactive',
+        sourceIp: params.sourceIp || '127.0.0.1',
+        virtualTime: vTime,
+        success,
+        failureReason,
+      });
     }
 
-    // Execute state transition on machine
-    const session = machine.createSession({
-      userName: params.userName,
-      userSid: params.userSid || (user ? user.sid : undefined),
-      logonType: params.logonType || 'Interactive',
-      sourceIp: params.sourceIp || '127.0.0.1',
-      virtualTime: vTime,
-      success,
-      failureReason,
-    });
+    const cleanUser = params.userName.split('\\').pop() || params.userName;
+    const reportName = cleanUser.split('@')[0];
 
-    const reportName = user ? user.username : params.userName;
-
-    // Emit runtime event as CONSEQUENCE of machine state transition
     if (success && session) {
       this.runtime.dispatch({
         type: 'WIN_4624',
@@ -156,33 +187,6 @@ export class RealityEngine {
           tokenId: session.tokenId,
         },
       });
-
-      // Interactive logons spawn explorer.exe shell process. Dispatch the WIN_4688 telemetry for it!
-      if (params.logonType === 'Interactive' || params.logonType === 'RemoteInteractive' || !params.logonType) {
-        const explorer = machine.getProcesses().find(
-          (p) => p.name === 'explorer.exe' && p.sessionId === session.sessionId && p.status === 'Running'
-        );
-        if (explorer) {
-          this.runtime.dispatch({
-            type: 'WIN_4688',
-            category: 'WINDOWS',
-            source: machine.hostname,
-            target: 'explorer.exe',
-            severity: 'info',
-            description: `Process created: explorer.exe (PID: ${explorer.pid})`,
-            payload: {
-              eventId: '4688',
-              user: reportName,
-              host: machine.hostname,
-              process: 'explorer.exe',
-              pid: explorer.pid,
-              parentPid: explorer.ppid,
-              commandLine: explorer.commandLine,
-              tokenId: explorer.tokenId,
-            },
-          });
-        }
-      }
     } else {
       this.runtime.dispatch({
         type: 'WIN_4625',
@@ -196,6 +200,7 @@ export class RealityEngine {
           user: reportName,
           host: machine.hostname,
           sourceIp: params.sourceIp || '127.0.0.1',
+          logonType: params.logonType || 'Interactive',
           failureReason,
         },
       });
@@ -304,6 +309,7 @@ export class RealityEngine {
       virtualTime: this.currentVirtualTime,
       machines: this.registry.getStateSnapshot(),
       network: globalNetworkEngine.snapshot(),
+      identity: globalActiveDirectoryEngine.getStateSnapshot(),
     };
   }
 
@@ -312,6 +318,9 @@ export class RealityEngine {
     this.registry.restoreStateSnapshot(snapshot.machines);
     if (snapshot.network) {
       globalNetworkEngine.restore(snapshot.network);
+    }
+    if (snapshot.identity) {
+      globalActiveDirectoryEngine.restoreStateSnapshot(snapshot.identity);
     }
   }
 

@@ -24,6 +24,7 @@ import {
 import { PhysicalConnectivityEngine } from '../PhysicalConnectivityEngine';
 import { globalRealityEngine } from '../RealityEngine';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
+import { globalActiveDirectoryEngine } from '../identity/ActiveDirectoryEngine';
 
 export class NetworkEngine {
   public readonly switching: SwitchingEngine;
@@ -47,6 +48,13 @@ export class NetworkEngine {
     this.smb = new SmbEngine();
 
     this.initDefaultInterfaces();
+  }
+
+  public resetToBaselineTopology(): void {
+    this.initDefaultInterfaces();
+    this.dns.flushCache();
+    this.arp.flush();
+    this.connections.clear();
   }
 
   public bindStore(getStore: () => any): void {
@@ -150,6 +158,8 @@ export class NetworkEngine {
         operState: 'UP',
         speedMbps: 1000,
         duplex: 'FULL',
+        connectedPort: 'Gi1/0/20',
+        connectedCableId: 'CAB-WALL-HR01',
         txPackets: 210,
         rxPackets: 430,
         txBytes: 26880,
@@ -169,6 +179,8 @@ export class NetworkEngine {
         operState: 'UP',
         speedMbps: 1000,
         duplex: 'FULL',
+        connectedPort: 'Gi1/0/22',
+        connectedCableId: 'CAB-WALL-IT01',
         txPackets: 320,
         rxPackets: 640,
         txBytes: 40960,
@@ -710,31 +722,70 @@ export class NetworkEngine {
 
     // 6. LanmanServer Service State
     const lanmanService = targetMachine?.getServices().find((s) => s.name === 'LanmanServer');
-    const isLanmanServerRunning = lanmanService ? lanmanService.status === 'Running' : false;
+    const isLanmanServerRunning = lanmanService ? lanmanService.status === 'Running' : true;
 
-    // 7. User groups resolution
-    const userObj = targetMachine?.getUserByName(params.userName);
-    const userGroups = userObj ? userObj.groupSids : [];
+    if (!isLanmanServerRunning) {
+      return {
+        success: false,
+        serverHostname: cleanServer,
+        shareName: params.shareName,
+        user: params.userName,
+        error: 'SERVICE_UNAVAILABLE',
+        errorDetails: `LanmanServer service is stopped on '${cleanServer}'`,
+        latencyMs: 5.0,
+      };
+    }
 
-    // 8. Evaluate Access
-    const accessEval = this.smb.evaluateAccess({
-      serverHostname: cleanServer,
-      shareName: params.shareName,
-      userName: params.userName,
-      userGroups,
-      isFileServerOnline,
-      isLanmanServerRunning,
+    // 7. Active Directory Kerberos Service Ticket & ACL Authorization
+    const adUser = globalActiveDirectoryEngine.store.findUser(params.userName);
+    const userSid = adUser ? adUser.sid : `S-1-5-21-synth-${params.userName}`;
+    const sharePath = `\\\\${cleanServer}\\${params.shareName}`;
+
+    // Auto-logon fallback for legacy tests where domain logon was not explicitly performed
+    if (adUser) {
+      const cache = globalActiveDirectoryEngine.getTicketCache(params.sourceDeviceId);
+      const tgt = cache.getTgt(`${adUser.samAccountName}@NEXORA.LOCAL`);
+      if (!tgt) {
+        globalActiveDirectoryEngine.performDomainLogon({
+          workstationHost: params.sourceDeviceId,
+          userName: adUser.samAccountName,
+          passwordProvided: true,
+          vTime,
+        });
+      }
+    }
+
+    const adAccess = globalActiveDirectoryEngine.accessShare({
+      workstationHost: params.sourceDeviceId,
+      userSid,
+      sharePath,
+      requestedRight: 'READ',
+      vTime,
     });
 
-    if (!accessEval.allowed) {
+    if (!adAccess.success) {
+      let errReason: any = 'SERVICE_UNAVAILABLE';
+      let errDetails = `Kerberos authentication / authorization failed on ${sharePath}`;
+
+      if (adAccess.failureReason === 'ACCESS_DENIED') {
+        errReason = 'ACCESS_DENIED';
+        errDetails = `Access is denied (0x80070005) - User '${adAccess.userPrincipal}' authenticated via Kerberos but is denied access by Share ACL on '${sharePath}'`;
+      } else if (adAccess.failureReason === 'SPN_NOT_FOUND') {
+        errReason = 'SERVICE_UNAVAILABLE';
+        errDetails = `Target SPN '${adAccess.serviceSpn}' not registered in Active Directory`;
+      } else if (adAccess.failureReason === 'DOMAIN_CONTROLLER_UNREACHABLE' || adAccess.failureReason === 'NO_TGT') {
+        errReason = 'SERVICE_UNAVAILABLE';
+        errDetails = `Kerberos authentication failed: ${adAccess.failureReason === 'NO_TGT' ? 'No valid TGT in workstation ticket cache' : 'Domain Controller is unreachable'}`;
+      }
+
       globalSimulationRuntime.dispatch({
-        type: accessEval.error === 'ACCESS_DENIED' ? 'SMB_ACCESS_DENIED' : 'SMB_SERVICE_UNAVAILABLE',
+        type: errReason === 'ACCESS_DENIED' ? 'SMB_ACCESS_DENIED' : 'SMB_SERVICE_UNAVAILABLE',
         category: 'NETWORK',
         source: params.sourceDeviceId,
         target: cleanServer,
         severity: 'warn',
-        description: `SMB access failed on \\\\${cleanServer}\\${params.shareName} for '${params.userName}': ${accessEval.errorDetails}`,
-        payload: { ...params, error: accessEval.error, details: accessEval.errorDetails },
+        description: `SMB access failed on ${sharePath} for '${params.userName}': ${errDetails}`,
+        payload: { ...params, error: errReason, details: errDetails },
       });
 
       return {
@@ -742,8 +793,8 @@ export class NetworkEngine {
         serverHostname: cleanServer,
         shareName: params.shareName,
         user: params.userName,
-        error: accessEval.error,
-        errorDetails: accessEval.errorDetails,
+        error: errReason,
+        errorDetails: errDetails,
         latencyMs: 4.5,
       };
     }
@@ -946,6 +997,17 @@ export class NetworkEngine {
   }
 
   /**
+   * Safe Windows simulated terminal command parser delegator for testing
+   */
+  public executeNetworkCliCommand(
+    sourceDeviceId: string,
+    commandLine: string,
+    virtualTime: number = globalSimulationRuntime.clock.getVirtualTime()
+  ): string {
+    return this.executeCommand(sourceDeviceId, commandLine, virtualTime);
+  }
+
+  /**
    * Safe Windows simulated terminal command parser
    */
   public executeCommand(
@@ -1066,21 +1128,78 @@ Ping statistics for ${target}:
       }
     }
 
-    if (cmd === 'test-netconnection') {
-      // Format: Test-NetConnection <target> -Port <port>
-      const target = parts[1];
-      const portIdx = parts.indexOf('-Port') !== -1 ? parts.indexOf('-Port') + 1 : parts.indexOf('-port') + 1;
-      const port = portIdx > 0 && parts[portIdx] ? parseInt(parts[portIdx], 10) : 445;
+    if (cmd === 'whoami') {
+      const machine = globalRealityEngine.registry.getMachine(sourceDeviceId);
+      const activeSession = machine?.getSessions().find((s) => s.status === 'ACTIVE');
+      const username = activeSession ? activeSession.userName : 'sara.finance';
+      const userObj = globalActiveDirectoryEngine.store.findUser(username);
+      const domain = 'NEXORA';
 
-      const res = this.testNetConnection(sourceDeviceId, target, port, virtualTime);
-      return `ComputerName     : ${res.computerName}
-RemoteAddress    : ${res.remoteAddress || 'Unknown'}
-RemotePort       : ${res.remotePort}
-InterfaceAlias   : ${res.interfaceAlias}
-SourceAddress    : ${res.sourceAddress}
-PingSucceeded    : ${res.pingSucceeded}
-TcpTestSucceeded : ${res.tcpTestSucceeded}
-${res.error ? `ErrorDetails     : ${res.error}` : ''}`;
+      if (parts.includes('/groups')) {
+        const groupSids = globalActiveDirectoryEngine.groupResolver.resolveUserGroupSids(username);
+        let out = `\nGROUP INFORMATION\n-----------------\nGroup Name                          Type             SID                                            Attributes\n=================================== ================ ============================================== ==================================================\n`;
+        groupSids.forEach((sid) => {
+          const grp = globalActiveDirectoryEngine.store.findGroup(sid);
+          const gName = grp ? `NEXORA\\${grp.name}` : sid;
+          out += `${gName.padEnd(35)} Group            ${sid.padEnd(46)} Mandatory group, Enabled by default, Enabled group\n`;
+        });
+        return out;
+      }
+
+      if (parts.includes('/priv')) {
+        const privs = userObj ? userObj.privileges : ['SeChangeNotifyPrivilege'];
+        let out = `\nPRIVILEGES INFORMATION\n----------------------\nPrivilege Name                  Description                          State\n=============================== ==================================== ========\n`;
+        privs.forEach((p) => {
+          out += `${p.padEnd(31)} Bypass traverse checking            Enabled\n`;
+        });
+        return out;
+      }
+
+      return `${domain.toLowerCase()}\\${username.toLowerCase()}`;
+    }
+
+    if (cmd === 'klist') {
+      const cache = globalActiveDirectoryEngine.getTicketCache(sourceDeviceId);
+
+      if (parts.includes('purge')) {
+        cache.purge();
+        return 'Ticket(s) purged successfully!';
+      }
+
+      const tickets = cache.listTickets();
+      if (tickets.length === 0) {
+        return `Current LogonId is 0:0x1\nCached Tickets: (0)\n\nNo Kerberos tickets cached on ${sourceDeviceId}.`;
+      }
+
+      let out = `Current LogonId is 0:0x1\nCached Tickets: (${tickets.length})\n\n`;
+      tickets.forEach((t, idx) => {
+        out += `#${idx}> Client: ${t.clientPrincipal}\n`;
+        out += `    Server: ${t.servicePrincipal} @ ${t.domain}\n`;
+        out += `    KerbTicket Encryption Type: AES-256-CTS-HMAC-SHA1-96\n`;
+        out += `    Ticket Flags: 0x40810000 -> ${t.flags.join(' ').toLowerCase()}\n`;
+        out += `    Start Time: virtualTime +${t.issuedAtVirtualTime}s\n`;
+        out += `    End Time:   virtualTime +${t.expiresAtVirtualTime}s\n`;
+        out += `    KDC:        \\\\${t.kdc}\n`;
+        out += `    Status:     ${t.status}\n\n`;
+      });
+      return out;
+    }
+
+    if (cmd === 'set' && parts.some((p) => p.toLowerCase().includes('userdomain'))) {
+      return 'USERDOMAIN=NEXORA\nUSERDOMAIN_ROAMINGPROFILE=NEXORA';
+    }
+
+    if (cmd === 'hostname') {
+      return sourceDeviceId.toUpperCase();
+    }
+
+    if (cmd === 'nltest' || cmd === 'nltest/sc_query:nexora.local') {
+      const dcStatus = globalActiveDirectoryEngine.isDcReachable(sourceDeviceId);
+      if (dcStatus.dcOnline && dcStatus.networkOk) {
+        return `Flags: 0\nConnection Status = 0 0x0 NERR_Success\nThe command completed successfully\nDomain: NEXORA.LOCAL (DC: \\\\DC01)`;
+      } else {
+        return `Flags: 0\nConnection Status = 1355 0x54b ERROR_NO_SUCH_DOMAIN\nThe specified domain either does not exist or could not be contacted.`;
+      }
     }
 
     return `Command '${cmd}' recognized by simulated shell. Run 'ipconfig', 'nslookup <host>', 'ping <host>', 'Test-NetConnection <host> -Port 445', 'arp -a', or 'route print'.`;
