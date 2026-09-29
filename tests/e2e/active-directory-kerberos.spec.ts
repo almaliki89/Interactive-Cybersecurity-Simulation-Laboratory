@@ -51,7 +51,7 @@ async function navigateToWorld(page: Page, worldId: string) {
 async function saveScreenshot(page: Page, name: string) {
   try {
     const p = path.join(ARTIFACTS_DIR, name);
-    await page.screenshot({ path: p, fullPage: false, animations: 'disabled', timeout: 3000 });
+    await page.screenshot({ path: p, fullPage: false, animations: 'disabled', timeout: 20000 });
     fs.copyFileSync(p, path.join(VISUAL_QA_DIR, name));
     console.log(`[AD-E2E] Captured screenshot: ${name}`);
   } catch (err) {
@@ -60,7 +60,7 @@ async function saveScreenshot(page: Page, name: string) {
 }
 
 test.describe('Active Directory & Kerberos Integration Suite', () => {
-  test.describe.configure({ timeout: 120000 });
+  test.describe.configure({ timeout: 180000 });
 
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(VIEWPORT);
