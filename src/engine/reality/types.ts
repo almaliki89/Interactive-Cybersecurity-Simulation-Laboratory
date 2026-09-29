@@ -131,6 +131,7 @@ export interface RealityMachineSnapshot {
   lastUpdatedVirtualTime: number;
   users?: RealityUserModel[];
   tokens?: RealityAccessToken[];
+  windowsReality?: any;
 }
 
 import { ActiveDirectorySnapshot } from './identity/types';

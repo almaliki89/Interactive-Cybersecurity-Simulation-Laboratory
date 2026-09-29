@@ -10,6 +10,7 @@ import { globalNetworkEngine } from '../../../engine/reality/network/NetworkEngi
 import { KerberosInspector } from './KerberosInspector';
 import { ActiveDirectoryConsole } from './ActiveDirectoryConsole';
 import { Dc01Inspector } from './Dc01Inspector';
+import { WindowsDesktop } from './WindowsDesktop';
 import {
   Power,
   Cpu,
@@ -33,6 +34,7 @@ import {
 } from 'lucide-react';
 
 type InspectorTab =
+  | 'desktop'
   | 'system'
   | 'sessions'
   | 'processes'
@@ -328,6 +330,18 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
         {realityMachine && (
           <>
             <button
+              onClick={() => setActiveTab('desktop')}
+              data-testid="tab-desktop"
+              data-state={activeTab === 'desktop' ? 'active' : 'inactive'}
+              className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
+                activeTab === 'desktop'
+                  ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
+                  : 'border-transparent text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {language === 'ar' ? 'سطح المكتب' : 'Desktop'}
+            </button>
+            <button
               onClick={() => setActiveTab('processes')}
               data-testid="tab-processes-inspector"
               data-state={activeTab === 'processes' ? 'active' : 'inactive'}
@@ -410,6 +424,13 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
       {/* Tab Panels */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-4 custom-scrollbar text-xs">
+        {/* ================= TAB: WINDOWS DESKTOP REALITY ================= */}
+        {activeTab === 'desktop' && realityMachine && (
+          <div className="h-[600px] w-full rounded-lg overflow-hidden border border-slate-800 shadow-2xl">
+            <WindowsDesktop machine={realityMachine} />
+          </div>
+        )}
+
         {/* ================= TAB: TRUE NETWORK & DIAGNOSTICS ================= */}
         {activeTab === 'network' && (
           <div className="space-y-3 font-mono">

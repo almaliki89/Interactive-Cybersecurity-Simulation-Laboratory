@@ -754,8 +754,12 @@ export class NetworkEngine {
     }
 
     // 6. LanmanServer Service State
-    const lanmanService = targetMachine?.getServices().find((s) => s.name === 'LanmanServer');
-    const isLanmanServerRunning = lanmanService ? lanmanService.status === 'Running' : true;
+    const legacyLanman = targetMachine?.getServices().find((s) => s.name === "LanmanServer");
+    const isLegacyRunning = legacyLanman ? legacyLanman.status === "Running" : true;
+    let isLanmanServerRunning = isLegacyRunning;
+    if (targetMachine?.desktop?.services) {
+      isLanmanServerRunning = isLegacyRunning && targetMachine.desktop.services.isServiceRunning("LanmanServer");
+    }
 
     if (!isLanmanServerRunning) {
       return {
@@ -883,7 +887,51 @@ export class NetworkEngine {
       };
     }
 
-    // 8. Connection established & Telemetry
+        // 8. NTFS File System ACL Evaluation on Target Server (Intersection with Share ACL)
+    if (targetMachine?.desktop?.fileSystem) {
+      const shareFolderPath = "D:\\Shares\\" + params.shareName;
+      const folderObj = targetMachine.desktop.fileSystem.getFile(shareFolderPath);
+      if (folderObj) {
+        const userGroups = globalActiveDirectoryEngine.groupResolver.resolveUserGroupSids(sessionUserSid);
+        const ntfsResult = targetMachine.desktop.fileSystem.aclEngine.evaluateAccess({
+          aclId: folderObj.aclId,
+          userSid: sessionUserSid,
+          userName: sessionUserName,
+          groupSids: userGroups,
+          requestedRight: "READ",
+        });
+
+        if (!ntfsResult.granted) {
+          globalSimulationRuntime.dispatch({
+            type: "SMB_ACCESS_DENIED",
+            category: "NETWORK",
+            source: params.sourceDeviceId,
+            target: cleanServer,
+            severity: "warn",
+            description: "SMB access failed on " + sharePath + " for " + sessionUserName + ": " + ntfsResult.reason,
+            payload: { ...params, error: "ACCESS_DENIED", details: ntfsResult.reason },
+          });
+
+          return {
+            success: false,
+            authenticationSucceeded: true,
+            authorizationSucceeded: false,
+            failureReason: "ACCESS_DENIED",
+            userPrincipal,
+            userSid: sessionUserSid,
+            serviceSpn: adAccess.serviceSpn,
+            serverHostname: cleanServer,
+            shareName: params.shareName,
+            user: sessionUserName,
+            error: "ACCESS_DENIED",
+            errorDetails: "Access is denied (0x80070005) - User " + sessionUserName + " authenticated via Kerberos but is denied by NTFS ACL on " + shareFolderPath + " (" + ntfsResult.reason + ")",
+            latencyMs: 5.0,
+          };
+        }
+      }
+    }
+
+    // 9. Connection established & Telemetry
     this.connections.createConnection({
       protocol: 'TCP',
       sourceDevice: params.sourceDeviceId,

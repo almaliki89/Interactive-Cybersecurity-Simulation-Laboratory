@@ -18,6 +18,7 @@ import {
 } from '../types';
 import { IntegrityLevel } from '../../../simulations/windows/logic/token';
 import { WELL_KNOWN_SIDS } from '../../../simulations/windows/logic/identity';
+import { WindowsDesktopEngine } from './WindowsDesktopEngine';
 
 export interface WindowsMachineConfig {
   id: string;
@@ -51,6 +52,7 @@ export class WindowsMachine {
   public ipAddress: string;
   public isDomainJoined: boolean;
   public status: MachineStatus = 'OFFLINE';
+  public readonly desktop: WindowsDesktopEngine;
 
   private processes: Map<number, RealityProcessState> = new Map();
   private sessions: Map<number, RealitySessionState> = new Map();
@@ -69,6 +71,12 @@ export class WindowsMachine {
     this.domain = config.domain || 'NEXORA.LOCAL';
     this.ipAddress = config.ipAddress;
     this.isDomainJoined = config.isDomainJoined ?? true;
+
+    this.desktop = new WindowsDesktopEngine({
+      machineId: this.id,
+      hostname: this.hostname,
+      domain: this.domain,
+    });
 
     this.initDefaultUsers();
     this.initDefaultServices();
@@ -723,6 +731,14 @@ export class WindowsMachine {
 
     // Interactive logon spawns a user shell explorer.exe!
     if (params.logonType === 'Interactive' || params.logonType === 'RemoteInteractive') {
+      this.desktop.handleLogon({
+        sessionId: nextSessionId,
+        userSid: resolvedUser.sid,
+        userName: resolvedUser.username,
+        domain: this.domain,
+        vTime: params.virtualTime,
+      });
+
       this.spawnProcess({
         parentPid: 680, // wininit.exe / userinit-like parent
         name: 'explorer.exe',
@@ -748,6 +764,7 @@ export class WindowsMachine {
 
     this.lastUpdatedVirtualTime = virtualTime;
     session.status = 'LOGGED_OFF';
+    this.desktop.handleLogoff(virtualTime);
 
     // Terminate all user processes associated with this sessionId
     this.processes.forEach((p) => {
@@ -918,6 +935,7 @@ export class WindowsMachine {
       lastUpdatedVirtualTime: this.lastUpdatedVirtualTime,
       users: Array.from(this.users.values()).map((u) => ({ ...u })),
       tokens: Array.from(this.tokens.values()).map((t) => ({ ...t })),
+      windowsReality: this.desktop.exportSnapshot(),
     };
   }
 
@@ -960,6 +978,10 @@ export class WindowsMachine {
       snapshot.tokens.forEach((t) => this.tokens.set(t.tokenId, { ...t }));
     } else {
       this.initSystemToken();
+    }
+
+    if ((snapshot as any).windowsReality) {
+      this.desktop.restoreSnapshot((snapshot as any).windowsReality);
     }
   }
 }
