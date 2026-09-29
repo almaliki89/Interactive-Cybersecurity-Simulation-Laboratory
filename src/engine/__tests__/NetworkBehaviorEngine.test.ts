@@ -15,6 +15,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { globalNetworkEngine } from '../reality/network/NetworkEngine';
 import { useDigitalTwinStore } from '../reality/digitalTwinStore';
 import { globalRealityEngine } from '../reality/RealityEngine';
+import { globalActiveDirectoryEngine } from '../reality/identity/ActiveDirectoryEngine';
 import { globalSimulationRuntime } from '../runtime/SimulationRuntime';
 
 describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
@@ -241,9 +242,9 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
       logonType: 'Interactive',
     });
     const fileMachine = globalRealityEngine.registry.getMachine('FILE01');
-    const lanman = fileMachine?.getServices().find((s) => s.name === 'LanmanServer');
-    if (lanman) {
-      lanman.status = 'Stopped';
+    if (fileMachine) {
+      fileMachine.desktop.services.stopService('LanmanServer');
+      expect(fileMachine.getService('LanmanServer')?.status).toBe('STOPPED');
     }
 
     const res = globalNetworkEngine.accessSmbShare({
@@ -254,6 +255,8 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
     });
     expect(res.success).toBe(false);
     expect(res.error).toBe('SERVICE_UNAVAILABLE');
+
+    fileMachine?.desktop.services.startService('LanmanServer');
   });
 
   // 17. Unauthorized Finance share returns ACCESS_DENIED
@@ -486,5 +489,164 @@ describe('OMEGA ULTRA REALITY V1.2 — True Network Behavior Suite', () => {
     const pass2 = executeSequence();
 
     expect(pass1).toEqual(pass2);
+  });
+
+  describe('24. V1.4.1 Final Service State Unification Suite (A-H)', () => {
+    it('A. FILE01 LanmanServer is initially RUNNING', () => {
+      const file01 = globalRealityEngine.registry.getMachine('FILE01')!;
+      expect(file01.getService('LanmanServer')?.status).toBe('RUNNING');
+      expect(file01.isServiceRunning('LanmanServer')).toBe(true);
+    });
+
+    it('B. desktop.services.stopService("LanmanServer") updates getService("LanmanServer").status to STOPPED', () => {
+      const file01 = globalRealityEngine.registry.getMachine('FILE01')!;
+      file01.desktop.services.stopService('LanmanServer');
+      expect(file01.getService('LanmanServer')?.status).toBe('STOPPED');
+      expect(file01.isServiceRunning('LanmanServer')).toBe(false);
+    });
+
+    it('C. SMB access after stop returns failureReason SERVICE_UNAVAILABLE', () => {
+      globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: 'P@ssword123!',
+        logonType: 'Interactive',
+      });
+      const file01 = globalRealityEngine.registry.getMachine('FILE01')!;
+      file01.desktop.services.stopService('LanmanServer');
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+        userName: 'sara.finance',
+      });
+      expect(res.success).toBe(false);
+      expect(res.failureReason).toBe('SERVICE_UNAVAILABLE');
+    });
+
+    it('D. Starting LanmanServer restores SMB access', () => {
+      globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: 'P@ssword123!',
+        logonType: 'Interactive',
+      });
+      const file01 = globalRealityEngine.registry.getMachine('FILE01')!;
+      file01.desktop.services.startService('LanmanServer');
+      expect(file01.getService('LanmanServer')?.status).toBe('RUNNING');
+
+      const res = globalNetworkEngine.accessSmbShare({
+        sourceDeviceId: 'FIN-WS01',
+        serverHostname: 'FILE01',
+        shareName: 'Finance',
+        userName: 'sara.finance',
+      });
+      expect(res.success).toBe(true);
+    });
+
+    it('E. Stopping DNS on DC01 causes uncached DNS query to fail', () => {
+      const dc01 = globalRealityEngine.registry.getMachine('DC01')!;
+      dc01.desktop.services.stopService('DNS');
+
+      // Flush local client cache on FIN-WS01 to ensure uncached query
+      globalNetworkEngine.dns.flushCache('FIN-WS01');
+
+      const dnsRes = globalNetworkEngine.queryDns('FIN-WS01', 'UNCACHED-SERVER.LOCAL');
+      expect(dnsRes.success).toBe(false);
+      expect(dnsRes.error).toBe('DNS_SERVICE_STOPPED');
+
+      // Restore DNS on DC01
+      dc01.desktop.services.startService('DNS');
+    });
+
+    it('F. Stopping KDC on DC01 causes new TGS request to fail', () => {
+      const dc01 = globalRealityEngine.registry.getMachine('DC01')!;
+      dc01.desktop.services.startService('KDC');
+
+      // 1. Perform domain logon to obtain valid TGT into ticket cache
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+      });
+
+      // 2. Stop KDC on DC01
+      dc01.desktop.services.stopService('KDC');
+
+      // 3. Clear TGS ticket cache while keeping TGT so we attempt contacting KDC for TGS
+      const cache = globalActiveDirectoryEngine.getTicketCache('FIN-WS01');
+      const tgt = cache.getTgt();
+      cache.purge();
+      if (tgt) cache.addTicket(tgt);
+
+      // 4. Attempt requesting service ticket for cifs/FILE01 with KDC stopped
+      const tgsRes = globalActiveDirectoryEngine.accessServiceViaKerberos({
+        workstationHost: 'FIN-WS01',
+        userSid: 'S-1-5-21-99887766-2001',
+        spn: 'cifs/FILE01',
+      });
+      expect(tgsRes.ticket).toBeUndefined();
+      expect(tgsRes.failureReason).toBe('DOMAIN_CONTROLLER_UNREACHABLE');
+
+      // Restore KDC
+      dc01.desktop.services.startService('KDC');
+    });
+
+    it('G. Cached TGS behavior remains correct when KDC is stopped', () => {
+      const dc01 = globalRealityEngine.registry.getMachine('DC01')!;
+      dc01.desktop.services.startService('KDC');
+
+      // Perform domain logon
+      globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+      });
+
+      // Obtain initial TGS while KDC is online
+      const initialTgs = globalActiveDirectoryEngine.accessServiceViaKerberos({
+        workstationHost: 'FIN-WS01',
+        userSid: 'S-1-5-21-99887766-2001',
+        spn: 'cifs/FILE01',
+      });
+      expect(initialTgs.ticket).toBeDefined();
+
+      // Now stop KDC on DC01
+      dc01.desktop.services.stopService('KDC');
+
+      // Requesting existing cached TGS must STILL succeed from cache!
+      const cachedTgs = globalActiveDirectoryEngine.accessServiceViaKerberos({
+        workstationHost: 'FIN-WS01',
+        userSid: 'S-1-5-21-99887766-2001',
+        spn: 'cifs/FILE01',
+      });
+      expect(cachedTgs.ticket).toBeDefined();
+      expect(cachedTgs.ticket?.ticketId).toBe(initialTgs.ticket?.ticketId);
+
+      // Restore KDC
+      dc01.desktop.services.startService('KDC');
+    });
+
+    it('H. Snapshot and restore preserves unified service state exactly', () => {
+      const file01 = globalRealityEngine.registry.getMachine('FILE01')!;
+      file01.desktop.services.startService('LanmanServer');
+      expect(file01.getService('LanmanServer')?.status).toBe('RUNNING');
+
+      // Take snapshot
+      const snapshot = globalRealityEngine.getStateSnapshot();
+
+      // Stop LanmanServer
+      file01.desktop.services.stopService('LanmanServer');
+      expect(file01.getService('LanmanServer')?.status).toBe('STOPPED');
+
+      // Restore snapshot
+      globalRealityEngine.restoreStateSnapshot(snapshot);
+
+      // Verify LanmanServer state restored to RUNNING
+      const restoredFile01 = globalRealityEngine.registry.getMachine('FILE01')!;
+      expect(restoredFile01.getService('LanmanServer')?.status).toBe('RUNNING');
+      expect(restoredFile01.isServiceRunning('LanmanServer')).toBe(true);
+    });
   });
 });

@@ -56,7 +56,6 @@ export class WindowsMachine {
 
   private processes: Map<number, RealityProcessState> = new Map();
   private sessions: Map<number, RealitySessionState> = new Map();
-  private services: Map<string, RealityServiceState> = new Map();
   private files: Map<string, RealityFileState> = new Map();
   private registry: Map<string, any> = new Map();
   private sockets: Map<string, RealitySocketState> = new Map();
@@ -79,7 +78,6 @@ export class WindowsMachine {
     });
 
     this.initDefaultUsers();
-    this.initDefaultServices();
     this.initDefaultFilesystem();
   }
 
@@ -828,8 +826,28 @@ export class WindowsMachine {
     return Array.from(this.sessions.values()).filter((s) => s.status === 'ACTIVE');
   }
 
-  public getServices(): RealityServiceState[] {
-    return Array.from(this.services.values());
+  public getServices(): any[] {
+    return this.desktop.services.getAllServices();
+  }
+
+  public getService(name: string) {
+    return this.desktop.services.getService(name);
+  }
+
+  public isServiceRunning(name: string): boolean {
+    return this.desktop.services.isServiceRunning(name);
+  }
+
+  public startService(name: string, vTime?: number) {
+    return this.desktop.services.startService(name, vTime);
+  }
+
+  public stopService(name: string, vTime?: number) {
+    return this.desktop.services.stopService(name, vTime);
+  }
+
+  public restartService(name: string, vTime?: number) {
+    return this.desktop.services.restartService(name, vTime);
   }
 
   public getFiles(): RealityFileState[] {
@@ -845,48 +863,6 @@ export class WindowsMachine {
   }
 
   // --- INITIALIZERS ---
-
-  private initDefaultServices(): void {
-    const defaults: RealityServiceState[] = [
-      {
-        name: 'DnsCache',
-        displayName: 'DNS Client',
-        binaryPath: 'C:\\Windows\\System32\\svchost.exe -k netsvcs -p -s DnsCache',
-        account: 'NT AUTHORITY\\NetworkService',
-        startupType: 'Automatic',
-        status: 'Running',
-        pid: 1024,
-      },
-      {
-        name: 'EventLog',
-        displayName: 'Windows Event Log',
-        binaryPath: 'C:\\Windows\\System32\\svchost.exe -k LocalServiceNetworkRestricted -p -s EventLog',
-        account: 'NT AUTHORITY\\LocalService',
-        startupType: 'Automatic',
-        status: 'Running',
-        pid: 1024,
-      },
-      {
-        name: 'LanmanServer',
-        displayName: 'Server (SMB)',
-        binaryPath: 'C:\\Windows\\System32\\svchost.exe -k netsvcs -p -s LanmanServer',
-        account: 'NT AUTHORITY\\LocalSystem',
-        startupType: 'Automatic',
-        status: 'Running',
-        pid: 1024,
-      },
-      {
-        name: 'Spooler',
-        displayName: 'Print Spooler',
-        binaryPath: 'C:\\Windows\\System32\\spoolsv.exe',
-        account: 'NT AUTHORITY\\LocalSystem',
-        startupType: 'Automatic',
-        status: 'Running',
-      },
-    ];
-
-    defaults.forEach((s) => this.services.set(s.name, s));
-  }
 
   private initDefaultFilesystem(): void {
     const defaultFiles: RealityFileState[] = [
@@ -927,7 +903,15 @@ export class WindowsMachine {
       isDomainJoined: this.isDomainJoined,
       processes: Array.from(this.processes.values()).map((p) => ({ ...p })),
       sessions: Array.from(this.sessions.values()).map((s) => ({ ...s })),
-      services: Array.from(this.services.values()).map((s) => ({ ...s })),
+      services: this.getServices().map((s) => ({
+        name: s.name,
+        displayName: s.displayName,
+        binaryPath: s.binaryPath,
+        account: s.serviceAccount,
+        startupType: s.startupType === 'AUTO' ? 'Automatic' : 'Manual',
+        status: s.status === 'RUNNING' ? 'Running' : 'Stopped',
+        pid: s.pid || undefined,
+      })),
       files: Array.from(this.files.values()).map((f) => ({ ...f })),
       registry: Object.fromEntries(this.registry.entries()),
       sockets: Array.from(this.sockets.values()).map((s) => ({ ...s })),
@@ -953,8 +937,26 @@ export class WindowsMachine {
     this.sessions.clear();
     snapshot.sessions.forEach((s) => this.sessions.set(s.sessionId, { ...s }));
 
-    this.services.clear();
-    snapshot.services.forEach((s) => this.services.set(s.name, { ...s }));
+    if ((snapshot as any).windowsReality) {
+      this.desktop.restoreSnapshot((snapshot as any).windowsReality);
+    } else if (snapshot.services) {
+      const svcMap: Record<string, any> = {};
+      snapshot.services.forEach((s: any) => {
+        svcMap[s.name] = {
+          name: s.name,
+          displayName: s.displayName || s.name,
+          status: s.status === 'Running' || s.status === 'RUNNING' ? 'RUNNING' : 'STOPPED',
+          startupType: s.startupType === 'Automatic' || s.startupType === 'AUTO' ? 'AUTO' : 'MANUAL',
+          serviceAccount: s.account || s.serviceAccount || 'LocalSystem',
+          pid: s.pid || null,
+          dependencies: s.dependencies || [],
+          description: s.description || '',
+          binaryPath: s.binaryPath || '',
+          lastStateChangeVirtualTime: 0,
+        };
+      });
+      this.desktop.services.restoreSnapshot(svcMap);
+    }
 
     this.files.clear();
     snapshot.files.forEach((f) => this.files.set(f.path, { ...f }));

@@ -530,8 +530,9 @@ export class NetworkEngine {
     }
 
     // Check service state
-    const dnsService = dcMachine.getServices().find((s) => s.name === 'DnsCache' || s.name === 'DNS');
-    if (dnsService && dnsService.status !== 'Running') {
+    const dnsSvc = dcMachine.getService('DNS') || dcMachine.getService('DnsCache');
+    const isDnsRunning = dnsSvc ? dnsSvc.status === 'RUNNING' : true;
+    if (!isDnsRunning) {
       const failure: DnsQueryResult = {
         success: false,
         hostname: cleanHost,
@@ -754,12 +755,8 @@ export class NetworkEngine {
     }
 
     // 6. LanmanServer Service State
-    const legacyLanman = targetMachine?.getServices().find((s) => s.name === "LanmanServer");
-    const isLegacyRunning = legacyLanman ? legacyLanman.status === "Running" : true;
-    let isLanmanServerRunning = isLegacyRunning;
-    if (targetMachine?.desktop?.services) {
-      isLanmanServerRunning = isLegacyRunning && targetMachine.desktop.services.isServiceRunning("LanmanServer");
-    }
+    const lanman = targetMachine?.getService('LanmanServer');
+    const isLanmanServerRunning = lanman ? lanman.status === 'RUNNING' : true;
 
     if (!isLanmanServerRunning) {
       return {

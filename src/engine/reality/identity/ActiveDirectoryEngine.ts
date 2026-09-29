@@ -63,10 +63,11 @@ export class ActiveDirectoryEngine {
   /**
    * Helper to evaluate DC reachability from a workstation host
    */
-  public isDcReachable(workstationHost: string, registry?: any): { networkOk: boolean; dnsOk: boolean; dcOnline: boolean } {
+  public isDcReachable(workstationHost: string, registry?: any): { networkOk: boolean; dnsOk: boolean; dcOnline: boolean; kdcOnline: boolean } {
     const reg = registry || globalRealityEngine.registry;
     const dcMachine = reg.getMachine('DC01');
     const dcOnline = dcMachine ? dcMachine.status === 'ONLINE' : false;
+    const kdcOnline = dcMachine ? (dcMachine.isServiceRunning('KDC') && dcMachine.isServiceRunning('NTDS')) : true;
 
     // Test DNS resolution for NEXORA.LOCAL or DC01
     const dnsRes = globalNetworkEngine.queryDns(workstationHost, 'DC01.NEXORA.LOCAL');
@@ -76,7 +77,7 @@ export class ActiveDirectoryEngine {
     const pingRes = globalNetworkEngine.ping(workstationHost, 'DC01');
     const networkOk = pingRes.success;
 
-    return { networkOk, dnsOk, dcOnline };
+    return { networkOk, dnsOk, dcOnline, kdcOnline };
   }
 
   /**
@@ -125,7 +126,7 @@ export class ActiveDirectoryEngine {
       networkPathAvailable: dcStatus.networkOk,
       dnsAvailable: dcStatus.dnsOk,
       secureChannelHealthy,
-      dcMachineOnline: dcStatus.dcOnline,
+      dcMachineOnline: dcStatus.dcOnline && dcStatus.kdcOnline,
       localUserEnabled,
     });
 
@@ -302,7 +303,7 @@ export class ActiveDirectoryEngine {
 
     // 5. Contact KDC (DC01) to request TGS
     const dcStatus = this.isDcReachable(params.workstationHost);
-    if (!dcStatus.dcOnline || !dcStatus.networkOk) {
+    if (!dcStatus.dcOnline || !dcStatus.networkOk || !dcStatus.kdcOnline) {
       return { failureReason: 'DOMAIN_CONTROLLER_UNREACHABLE' };
     }
 

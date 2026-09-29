@@ -216,7 +216,13 @@ export class WindowsServiceManager {
   }
 
   public getService(name: string): WindowsService | undefined {
-    return this.services.get(name);
+    const exact = this.services.get(name);
+    if (exact) return exact;
+    const lower = name.toLowerCase();
+    for (const [k, v] of this.services.entries()) {
+      if (k.toLowerCase() === lower) return v;
+    }
+    return undefined;
   }
 
   public getAllServices(): WindowsService[] {
@@ -224,7 +230,7 @@ export class WindowsServiceManager {
   }
 
   public isServiceRunning(name: string): boolean {
-    const s = this.services.get(name);
+    const s = this.getService(name);
     return s?.status === 'RUNNING';
   }
 
@@ -232,7 +238,7 @@ export class WindowsServiceManager {
    * Starts a service, checking dependencies.
    */
   public startService(name: string, vTime?: number): { success: boolean; error?: string } {
-    const s = this.services.get(name);
+    const s = this.getService(name);
     if (!s) {
       return { success: false, error: `Service '${name}' does not exist on machine '${this.machineId}'.` };
     }
@@ -245,7 +251,7 @@ export class WindowsServiceManager {
 
     // Check dependencies
     for (const dep of s.dependencies) {
-      const depS = this.services.get(dep);
+      const depS = this.getService(dep);
       if (!depS || depS.status !== 'RUNNING') {
         return {
           success: false,
@@ -261,7 +267,7 @@ export class WindowsServiceManager {
       s.pid = 1500 + Math.abs(name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 8000);
     }
 
-    // Emit System Event Log 7036
+    // Emit System Event Log 7036 to Runtime & Machine
     globalSimulationRuntime.dispatch({
       type: 'WINDOWS_SERVICE_STATE_CHANGED',
       category: 'SYSTEM',
@@ -279,6 +285,28 @@ export class WindowsServiceManager {
       },
     });
 
+    try {
+      const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(this.machineId);
+      if (regMachine) {
+        regMachine.addEventLog({
+          channel: 'System',
+          eventId: 7036,
+          virtualTime: vt,
+          provider: 'Service Control Manager',
+          level: 'Information',
+          task: 'Service State Change',
+          computer: regMachine.hostname,
+          user: 'NT AUTHORITY\\SYSTEM',
+          data: {
+            serviceName: s.name,
+            displayName: s.displayName,
+            status: 'RUNNING',
+            virtualTime: vt,
+          },
+        });
+      }
+    } catch (_) {}
+
     return { success: true };
   }
 
@@ -286,7 +314,7 @@ export class WindowsServiceManager {
    * Stops a service.
    */
   public stopService(name: string, vTime?: number): { success: boolean; error?: string } {
-    const s = this.services.get(name);
+    const s = this.getService(name);
     if (!s) {
       return { success: false, error: `Service '${name}' does not exist on machine '${this.machineId}'.` };
     }
@@ -299,7 +327,7 @@ export class WindowsServiceManager {
     s.lastStateChangeVirtualTime = vt;
     s.pid = null;
 
-    // Emit System Event Log 7036
+    // Emit System Event Log 7036 to Runtime & Machine
     globalSimulationRuntime.dispatch({
       type: 'WINDOWS_SERVICE_STATE_CHANGED',
       category: 'SYSTEM',
@@ -317,6 +345,28 @@ export class WindowsServiceManager {
       },
     });
 
+    try {
+      const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(this.machineId);
+      if (regMachine) {
+        regMachine.addEventLog({
+          channel: 'System',
+          eventId: 7036,
+          virtualTime: vt,
+          provider: 'Service Control Manager',
+          level: 'Warning',
+          task: 'Service State Change',
+          computer: regMachine.hostname,
+          user: 'NT AUTHORITY\\SYSTEM',
+          data: {
+            serviceName: s.name,
+            displayName: s.displayName,
+            status: 'STOPPED',
+            virtualTime: vt,
+          },
+        });
+      }
+    } catch (_) {}
+
     return { success: true };
   }
 
@@ -333,7 +383,7 @@ export class WindowsServiceManager {
    * Sets the startup type for a service.
    */
   public setStartupType(name: string, startupType: ServiceStartupType, vTime?: number): { success: boolean; error?: string } {
-    const s = this.services.get(name);
+    const s = this.getService(name);
     if (!s) {
       return { success: false, error: `Service '${name}' not found.` };
     }
@@ -360,6 +410,29 @@ export class WindowsServiceManager {
         virtualTime: vt,
       },
     });
+
+    try {
+      const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(this.machineId);
+      if (regMachine) {
+        regMachine.addEventLog({
+          channel: 'System',
+          eventId: 7040,
+          virtualTime: vt,
+          provider: 'Service Control Manager',
+          level: 'Information',
+          task: 'Service Config Change',
+          computer: regMachine.hostname,
+          user: 'NT AUTHORITY\\SYSTEM',
+          data: {
+            serviceName: s.name,
+            displayName: s.displayName,
+            oldStartupType: oldType,
+            newStartupType: startupType,
+            virtualTime: vt,
+          },
+        });
+      }
+    } catch (_) {}
 
     return { success: true };
   }
