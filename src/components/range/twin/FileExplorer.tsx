@@ -55,6 +55,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   const [selectedFile, setSelectedFile] = useState<FileObject | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isShareAccessError, setIsShareAccessError] = useState<string | null>(null);
+  const [shareAccessResult, setShareAccessResult] = useState<{
+    state: 'success' | 'denied' | 'unavailable';
+    reason: string;
+    details?: string;
+  } | null>(null);
   const [shareFiles, setShareFiles] = useState<FileObject[]>([]);
   const [isNetworkShare, setIsNetworkShare] = useState<boolean>(false);
   const [newFileName, setNewFileName] = useState<string>('');
@@ -71,6 +76,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
     setPathInput(norm);
     setSelectedFile(null);
     setIsShareAccessError(null);
+    setShareAccessResult(null);
+    setRefreshTrigger((prev) => prev + 1);
 
     if (addToHistory) {
       const nextHist = history.slice(0, historyIndex + 1);
@@ -137,9 +144,33 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       });
 
       if (!smbRes.success) {
-        setIsShareAccessError(smbRes.errorDetails || 'Access Denied');
+        const isUnavailable =
+          smbRes.failureReason === 'SERVICE_UNAVAILABLE' ||
+          smbRes.error === 'SERVICE_UNAVAILABLE';
+        const failureReason =
+          smbRes.failureReason ||
+          smbRes.error ||
+          (isUnavailable ? 'SERVICE_UNAVAILABLE' : 'ACCESS_DENIED');
+        const stateType: 'unavailable' | 'denied' = isUnavailable ? 'unavailable' : 'denied';
+        const details =
+          smbRes.errorDetails ||
+          (isUnavailable
+            ? `LanmanServer service is stopped on '${serverHostname}'`
+            : 'Access Denied');
+
+        setShareAccessResult({
+          state: stateType,
+          reason: failureReason,
+          details,
+        });
+        setIsShareAccessError(details);
         setShareFiles([]);
       } else {
+        setShareAccessResult({
+          state: 'success',
+          reason: '',
+          details: 'Access Granted',
+        });
         setIsShareAccessError(null);
         const targetMachine = globalRealityEngine.registry.getMachine(serverHostname);
         if (targetMachine?.desktop?.fileSystem) {
@@ -156,6 +187,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
     } else {
       setIsNetworkShare(false);
       setIsShareAccessError(null);
+      setShareAccessResult(null);
     }
   }, [currentPath, desktop, activeSession.userSid, refreshTrigger]);
 
@@ -484,22 +516,51 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
 
         {/* Center File Content List */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Share Access Error Banner */}
-          {isShareAccessError && (
-            <div
-              data-testid="file-access-result"
-              data-state="denied"
-              className="m-3 p-3 bg-rose-950/40 border border-rose-800/60 rounded flex items-start gap-2.5 text-xs text-rose-200"
-            >
-              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-rose-300">Network Share Access Denied</div>
-                <div className="mt-0.5 text-slate-300">{isShareAccessError}</div>
-                <div className="mt-1.5 text-[11px] text-slate-400">
-                  Kerberos authentication and NTFS authorization failed. Verify that your logged-in user possesses valid TGT/TGS tickets and the required Security Group memberships.
+          {/* Share Access Result Banner / Indicator */}
+          {isNetworkShare && shareAccessResult && (
+            shareAccessResult.state === 'success' ? (
+              <div
+                data-testid="file-access-result"
+                data-state="success"
+                data-reason=""
+                className="sr-only"
+                aria-hidden="true"
+              />
+            ) : (
+              <div
+                data-testid="file-access-result"
+                data-state={shareAccessResult.state}
+                data-reason={shareAccessResult.reason}
+                className={`m-3 p-3 rounded flex items-start gap-2.5 text-xs ${
+                  shareAccessResult.state === 'unavailable'
+                    ? 'bg-amber-950/40 border border-amber-800/60 text-amber-200'
+                    : 'bg-rose-950/40 border border-rose-800/60 text-rose-200'
+                }`}
+              >
+                <AlertTriangle
+                  className={`w-5 h-5 shrink-0 mt-0.5 ${
+                    shareAccessResult.state === 'unavailable' ? 'text-amber-400' : 'text-rose-400'
+                  }`}
+                />
+                <div>
+                  <div
+                    className={`font-semibold ${
+                      shareAccessResult.state === 'unavailable' ? 'text-amber-300' : 'text-rose-300'
+                    }`}
+                  >
+                    {shareAccessResult.state === 'unavailable'
+                      ? 'Network Share Unavailable'
+                      : 'Network Share Access Denied'}
+                  </div>
+                  <div className="mt-0.5 text-slate-300">{shareAccessResult.details}</div>
+                  <div className="mt-1.5 text-[11px] text-slate-400">
+                    {shareAccessResult.state === 'unavailable'
+                      ? `LanmanServer service is stopped on '${currentPath.slice(2).split('\\')[0] || 'FILE01'}'. Start the service via Services Console to resume share operations.`
+                      : 'Kerberos authentication and NTFS authorization failed. Verify that your logged-in user possesses valid TGT/TGS tickets and the required Security Group memberships.'}
+                  </div>
                 </div>
               </div>
-            </div>
+            )
           )}
 
           {/* Recycle Bin View */}

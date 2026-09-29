@@ -84,7 +84,10 @@ export const CyberRange: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden font-sans select-none">
+    <div
+      data-testid="cyber-range-root"
+      className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden font-sans select-none"
+    >
       {/* Top Viewport Navigation & Toolbar */}
       <div className="h-11 border-b border-slate-900 bg-slate-950 px-3.5 flex items-center justify-between z-20 shrink-0">
         {/* Left: Identity & Synchronized Reality Indicator */}

@@ -157,7 +157,11 @@ export const ServicesConsole: React.FC<ServicesConsoleProps> = ({ desktop }) => 
                     <Cog className={`w-4 h-4 ${s.status === 'RUNNING' ? 'text-cyan-400' : 'text-slate-500'}`} />
                     <span className="truncate font-medium">{s.displayName}</span>
                   </div>
-                  <div className="col-span-3 flex items-center gap-1.5 text-[11px]">
+                  <div
+                    className="col-span-3 flex items-center gap-1.5 text-[11px]"
+                    data-testid={`service-status-${s.name}`}
+                    data-state={s.status}
+                  >
                     {s.status === 'RUNNING' ? (
                       <span className="flex items-center gap-1 text-emerald-400 font-medium">
                         <CheckCircle2 className="w-3 h-3" />
@@ -196,7 +200,11 @@ export const ServicesConsole: React.FC<ServicesConsoleProps> = ({ desktop }) => 
             <div className="py-2.5 space-y-2 text-xs border-b border-slate-800">
               <div>
                 <div className="text-[10px] font-semibold text-slate-500 uppercase">Status</div>
-                <div className="mt-0.5 flex items-center gap-1.5">
+                <div
+                  className="mt-0.5 flex items-center gap-1.5"
+                  data-testid={`service-detail-status-${selectedService.name}`}
+                  data-state={selectedService.status}
+                >
                   {selectedService.status === 'RUNNING' ? (
                     <span className="px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-700/50 text-emerald-300 font-medium">
                       RUNNING (PID: {selectedService.pid || 'N/A'})

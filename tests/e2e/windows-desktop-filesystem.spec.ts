@@ -194,6 +194,7 @@ test.describe('Windows Desktop & File System Reality Suite', () => {
     // Stop LanmanServer Service
     const stopBtn = page.getByTestId('service-action-stop-LanmanServer');
     await stopBtn.click();
+    await expect(page.getByTestId('service-status-LanmanServer')).toHaveAttribute('data-state', 'STOPPED');
 
     // 2. Switch back to FIN-WS01 (Sara)
     const finBtn = page.getByTestId('nav-device-FIN-WS01');
@@ -212,7 +213,8 @@ test.describe('Windows Desktop & File System Reality Suite', () => {
     // Verify share is unavailable due to service stopped
     const accessResult = page.getByTestId('file-access-result');
     await expect(accessResult).toBeVisible({ timeout: 15000 });
-    await expect(accessResult).toHaveAttribute('data-state', 'denied');
+    await expect(accessResult).toHaveAttribute('data-state', 'unavailable');
+    await expect(accessResult).toHaveAttribute('data-reason', 'SERVICE_UNAVAILABLE');
     await expect(accessResult).toContainText('LanmanServer service is stopped on \'FILE01\'');
 
     await saveScreenshot(page, 'file-explorer-share-service-stopped.png');
@@ -237,6 +239,7 @@ test.describe('Windows Desktop & File System Reality Suite', () => {
 
     const startBtn = page.getByTestId('service-action-start-LanmanServer');
     await startBtn.click();
+    await expect(page.getByTestId('service-status-LanmanServer')).toHaveAttribute('data-state', 'RUNNING');
 
     // 2. Switch back to FIN-WS01 (Sara)
     const finBtn = page.getByTestId('nav-device-FIN-WS01');

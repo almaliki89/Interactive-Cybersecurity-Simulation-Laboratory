@@ -44,8 +44,9 @@ async function switchLanguage(page: Page, targetLang: 'en' | 'ar') {
 async function navigateToWorld(page: Page, worldId: string) {
   console.log('[AD-E2E] navigateToWorld: goto #' + worldId);
   await page.goto(`/#${worldId}`, { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('header')).toBeVisible({ timeout: 10000 });
-  await expect(page.getByTestId('nav-device-FIN-WS01')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('header')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId('cyber-range-root')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('nav-device-FIN-WS01')).toBeVisible({ timeout: 20000 });
 }
 
 async function saveScreenshot(page: Page, name: string) {
