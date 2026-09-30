@@ -7,6 +7,9 @@ import React, { useState } from 'react';
 import { globalGroupPolicyEngine } from '../../../engine/reality/policy/GroupPolicyEngine';
 import { GroupPolicyObject, GpoLink } from '../../../engine/reality/policy/types';
 import { BASELINE_OUS } from '../../../engine/reality/identity/DirectoryStore';
+import { globalNetworkEngine } from '../../../engine/reality/network/NetworkEngine';
+import { globalSimulationRuntime } from '../../../engine/runtime/SimulationRuntime';
+import type { WindowsMachine } from '../../../engine/reality/windows/WindowsMachine';
 import {
   FolderTree,
   Shield,
@@ -23,6 +26,14 @@ import {
   UserCheck,
 } from 'lucide-react';
 
+type RealityGlobal = typeof globalThis & {
+  globalRealityEngine?: {
+    registry: {
+      getMachine: (id: string) => WindowsMachine | undefined;
+    };
+  };
+};
+
 interface GroupPolicyConsoleProps {
   activeMachineId?: string;
   onRefresh?: () => void;
@@ -33,11 +44,81 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
   const [selectedOu, setSelectedOu] = useState<string>('OU=Workstations,DC=NEXORA,DC=LOCAL');
   const [selectedGpoId, setSelectedGpoId] = useState<string>('gpo-workstation-baseline');
   const [activeTab, setActiveTab] = useState<'scope' | 'computer' | 'user' | 'delegation'>('scope');
+  const [, setRevision] = useState(0);
+  const [applyState, setApplyState] = useState<'idle' | 'success' | 'failure'>('idle');
+  const [applyMessage, setApplyMessage] = useState('');
 
   const gpos = store.getAllGpos();
   const selectedGpo = store.getGpo(selectedGpoId);
   const links = store.getAllLinks();
   const isBlockInheritance = store.isOuBlockingInheritance(selectedOu);
+  const activeMachine = activeMachineId
+    ? (globalThis as RealityGlobal).globalRealityEngine?.registry.getMachine(activeMachineId)
+    : undefined;
+  const lanmanRuntimeState = activeMachine?.getService('LanmanServer')?.status ?? 'UNKNOWN';
+  const smbFirewallRuntimeState = globalNetworkEngine.firewall.isPortBlocked('TCP', 445) ? 'BLOCKED' : 'ALLOWED';
+
+  const mutateSelectedGpo = (mutator: (gpo: GroupPolicyObject) => GroupPolicyObject) => {
+    if (!selectedGpo) return;
+    const updated = mutator(selectedGpo);
+    store.saveGpo({
+      ...updated,
+      versionComputer: updated.versionComputer + 1,
+      modifiedVirtualTime: globalSimulationRuntime.clock.getVirtualTime(),
+    });
+    setRevision((v) => v + 1);
+    setApplyState('idle');
+    setApplyMessage('');
+  };
+
+  const handleLanmanPolicyChange = (disabled: boolean) => {
+    mutateSelectedGpo((gpo) => ({
+      ...gpo,
+      computerSettings: {
+        ...gpo.computerSettings,
+        serviceStartup: {
+          ...(gpo.computerSettings.serviceStartup || {}),
+          LanmanServer: disabled ? 'DISABLED' : 'AUTO',
+        },
+      },
+    }));
+  };
+
+  const handleFirewallPolicyChange = (blocked: boolean) => {
+    mutateSelectedGpo((gpo) => ({
+      ...gpo,
+      computerSettings: {
+        ...gpo.computerSettings,
+        firewallProfile: {
+          ...(gpo.computerSettings.firewallProfile || {}),
+          enabled: true,
+          blockInboundSmb: blocked,
+        },
+      },
+    }));
+  };
+
+  const handleApplyToActiveMachine = () => {
+    if (!activeMachine) {
+      setApplyState('failure');
+      setApplyMessage('Active machine is unavailable.');
+      return;
+    }
+
+    const session = activeMachine.getActiveSessions()[0];
+    const result = globalGroupPolicyEngine.gpupdate(
+      activeMachine,
+      session?.userName,
+      session?.userSid,
+      true,
+      globalSimulationRuntime.clock.getVirtualTime()
+    );
+
+    setApplyState(result.success ? 'success' : 'failure');
+    setApplyMessage(result.output);
+    setRevision((v) => v + 1);
+    if (onRefresh) onRefresh();
+  };
 
   const handleToggleEnforced = (link: GpoLink) => {
     store.setLinkEnforced(link.id, !link.enforced);
@@ -234,12 +315,14 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
                     Security Scope
                   </button>
                   <button
+                    data-testid="gpo-tab-computer-config"
                     onClick={() => setActiveTab('computer')}
                     className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase transition-colors ${activeTab === 'computer' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     Computer Config
                   </button>
                   <button
+                    data-testid="gpo-tab-user-config"
                     onClick={() => setActiveTab('user')}
                     className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase transition-colors ${activeTab === 'user' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
                   >
@@ -277,6 +360,59 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
                     <pre className="p-3 bg-slate-900 rounded border border-slate-800 text-slate-300 overflow-x-auto custom-scrollbar">
                       {JSON.stringify(selectedGpo.computerSettings, null, 2)}
                     </pre>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 font-sans" data-testid="gpo-policy-lab-controls">
+                      <label className="flex items-center justify-between gap-3 rounded border border-slate-800 bg-slate-900 p-3">
+                        <div>
+                          <div className="font-semibold text-slate-200">Disable LanmanServer</div>
+                          <div className="text-[10px] text-slate-500">Service startup policy consequence</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          data-testid="policy-lanman-disabled"
+                          checked={selectedGpo.computerSettings.serviceStartup?.LanmanServer === 'DISABLED'}
+                          onChange={(e) => handleLanmanPolicyChange(e.target.checked)}
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between gap-3 rounded border border-slate-800 bg-slate-900 p-3">
+                        <div>
+                          <div className="font-semibold text-slate-200">Block SMB TCP/445</div>
+                          <div className="text-[10px] text-slate-500">Firewall policy consequence</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          data-testid="policy-smb-firewall-blocked"
+                          checked={selectedGpo.computerSettings.firewallProfile?.blockInboundSmb === true}
+                          onChange={(e) => handleFirewallPolicyChange(e.target.checked)}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 font-sans">
+                      <button
+                        type="button"
+                        data-testid="gpo-apply-active-machine"
+                        onClick={handleApplyToActiveMachine}
+                        className="rounded border border-cyan-700 bg-cyan-950 px-3 py-1.5 text-[11px] font-bold text-cyan-300 hover:bg-cyan-900"
+                      >
+                        Apply / gpupdate {activeMachineId || ''}
+                      </button>
+                      <span data-testid="gpo-runtime-lanman" data-state={lanmanRuntimeState} className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[10px]">
+                        LanmanServer: {lanmanRuntimeState}
+                      </span>
+                      <span data-testid="gpo-runtime-smb-firewall" data-state={smbFirewallRuntimeState} className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[10px]">
+                        SMB Firewall: {smbFirewallRuntimeState}
+                      </span>
+                    </div>
+
+                    <div
+                      data-testid="gpo-apply-result"
+                      data-state={applyState}
+                      className="min-h-6 rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] text-slate-300 whitespace-pre-wrap"
+                    >
+                      {applyMessage}
+                    </div>
                   </div>
                 )}
 
