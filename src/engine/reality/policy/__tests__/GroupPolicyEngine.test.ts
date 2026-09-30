@@ -180,6 +180,21 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     expect(screenLockSource.winningGpoId).toBe('gpo-domain-baseline');
   });
 
+  it('7b. Enforced state is link-specific for a GPO with multiple links', () => {
+    const financeLinks = gpoStore.getAllLinks().filter((l) => l.gpoId === 'gpo-finance-policy');
+    expect(financeLinks.length).toBeGreaterThan(1);
+
+    const first = financeLinks[0];
+    const second = financeLinks[1];
+
+    gpoStore.setLinkEnforced(first.id, true);
+
+    const refreshed = gpoStore.getAllLinks().filter((l) => l.gpoId === 'gpo-finance-policy');
+    expect(refreshed.find((l) => l.id === first.id)?.enforced).toBe(true);
+    expect(refreshed.find((l) => l.id === second.id)?.enforced).toBe(false);
+    expect(gpoStore.getGpo('gpo-finance-policy')?.enforced).toBe(false);
+  });
+
   it('8. Block Inheritance on an OU skips non-enforced inherited GPOs', () => {
     // Set Block Inheritance on Workstations OU
     gpoStore.setOuBlockInheritance('OU=Workstations,DC=NEXORA,DC=LOCAL', true);
