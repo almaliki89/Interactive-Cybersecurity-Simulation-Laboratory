@@ -37,14 +37,32 @@ export class PolicyRegistryBridge {
       reg.setValue('HKLM', 'SOFTWARE\\Policies\\Microsoft\\Windows\\Control Panel\\Desktop', 'ScreenSaveTimeOut', 'REG_SZ', compSettings.desktopRestrictions.screenLockTimeout.toString());
     }
 
-    // 4. Custom Registry Settings
+    // 4. Removable storage and Windows Update policy
+    if (compSettings.desktopRestrictions?.disableRemovableStorage !== undefined) {
+      reg.setValue(
+        'HKLM',
+        'SOFTWARE\\Policies\\Microsoft\\Windows\\RemovableStorageDevices',
+        'Deny_All',
+        'REG_DWORD',
+        compSettings.desktopRestrictions.disableRemovableStorage ? 1 : 0
+      );
+    }
+
+    if (compSettings.windowsUpdateMode !== undefined) {
+      const noAutoUpdate = compSettings.windowsUpdateMode === 'disabled' ? 1 : 0;
+      const auOptions = compSettings.windowsUpdateMode === 'auto' ? 4 : 2;
+      reg.setValue('HKLM', 'SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU', 'NoAutoUpdate', 'REG_DWORD', noAutoUpdate);
+      reg.setValue('HKLM', 'SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU', 'AUOptions', 'REG_DWORD', auOptions);
+    }
+
+    // 5. Custom Registry Settings
     if (compSettings.registrySettings) {
       for (const setting of compSettings.registrySettings) {
         reg.setValue(setting.hive, setting.key, setting.valueName, setting.type || 'REG_DWORD', setting.value);
       }
     }
 
-    // 5. User Restrictions
+    // 6. User Restrictions
     if (userSettings) {
       if (userSettings.controlPanelAccess !== undefined) {
         const disabled = userSettings.controlPanelAccess === 'disabled' ? 1 : 0;
@@ -63,6 +81,57 @@ export class PolicyRegistryBridge {
 
       if (userSettings.desktopRestrictions?.screenLockTimeout !== undefined) {
         reg.setValue('HKCU', 'Control Panel\\Desktop', 'ScreenSaveTimeOut', 'REG_SZ', userSettings.desktopRestrictions.screenLockTimeout.toString());
+      }
+
+      if (userSettings.desktopWallpaper?.path !== undefined) {
+        reg.setValue('HKCU', 'Control Panel\\Desktop', 'Wallpaper', 'REG_SZ', userSettings.desktopWallpaper.path || '');
+      }
+      if (userSettings.desktopWallpaper?.style !== undefined) {
+        reg.setValue('HKCU', 'Control Panel\\Desktop', 'WallpaperStyle', 'REG_SZ', userSettings.desktopWallpaper.style || '');
+      }
+
+      if (userSettings.startMenuRestrictions?.hideRun !== undefined) {
+        reg.setValue(
+          'HKCU',
+          'Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer',
+          'NoRun',
+          'REG_DWORD',
+          userSettings.startMenuRestrictions.hideRun ? 1 : 0
+        );
+      }
+      if (userSettings.startMenuRestrictions?.hidePowerOptions !== undefined) {
+        reg.setValue(
+          'HKCU',
+          'Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer',
+          'NoClose',
+          'REG_DWORD',
+          userSettings.startMenuRestrictions.hidePowerOptions ? 1 : 0
+        );
+      }
+
+      if (userSettings.explorerRestrictions?.hideDrives !== undefined) {
+        reg.setValue(
+          'HKCU',
+          'Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer',
+          'NoDrives',
+          'REG_DWORD',
+          userSettings.explorerRestrictions.hideDrives ? 1 : 0
+        );
+      }
+      if (userSettings.explorerRestrictions?.preventFolderOptions !== undefined) {
+        reg.setValue(
+          'HKCU',
+          'Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer',
+          'NoFolderOptions',
+          'REG_DWORD',
+          userSettings.explorerRestrictions.preventFolderOptions ? 1 : 0
+        );
+      }
+
+      if (userSettings.environmentVariables) {
+        for (const [name, value] of Object.entries(userSettings.environmentVariables)) {
+          reg.setValue('HKCU', 'Environment', name, 'REG_SZ', value);
+        }
       }
     }
   }
