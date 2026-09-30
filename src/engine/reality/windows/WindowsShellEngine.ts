@@ -402,10 +402,21 @@ export class WindowsShellEngine {
         if (regMachine) {
           const mCtx = globalGroupPolicyEngine.getMachineContext(regMachine);
           const uCtx = globalGroupPolicyEngine.getUserContext(ctx.userName, ctx.userSid);
-          const rsop = globalGroupPolicyEngine.processor.processPolicy(mCtx, uCtx);
+          const cachedRsop = globalGroupPolicyEngine.getCachedRsop(ctx.machineId);
+          const cachedMatchesUser =
+            cachedRsop?.targetUserSid === ctx.userSid ||
+            cachedRsop?.targetUserName?.toLowerCase() === ctx.userName.toLowerCase();
+          const rsop = cachedMatchesUser
+            ? cachedRsop
+            : globalGroupPolicyEngine.processor.processPolicy(
+                mCtx,
+                uCtx,
+                globalSimulationRuntime.clock.getVirtualTime()
+              );
 
           let out = `\nRSOP Results for ${ctx.domain.toUpperCase()}\\${ctx.userName.toLowerCase()} on ${ctx.hostname.toUpperCase()}: Logging Mode\n`;
-          out += `------------------------------------------------------------------------------------\n\n`;
+          out += `------------------------------------------------------------------------------------\n`;
+          out += `Last policy refresh virtual time: ${cachedMatchesUser ? rsop.lastRefreshVirtualTime : 'N/A'}\n\n`;
 
           out += `COMPUTER SETTINGS\n`;
           out += `------------------\n`;
