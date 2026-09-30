@@ -151,6 +151,20 @@ export class WindowsServiceManager {
       lastStateChangeVirtualTime: 0,
     });
 
+    this.registerService({
+      name: 'gpsvc',
+      displayName: 'Group Policy Client',
+      status: 'RUNNING',
+      startupType: 'AUTO',
+      serviceAccount: 'NT AUTHORITY\\NetworkService',
+      pid: 1250,
+      dependencies: ['RpcSs'],
+      description: 'The service is responsible for applying settings configured by administrators for the computer and users through the Group Policy component.',
+      binaryPath: 'C:\\Windows\\system32\\svchost.exe -k gpsvcGroup',
+      canPause: false,
+      lastStateChangeVirtualTime: 0,
+    });
+
     // Domain Controller Specific Services
     if (isDC) {
       this.registerService({

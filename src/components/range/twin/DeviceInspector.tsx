@@ -11,6 +11,8 @@ import { KerberosInspector } from './KerberosInspector';
 import { ActiveDirectoryConsole } from './ActiveDirectoryConsole';
 import { Dc01Inspector } from './Dc01Inspector';
 import { WindowsDesktop } from './WindowsDesktop';
+import { GroupPolicyConsole } from './GroupPolicyConsole';
+import { ResultantSetOfPolicy } from './ResultantSetOfPolicy';
 import {
   Power,
   Cpu,
@@ -43,7 +45,9 @@ type InspectorTab =
   | 'logs'
   | 'kerberos'
   | 'ad'
-  | 'dc01';
+  | 'dc01'
+  | 'gpo'
+  | 'rsop';
 
 interface DeviceInspectorProps {
   language: 'ar' | 'en';
@@ -404,6 +408,32 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
           data-testid="tab-ad-console"
         >
           AD Console
+        </button>
+
+        <button
+          onClick={() => setActiveTab('gpo')}
+          data-state={activeTab === 'gpo' ? 'active' : 'inactive'}
+          className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
+            activeTab === 'gpo'
+              ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
+              : 'border-transparent text-slate-500 hover:text-slate-300'
+          }`}
+          data-testid="tab-group-policy"
+        >
+          Group Policy
+        </button>
+
+        <button
+          onClick={() => setActiveTab('rsop')}
+          data-state={activeTab === 'rsop' ? 'active' : 'inactive'}
+          className={`flex-1 py-2 px-2 text-center whitespace-nowrap border-b-2 transition-colors ${
+            activeTab === 'rsop'
+              ? 'border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20'
+              : 'border-transparent text-slate-500 hover:text-slate-300'
+          }`}
+          data-testid="tab-rsop"
+        >
+          RSOP
         </button>
 
         {device.id === 'DC01' && (
@@ -1127,6 +1157,20 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
         {activeTab === 'ad' && (
           <div className="h-[450px]">
             <ActiveDirectoryConsole language={language} />
+          </div>
+        )}
+
+        {/* ================= TAB: GROUP POLICY CONSOLE ================= */}
+        {activeTab === 'gpo' && (
+          <div className="h-[450px]">
+            <GroupPolicyConsole activeMachineId={device.id} />
+          </div>
+        )}
+
+        {/* ================= TAB: RESULTANT SET OF POLICY ================= */}
+        {activeTab === 'rsop' && (
+          <div className="h-[450px]">
+            <ResultantSetOfPolicy activeMachineId={device.id} />
           </div>
         )}
 

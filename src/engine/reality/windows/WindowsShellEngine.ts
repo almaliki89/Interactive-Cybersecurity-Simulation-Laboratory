@@ -10,6 +10,7 @@ import { ShellCommandResult } from './types';
 import { FileSystemEngine } from './FileSystemEngine';
 import { WindowsProcessManager } from './WindowsProcessManager';
 import { WindowsServiceManager } from './WindowsServiceManager';
+import { globalGroupPolicyEngine } from '../policy/GroupPolicyEngine';
 
 export interface ShellContext {
   machineId: string;
@@ -335,6 +336,111 @@ export class WindowsShellEngine {
       out += `SystemRoot=C:\\Windows\n`;
       out += `TEMP=C:\\Users\\${ctx.userName.toLowerCase()}\\AppData\\Local\\Temp\n`;
       return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+    }
+
+    // 15. GPUPDATE
+    if (cmd === 'gpupdate') {
+      const isForce = args.some((a) => a.toLowerCase() === '/force');
+      try {
+        const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(ctx.machineId);
+        if (regMachine) {
+          const res = globalGroupPolicyEngine.gpupdate(regMachine, ctx.userName, ctx.userSid, isForce);
+          return {
+            command: rawCommand,
+            exitCode: res.success ? 0 : 1,
+            output: res.output,
+            currentDirectory: ctx.currentDirectory,
+          };
+        }
+      } catch (e: any) {
+        return {
+          command: rawCommand,
+          exitCode: 1,
+          output: `Updating policy...\nFailed to process Group Policy. Error: ${e.message}`,
+          currentDirectory: ctx.currentDirectory,
+        };
+      }
+      return {
+        command: rawCommand,
+        exitCode: 0,
+        output: `Updating policy...\nComputer Policy update has completed successfully.\nUser Policy update has completed successfully.`,
+        currentDirectory: ctx.currentDirectory,
+      };
+    }
+
+    // 16. GPRESULT
+    if (cmd === 'gpresult') {
+      try {
+        const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(ctx.machineId);
+        if (regMachine) {
+          const mCtx = globalGroupPolicyEngine.getMachineContext(regMachine);
+          const uCtx = globalGroupPolicyEngine.getUserContext(ctx.userName, ctx.userSid);
+          const rsop = globalGroupPolicyEngine.processor.processPolicy(mCtx, uCtx);
+
+          let out = `\nRSOP Results for ${ctx.domain.toUpperCase()}\\${ctx.userName.toLowerCase()} on ${ctx.hostname.toUpperCase()}: Logging Mode\n`;
+          out += `------------------------------------------------------------------------------------\n\n`;
+
+          out += `COMPUTER SETTINGS\n`;
+          out += `------------------\n`;
+          out += `    DN: CN=${ctx.hostname.toUpperCase()},${mCtx.ouPath}\n`;
+          out += `    Site Name: Default-First-Site-Name\n\n`;
+          out += `    Applied Group Policy Objects\n`;
+          out += `    ----------------------------\n`;
+          for (const g of rsop.appliedComputerGpos) {
+            out += `        ${g.gpoName}\n`;
+          }
+          if (rsop.appliedComputerGpos.length === 0) {
+            out += `        N/A\n`;
+          }
+
+          out += `\n    The following GPOs were not applied because they were filtered out\n`;
+          out += `    ------------------------------------------------------------------\n`;
+          for (const g of rsop.deniedComputerGpos) {
+            out += `        ${g.gpoName} (Reason: ${g.denialReason || 'Filtered'})\n`;
+          }
+          if (rsop.deniedComputerGpos.length === 0) {
+            out += `        N/A\n`;
+          }
+
+          out += `\nUSER SETTINGS\n`;
+          out += `--------------\n`;
+          out += `    DN: CN=${ctx.userName.toLowerCase()},${uCtx.userOuPath}\n\n`;
+          out += `    Applied Group Policy Objects\n`;
+          out += `    ----------------------------\n`;
+          for (const g of rsop.appliedUserGpos) {
+            out += `        ${g.gpoName}\n`;
+          }
+          if (rsop.appliedUserGpos.length === 0) {
+            out += `        N/A\n`;
+          }
+
+          out += `\n    The following GPOs were not applied because they were filtered out\n`;
+          out += `    ------------------------------------------------------------------\n`;
+          for (const g of rsop.deniedUserGpos) {
+            out += `        ${g.gpoName} (Reason: ${g.denialReason || 'Filtered'})\n`;
+          }
+          if (rsop.deniedUserGpos.length === 0) {
+            out += `        N/A\n`;
+          }
+
+          out += `\n    The user is a member of the following security groups\n`;
+          out += `    ------------------------------------------------------\n`;
+          out += `        Domain Users\n`;
+          if (ctx.userName.includes('finance')) out += `        Finance Users\n`;
+          if (ctx.userName.includes('hr')) out += `        HR Users\n`;
+          if (ctx.userName.includes('it')) out += `        IT Admins\n`;
+          out += `        Authenticated Users\n`;
+
+          return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+        }
+      } catch (_) {}
+
+      return {
+        command: rawCommand,
+        exitCode: 0,
+        output: `RSOP Results for ${ctx.userName} on ${ctx.hostname}:\nApplied GPOs: NEXORA - Domain Security Baseline, NEXORA - Workstation Baseline`,
+        currentDirectory: ctx.currentDirectory,
+      };
     }
 
     return {

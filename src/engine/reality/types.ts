@@ -135,10 +135,13 @@ export interface RealityMachineSnapshot {
 }
 
 import { ActiveDirectorySnapshot } from './identity/types';
+import { GroupPolicySnapshot, AuditPolicy } from './policy/types';
 
 export interface RealityEngineSnapshot {
   virtualTime: number;
   machines: Record<string, RealityMachineSnapshot>;
   network?: NetworkEngineSnapshot;
   identity?: ActiveDirectorySnapshot;
+  groupPolicy?: GroupPolicySnapshot;
+  auditPolicy?: Record<string, AuditPolicy>;
 }

@@ -477,6 +477,25 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             </button>
           ))}
 
+          {desktop.getMappedDrives().length > 0 && (
+            <>
+              <div className="text-[10px] font-semibold tracking-wider text-amber-400 uppercase px-2 py-1 pt-3">
+                Mapped Network Drives
+              </div>
+              {desktop.getMappedDrives().map((drive) => (
+                <button
+                  key={drive.driveLetter}
+                  data-testid={`mapped-drive-${drive.driveLetter.replace(':', '')}`}
+                  onClick={() => navigateTo(drive.remotePath)}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 text-left ${currentPath.startsWith(drive.remotePath) ? 'bg-cyan-950/60 text-cyan-300 font-medium' : 'text-slate-300'}`}
+                >
+                  <Network className="w-4 h-4 text-emerald-400" />
+                  {drive.label || drive.remotePath} ({drive.driveLetter})
+                </button>
+              ))}
+            </>
+          )}
+
           <div className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase px-2 py-1 pt-3">
             Network Shares
           </div>

@@ -20,7 +20,8 @@ import {
   AccessRight,
 } from './types';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
-import { globalRealityEngine } from '../RealityEngine';
+// Removed top-level globalRealityEngine import to break circular dependency
+// import { globalRealityEngine } from '../RealityEngine';
 import { globalNetworkEngine } from '../network/NetworkEngine';
 
 export class ActiveDirectoryEngine {
@@ -64,7 +65,7 @@ export class ActiveDirectoryEngine {
    * Helper to evaluate DC reachability from a workstation host
    */
   public isDcReachable(workstationHost: string, registry?: any): { networkOk: boolean; dnsOk: boolean; dcOnline: boolean; kdcOnline: boolean } {
-    const reg = registry || globalRealityEngine.registry;
+    const reg = registry || (globalThis as any).globalRealityEngine.registry;
     const dcMachine = reg.getMachine('DC01');
     const dcOnline = dcMachine ? dcMachine.status === 'ONLINE' : false;
     const kdcOnline = dcMachine ? (dcMachine.isServiceRunning('KDC') && dcMachine.isServiceRunning('NTDS')) : true;
@@ -93,7 +94,7 @@ export class ActiveDirectoryEngine {
     const vTime = params.vTime ?? globalSimulationRuntime.clock.getVirtualTime();
     const dcStatus = this.isDcReachable(params.workstationHost, params.registry);
 
-    const reg = params.registry || globalRealityEngine.registry;
+    const reg = params.registry || (globalThis as any).globalRealityEngine.registry;
     const workstationMachine = reg.getMachine(params.workstationHost);
     const secureChannelHealthy = workstationMachine ? (workstationMachine as any).secureChannelState !== 'BROKEN_TRUST' : true;
 
@@ -344,7 +345,7 @@ export class ActiveDirectoryEngine {
     });
 
     // Event 4769 on DC01
-    const dcMachine = globalRealityEngine.registry.getMachine('DC01');
+    const dcMachine = (globalThis as any).globalRealityEngine.registry.getMachine('DC01');
     if (dcMachine) {
       dcMachine.addEventLog({
         channel: 'Security',

@@ -10,6 +10,8 @@ import { RealityEngineSnapshot } from './types';
 import { SimulationRuntime, globalSimulationRuntime } from '../runtime/SimulationRuntime';
 import { globalNetworkEngine } from './network/NetworkEngine';
 import { globalActiveDirectoryEngine } from './identity/ActiveDirectoryEngine';
+import { globalPolicyAuditEngine } from './policy/PolicyAuditEngine';
+import { globalGroupPolicyEngine } from './policy/GroupPolicyEngine';
 
 export class RealityEngine {
   public readonly registry: MachineRegistry;
@@ -18,6 +20,7 @@ export class RealityEngine {
   private currentVirtualTime: number = 0;
 
   constructor(runtime: SimulationRuntime = globalSimulationRuntime) {
+    (globalThis as any).globalRealityEngine = this;
     this.registry = new MachineRegistry();
     this.runtime = runtime;
 
@@ -81,7 +84,12 @@ export class RealityEngine {
     });
 
     // Boot baseline machines at virtualTime 0
-    [dc01, file01, finWs01, hrWs01, itWs01].forEach((m) => m.boot(0));
+    [dc01, file01, finWs01, hrWs01, itWs01].forEach((m) => {
+      m.boot(0);
+      if (globalGroupPolicyEngine) {
+        globalGroupPolicyEngine.applyPolicy(m, undefined, undefined, 0);
+      }
+    });
   }
 
   /**
@@ -174,40 +182,47 @@ export class RealityEngine {
     const reportName = cleanUser.split('@')[0];
 
     if (success && session) {
-      this.runtime.dispatch({
-        type: 'WIN_4624',
-        category: 'WINDOWS',
-        source: machine.hostname,
-        target: reportName,
-        severity: 'info',
-        description: `Successful logon on ${machine.hostname} for user ${reportName}`,
-        payload: {
-          eventId: '4624',
-          user: reportName,
-          host: machine.hostname,
-          sourceIp: params.sourceIp || '127.0.0.1',
-          logonType: params.logonType || 'Interactive',
-          sessionId: session.sessionId,
-          tokenId: session.tokenId,
-        },
-      });
+      // 1. Apply User Policy CONSEQUENCE
+      globalGroupPolicyEngine.applyPolicy(machine, params.userName, userSid, vTime);
+
+      if (globalPolicyAuditEngine.isLogonAuditingEnabled(machine.id)) {
+        this.runtime.dispatch({
+          type: 'WIN_4624',
+          category: 'WINDOWS',
+          source: machine.hostname,
+          target: reportName,
+          severity: 'info',
+          description: `Successful logon on ${machine.hostname} for user ${reportName}`,
+          payload: {
+            eventId: '4624',
+            user: reportName,
+            host: machine.hostname,
+            sourceIp: params.sourceIp || '127.0.0.1',
+            logonType: params.logonType || 'Interactive',
+            sessionId: session.sessionId,
+            tokenId: session.tokenId,
+          },
+        });
+      }
     } else {
-      this.runtime.dispatch({
-        type: 'WIN_4625',
-        category: 'WINDOWS',
-        source: machine.hostname,
-        target: reportName,
-        severity: 'warn',
-        description: `Failed logon attempt on ${machine.hostname} for user ${reportName}`,
-        payload: {
-          eventId: '4625',
-          user: reportName,
-          host: machine.hostname,
-          sourceIp: params.sourceIp || '127.0.0.1',
-          logonType: params.logonType || 'Interactive',
-          failureReason,
-        },
-      });
+      if (globalPolicyAuditEngine.isLogonAuditingEnabled(machine.id)) {
+        this.runtime.dispatch({
+          type: 'WIN_4625',
+          category: 'WINDOWS',
+          source: machine.hostname,
+          target: reportName,
+          severity: 'warn',
+          description: `Failed logon attempt on ${machine.hostname} for user ${reportName}`,
+          payload: {
+            eventId: '4625',
+            user: reportName,
+            host: machine.hostname,
+            sourceIp: params.sourceIp || '127.0.0.1',
+            logonType: params.logonType || 'Interactive',
+            failureReason,
+          },
+        });
+      }
     }
 
     return {
@@ -251,24 +266,27 @@ export class RealityEngine {
     });
 
     // Emit consequence telemetry
-    this.runtime.dispatch({
-      type: 'WIN_4688',
-      category: 'WINDOWS',
-      source: machine.hostname,
-      target: params.name,
-      severity: params.commandLine.includes('-enc') || params.commandLine.includes('bypass') ? 'threat' : 'info',
-      description: `Process created: ${params.name} (PID: ${proc.pid})`,
-      payload: {
-        eventId: '4688',
-        user: proc.userName,
-        host: machine.hostname,
-        process: params.name,
-        pid: proc.pid,
-        parentPid: params.parentPid,
-        commandLine: params.commandLine,
-        tokenId: proc.tokenId,
-      },
-    });
+    if (globalPolicyAuditEngine.isProcessCreationAuditingEnabled(machine.id)) {
+      const includeCmd = globalPolicyAuditEngine.isCmdLineLoggingEnabled(machine.id);
+      this.runtime.dispatch({
+        type: 'WIN_4688',
+        category: 'WINDOWS',
+        source: machine.hostname,
+        target: params.name,
+        severity: params.commandLine.includes('-enc') || params.commandLine.includes('bypass') ? 'threat' : 'info',
+        description: `Process created: ${params.name} (PID: ${proc.pid})`,
+        payload: {
+          eventId: '4688',
+          user: proc.userName,
+          host: machine.hostname,
+          process: params.name,
+          pid: proc.pid,
+          parentPid: params.parentPid,
+          commandLine: includeCmd ? params.commandLine : 'REDACTED_BY_POLICY',
+          tokenId: proc.tokenId,
+        },
+      });
+    }
 
     return { process: proc, machine };
   }
@@ -315,6 +333,8 @@ export class RealityEngine {
       machines: this.registry.getStateSnapshot(),
       network: globalNetworkEngine.snapshot(),
       identity: globalActiveDirectoryEngine.getStateSnapshot(),
+      groupPolicy: globalGroupPolicyEngine.exportSnapshot(),
+      auditPolicy: globalPolicyAuditEngine.exportSnapshot(),
     };
   }
 
@@ -326,6 +346,12 @@ export class RealityEngine {
     }
     if (snapshot.identity) {
       globalActiveDirectoryEngine.restoreStateSnapshot(snapshot.identity);
+    }
+    if (snapshot.groupPolicy) {
+      globalGroupPolicyEngine.restoreSnapshot(snapshot.groupPolicy);
+    }
+    if (snapshot.auditPolicy) {
+      globalPolicyAuditEngine.restoreSnapshot(snapshot.auditPolicy);
     }
   }
 

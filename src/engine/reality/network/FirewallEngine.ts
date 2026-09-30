@@ -98,6 +98,42 @@ export class FirewallEngine {
     return [...this.rules];
   }
 
+  public blockPort(protocol: NetworkProtocol, port: number, name = 'Group Policy Block'): void {
+    const id = `FW-GPO-BLOCK-${protocol}-${port}`;
+    const existing = this.rules.find((r) => r.id === id);
+    if (existing) {
+      existing.enabled = true;
+    } else {
+      // Unshift before default deny rule
+      const blockRule: FirewallRule = {
+        id,
+        name,
+        srcNetwork: 'ANY',
+        dstNetwork: 'ANY',
+        protocol,
+        srcPort: 'ANY',
+        dstPort: port,
+        action: 'DENY',
+        enabled: true,
+      };
+      this.rules.unshift(blockRule);
+    }
+  }
+
+  public unblockPort(protocol: NetworkProtocol, port: number): void {
+    const id = `FW-GPO-BLOCK-${protocol}-${port}`;
+    const rule = this.rules.find((r) => r.id === id);
+    if (rule) {
+      rule.enabled = false;
+    }
+  }
+
+  public isPortBlocked(protocol: NetworkProtocol, port: number): boolean {
+    const id = `FW-GPO-BLOCK-${protocol}-${port}`;
+    const rule = this.rules.find((r) => r.id === id);
+    return rule ? rule.enabled : false;
+  }
+
   public snapshot(): FirewallRule[] {
     return this.rules.map((r) => ({ ...r }));
   }

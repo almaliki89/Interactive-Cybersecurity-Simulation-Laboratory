@@ -19,6 +19,7 @@ import { UserProfileEngine } from './UserProfileEngine';
 import { WindowsRegistryEngine } from './WindowsRegistryEngine';
 import { RecycleBinEngine } from './RecycleBinEngine';
 import { WindowsShellEngine } from './WindowsShellEngine';
+import { globalGroupPolicyEngine } from '../policy/GroupPolicyEngine';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
 
 export class WindowsDesktopEngine {
@@ -38,7 +39,16 @@ export class WindowsDesktopEngine {
   private activeSessionId: number | null = null;
   private activeUserSid: string | null = null;
   private activeUserName: string | null = null;
+  private mappedDrives: Array<{ driveLetter: string; remotePath: string; label?: string; persistent?: boolean }> = [];
   private openWindows: Map<string, OpenWindow> = new Map();
+
+  public setMappedDrives(drives: Array<{ driveLetter: string; remotePath: string; label?: string; persistent?: boolean }>): void {
+    this.mappedDrives = [...drives];
+  }
+
+  public getMappedDrives(): Array<{ driveLetter: string; remotePath: string; label?: string; persistent?: boolean }> {
+    return [...this.mappedDrives];
+  }
   private activeWindowId: string | null = null;
   private windowZIndexCounter: number = 10;
   private windowIdCounter: number = 100;
@@ -110,6 +120,14 @@ export class WindowsDesktopEngine {
       vTime: vt,
     });
 
+    // 4. Apply User & Computer Group Policy
+    try {
+      const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(this.machineId);
+      if (regMachine) {
+        globalGroupPolicyEngine.applyPolicy(regMachine, params.userName, params.userSid, vt);
+      }
+    } catch (_) {}
+
     return profile;
   }
 
@@ -127,6 +145,7 @@ export class WindowsDesktopEngine {
     this.activeSessionId = null;
     this.activeUserSid = null;
     this.activeUserName = null;
+    this.mappedDrives = [];
     this.openWindows.clear();
     this.activeWindowId = null;
   }
