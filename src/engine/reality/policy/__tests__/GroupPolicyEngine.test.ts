@@ -341,6 +341,32 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     expect(res.output).toContain('User Policy update has completed successfully');
   });
 
+  it('11b. gpupdate supports computer-only and user-only refresh targets', () => {
+    const finWs01 = realityEngine.registry.getMachine('FIN-WS01')!;
+    const ctx = {
+      machineId: 'FIN-WS01',
+      hostname: 'FIN-WS01',
+      domain: 'NEXORA.LOCAL',
+      userName: 'sara.finance',
+      userSid: 'S-1-5-21-99887766-2001',
+      userGroups: [{ name: 'Finance Users', sid: 'S-1-5-21-99887766-1101', type: 'Security' }],
+      currentDirectory: 'C:\\Users\\sara.finance',
+      fileSystem: finWs01.desktop.fileSystem,
+      processManager: finWs01.desktop.processes,
+      serviceManager: finWs01.desktop.services,
+    };
+
+    const computer = finWs01.desktop.shell.execute('gpupdate /target:computer /force', ctx);
+    expect(computer.exitCode).toBe(0);
+    expect(computer.output).toContain('Computer Policy update has completed successfully');
+    expect(computer.output).not.toContain('User Policy update has completed successfully');
+
+    const user = finWs01.desktop.shell.execute('gpupdate /target:user /force', ctx);
+    expect(user.exitCode).toBe(0);
+    expect(user.output).toContain('User Policy update has completed successfully');
+    expect(user.output).not.toContain('Computer Policy update has completed successfully');
+  });
+
   it('12. gpresult command via shell prints RSOP summary', () => {
     const finWs01 = realityEngine.registry.getMachine('FIN-WS01')!;
     const res = finWs01.desktop.shell.execute('gpresult /r', {
@@ -360,6 +386,7 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     expect(res.output).toContain('Applied Group Policy Objects');
     expect(res.output).toContain('COMPUTER SETTINGS');
     expect(res.output).toContain('USER SETTINGS');
+    expect(res.output).toContain('Last policy refresh virtual time:');
   });
 
   it('13. Fails policy refresh when gpsvc (Group Policy Client service) is stopped', () => {
