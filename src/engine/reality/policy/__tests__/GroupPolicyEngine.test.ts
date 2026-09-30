@@ -61,11 +61,13 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     });
   });
 
-  it('2. Evaluates LSDOU container resolution', () => {
+  it('2. Evaluates full LSDOU container resolution', () => {
     const scopes = linkResolver.resolveContainerScopes('OU=Workstations,DC=NEXORA,DC=LOCAL');
-    expect(scopes.length).toBe(2);
-    expect(scopes[0].level).toBe('Domain');
-    expect(scopes[1].level).toBe('ChildOU');
+    expect(scopes.map((scope) => scope.level)).toEqual(['Local', 'Site', 'Domain', 'ChildOU']);
+    expect(scopes[0].containerPath).toBe('LOCAL=MACHINE');
+    expect(scopes[1].containerPath).toBe('SITE=Default-First-Site-Name');
+    expect(scopes[2].containerPath).toBe('DC=NEXORA,DC=LOCAL');
+    expect(scopes[3].containerPath).toBe('OU=WORKSTATIONS,DC=NEXORA,DC=LOCAL');
   });
 
   it('3. Security Filtering grants access to allowed SIDs and denies others', () => {
@@ -179,6 +181,44 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     const screenLockSource = rsop.settingSources['computer.desktopRestrictions.screenLockTimeout'];
     expect(screenLockSource).toBeDefined();
     expect(screenLockSource.winningGpoId).toBe('gpo-domain-baseline');
+  });
+
+  it('7a. Link order, link, and unlink operations are deterministic', () => {
+    const container = 'OU=Workstations,DC=NEXORA,DC=LOCAL';
+    const before = gpoStore.getLinksForContainer(container);
+    const baseline = before.find((link) => link.gpoId === 'gpo-workstation-baseline')!;
+    const finance = before.find((link) => link.gpoId === 'gpo-finance-policy')!;
+
+    expect(baseline.linkOrder).toBe(1);
+    expect(finance.linkOrder).toBe(2);
+
+    expect(gpoStore.setLinkOrder(finance.id, 1)).toBe(true);
+    const reordered = gpoStore.getLinksForContainer(container);
+    expect(reordered.find((link) => link.gpoId === 'gpo-finance-policy')?.linkOrder).toBe(1);
+    expect(reordered.find((link) => link.gpoId === 'gpo-workstation-baseline')?.linkOrder).toBe(2);
+
+    const custom = gpoStore.createGpo({
+      displayName: 'OMEGA - Link Management Test',
+      versionUser: 1,
+      versionComputer: 1,
+      enabledUser: true,
+      enabledComputer: true,
+      enforced: false,
+      blockInheritanceAware: true,
+      securityFilterSids: ['S-1-5-11'],
+      computerSettings: {},
+      userSettings: {},
+    }, 100);
+
+    const linked = gpoStore.linkGpo(container, custom.id);
+    expect(gpoStore.getLinksForContainer(container).some((link) => link.id === linked.id)).toBe(true);
+
+    expect(gpoStore.unlinkGpo(container, custom.id)).toBe(true);
+    const afterUnlink = gpoStore.getLinksForContainer(container);
+    expect(afterUnlink.some((link) => link.gpoId === custom.id)).toBe(false);
+    expect(afterUnlink.map((link) => link.linkOrder)).toEqual(
+      afterUnlink.map((_, index) => index + 1)
+    );
   });
 
   it('7b. Enforced state is link-specific for a GPO with multiple links', () => {
