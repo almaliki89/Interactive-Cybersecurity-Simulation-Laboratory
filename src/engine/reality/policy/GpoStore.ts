@@ -306,17 +306,23 @@ export class GpoStore {
   }
 
   public linkGpo(containerPath: string, gpoId: string, enforced = false): GpoLink {
-    const existing = this.links.filter((l) => l.containerPath.toUpperCase() === containerPath.toUpperCase());
-    const nextOrder = existing.length + 1;
+    const normalizedContainer = containerPath.toUpperCase();
+    const duplicate = this.links.find(
+      (l) => l.containerPath.toUpperCase() === normalizedContainer && l.gpoId === gpoId
+    );
+    if (duplicate) return duplicate;
+
+    const existing = this.links.filter((l) => l.containerPath.toUpperCase() === normalizedContainer);
     const link: GpoLink = {
       id: `link-${containerPath.replace(/[^a-zA-Z0-9]/g, '-')}-${gpoId}`,
       containerPath,
       gpoId,
-      linkOrder: nextOrder,
+      linkOrder: existing.length + 1,
       enabled: true,
       enforced,
     };
     this.links.push(link);
+    this.normalizeLinkOrders(containerPath);
     return link;
   }
 
@@ -324,11 +330,31 @@ export class GpoStore {
     const idx = this.links.findIndex(
       (l) => l.containerPath.toUpperCase() === containerPath.toUpperCase() && l.gpoId === gpoId
     );
-    if (idx !== -1) {
-      this.links.splice(idx, 1);
-      return true;
-    }
-    return false;
+    if (idx === -1) return false;
+
+    this.links.splice(idx, 1);
+    this.normalizeLinkOrders(containerPath);
+    return true;
+  }
+
+  public setLinkOrder(linkId: string, newOrder: number): boolean {
+    const link = this.links.find((l) => l.id === linkId);
+    if (!link) return false;
+
+    const siblings = this.links
+      .filter((l) => l.containerPath.toUpperCase() === link.containerPath.toUpperCase())
+      .sort((a, b) => a.linkOrder - b.linkOrder || a.id.localeCompare(b.id));
+
+    const currentIndex = siblings.findIndex((l) => l.id === linkId);
+    if (currentIndex === -1) return false;
+
+    const clampedOrder = Math.max(1, Math.min(Math.trunc(newOrder), siblings.length));
+    siblings.splice(currentIndex, 1);
+    siblings.splice(clampedOrder - 1, 0, link);
+    siblings.forEach((sibling, index) => {
+      sibling.linkOrder = index + 1;
+    });
+    return true;
   }
 
   public setLinkEnabled(linkId: string, enabled: boolean): void {
@@ -345,6 +371,15 @@ export class GpoStore {
       // GPO object or implicitly enforce every other link to the same GPO.
       link.enforced = enforced;
     }
+  }
+
+  private normalizeLinkOrders(containerPath: string): void {
+    this.links
+      .filter((l) => l.containerPath.toUpperCase() === containerPath.toUpperCase())
+      .sort((a, b) => a.linkOrder - b.linkOrder || a.id.localeCompare(b.id))
+      .forEach((link, index) => {
+        link.linkOrder = index + 1;
+      });
   }
 
   // --- OU Inheritance Operations ---
