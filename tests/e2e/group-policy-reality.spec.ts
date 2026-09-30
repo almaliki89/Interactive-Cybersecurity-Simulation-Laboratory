@@ -152,7 +152,7 @@ test.describe('Group Policy Reality Suite', () => {
     await page.getByTestId('mapped-drive-F').click();
 
     const access = page.getByTestId('file-access-result');
-    await expect(access).toHaveAttribute('data-state', 'unavailable', { timeout: 10000 });
+    await expect(access).toHaveAttribute('data-state', 'denied', { timeout: 10000 });
     await expect(access).toHaveAttribute('data-reason', 'FIREWALL_DENIED');
 
     await saveScreenshot(page, 'gpo-firewall-smb-blocked.png');
