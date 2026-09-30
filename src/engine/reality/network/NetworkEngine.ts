@@ -23,6 +23,7 @@ import {
   NetworkEngineSnapshot,
 } from './types';
 import { PhysicalConnectivityEngine } from '../PhysicalConnectivityEngine';
+import type { RealitySessionState } from '../types';
 // Removed top-level globalRealityEngine import to break circular dependency
 // import { globalRealityEngine } from '../RealityEngine';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
@@ -776,7 +777,7 @@ export class NetworkEngine {
 
     // 7. Resolve Real Authenticated Session on the Workstation
     const workstationMachine = (globalThis as any).globalRealityEngine.registry.getMachine(params.sourceDeviceId);
-    const activeSession = workstationMachine?.getSessions().find((s) => s.status === 'ACTIVE');
+    const activeSession = workstationMachine?.getSessions().find((s: RealitySessionState) => s.status === 'ACTIVE');
 
     if (!activeSession) {
       return {
@@ -1266,8 +1267,8 @@ Ping statistics for ${target}:
     }
 
     if (cmd === 'whoami') {
-      const machine = globalRealityEngine.registry.getMachine(sourceDeviceId);
-      const activeSession = machine?.getSessions().find((s) => s.status === 'ACTIVE');
+      const machine = (globalThis as any).globalRealityEngine.registry.getMachine(sourceDeviceId);
+      const activeSession = machine?.getSessions().find((s: RealitySessionState) => s.status === 'ACTIVE');
       const username = activeSession ? activeSession.userName : 'sara.finance';
       const userObj = globalActiveDirectoryEngine.store.findUser(username);
       const domain = 'NEXORA';
