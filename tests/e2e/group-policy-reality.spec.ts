@@ -116,6 +116,24 @@ test.describe('Group Policy Reality Suite', () => {
     await expect(page.getByTestId('gpo-item-gpo-workstation-baseline')).toBeVisible();
     await expect(page.getByTestId('gpo-item-gpo-finance-policy')).toBeVisible();
 
+    // Link order is live and deterministic.
+    await expect(page.getByTestId('gpo-link-order-gpo-workstation-baseline')).toHaveText('1');
+    await expect(page.getByTestId('gpo-link-order-gpo-finance-policy')).toHaveText('2');
+    await page.getByTestId('gpo-link-order-up-gpo-finance-policy').click();
+    await expect(page.getByTestId('gpo-link-order-gpo-finance-policy')).toHaveText('1');
+    await expect(page.getByTestId('gpo-link-order-gpo-workstation-baseline')).toHaveText('2');
+    await page.getByTestId('gpo-link-order-down-gpo-finance-policy').click();
+    await expect(page.getByTestId('gpo-link-order-gpo-workstation-baseline')).toHaveText('1');
+
+    // Link and unlink a GPO through the console.
+    await page.getByTestId('gpo-item-gpo-dc-policy').click();
+    const linkSelected = page.getByTestId('gpo-link-selected');
+    await expect(linkSelected).toBeEnabled();
+    await linkSelected.click();
+    await expect(page.getByTestId('gpo-link-gpo-dc-policy')).toBeVisible();
+    await page.getByTestId('gpo-unlink-gpo-dc-policy').click();
+    await expect(page.getByTestId('gpo-link-gpo-dc-policy')).toBeHidden();
+
     await saveScreenshot(page, 'gpo-gpmc-console-inspector.png');
   });
 
