@@ -290,11 +290,17 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     const res = gpoEngine.applyPolicy(finWs01, 'sara.finance', undefined, 20);
     expect(res.success).toBe(false);
     expect(res.error).toBe('GROUP_POLICY_SERVICE_UNAVAILABLE');
+
+    // Keep the shared deterministic test environment isolated for following cases.
+    finWs01.desktop.services.startService('gpsvc', 21);
   });
 
   it('13b. Audit policy gates 4688 and 4663 telemetry', () => {
     const finWs01 = realityEngine.registry.getMachine('FIN-WS01')!;
     const file01 = realityEngine.registry.getMachine('FILE01')!;
+    const processSnapshot = finWs01.desktop.processes.exportSnapshot();
+    const fileSystemSnapshot = file01.desktop.fileSystem.exportSnapshot();
+    const auditSnapshot = gpoEngine.auditEngine.exportSnapshot();
 
     gpoEngine.auditEngine.applyAuditPolicy('FIN-WS01', {
       auditPolicy: { processCreation: 'disabled', includeCmdLine: false },
@@ -338,8 +344,6 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
       globalSimulationRuntime.events.getHistory().some((evt) => evt.type === 'WINDOWS_PROCESS_CREATED')
     ).toBe(true);
 
-    const fileSystemSnapshot = file01.desktop.fileSystem.exportSnapshot();
-
     gpoEngine.auditEngine.applyAuditPolicy('FILE01', {
       auditPolicy: { objectAccess: 'disabled' },
     });
@@ -374,6 +378,11 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     expect(
       globalSimulationRuntime.events.getHistory().some((evt) => evt.type === 'WINDOWS_OBJECT_ACCESS_AUDIT')
     ).toBe(true);
+
+    finWs01.desktop.processes.restoreSnapshot(processSnapshot);
+    file01.desktop.fileSystem.restoreSnapshot(fileSystemSnapshot);
+    gpoEngine.auditEngine.restoreSnapshot(auditSnapshot);
+    globalSimulationRuntime.events.clear();
   });
 
   it('14. Exports and Restores snapshot deterministically, including RSOP cache', () => {
