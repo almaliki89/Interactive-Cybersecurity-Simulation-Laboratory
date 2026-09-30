@@ -11,6 +11,7 @@ import { FileSystemEngine } from './FileSystemEngine';
 import { WindowsProcessManager } from './WindowsProcessManager';
 import { WindowsServiceManager } from './WindowsServiceManager';
 import { globalGroupPolicyEngine } from '../policy/GroupPolicyEngine';
+import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
 import type { WindowsMachine } from './WindowsMachine';
 
 type RealityGlobal = typeof globalThis & {
@@ -349,11 +350,27 @@ export class WindowsShellEngine {
 
     // 15. GPUPDATE
     if (cmd === 'gpupdate') {
-      const isForce = args.some((a) => a.toLowerCase() === '/force');
+      const normalizedArgs = args.map((a) => a.toLowerCase());
+      const isForce = normalizedArgs.includes('/force');
+      const targetArg = normalizedArgs.find((a) => a.startsWith('/target:'));
+      const target: 'computer' | 'user' | 'both' =
+        targetArg === '/target:computer'
+          ? 'computer'
+          : targetArg === '/target:user'
+            ? 'user'
+            : 'both';
+
       try {
         const regMachine = (globalThis as RealityGlobal).globalRealityEngine?.registry.getMachine(ctx.machineId);
         if (regMachine) {
-          const res = globalGroupPolicyEngine.gpupdate(regMachine, ctx.userName, ctx.userSid, isForce);
+          const res = globalGroupPolicyEngine.gpupdate(
+            regMachine,
+            ctx.userName,
+            ctx.userSid,
+            isForce,
+            globalSimulationRuntime.clock.getVirtualTime(),
+            target
+          );
           return {
             command: rawCommand,
             exitCode: res.success ? 0 : 1,
