@@ -4,8 +4,8 @@
  * NTFS ACLs, SMB Network Shares, Services Lifecycle, and Recycle Bin.
  *
  * Rules:
- *   - NO force:true
- *   - NO waitForTimeout
+ *   - No forced interactions
+ *   - No arbitrary sleeps
  *   - State-driven locators and attributes
  */
 
