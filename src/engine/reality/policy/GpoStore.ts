@@ -341,11 +341,9 @@ export class GpoStore {
   public setLinkEnforced(linkId: string, enforced: boolean): void {
     const link = this.links.find((l) => l.id === linkId);
     if (link) {
+      // Enforcement is a link property. Changing one link must not mutate the
+      // GPO object or implicitly enforce every other link to the same GPO.
       link.enforced = enforced;
-      const gpo = this.gpos.get(link.gpoId);
-      if (gpo) {
-        gpo.enforced = enforced;
-      }
     }
   }
 
