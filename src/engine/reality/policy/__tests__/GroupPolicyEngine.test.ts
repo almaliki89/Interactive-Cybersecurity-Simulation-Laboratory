@@ -14,6 +14,7 @@ import { WmiFilterEngine, globalWmiFilterEngine } from '../WmiFilterEngine';
 import { RealityEngine } from '../../RealityEngine';
 import { globalNetworkEngine } from '../../network/NetworkEngine';
 import { globalActiveDirectoryEngine } from '../../identity/ActiveDirectoryEngine';
+import { globalSimulationRuntime } from '../../../runtime/SimulationRuntime';
 
 describe('GroupPolicyEngine Unit & Integration Suite', () => {
   let gpoStore: GpoStore;
@@ -289,6 +290,90 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     const res = gpoEngine.applyPolicy(finWs01, 'sara.finance', undefined, 20);
     expect(res.success).toBe(false);
     expect(res.error).toBe('GROUP_POLICY_SERVICE_UNAVAILABLE');
+  });
+
+  it('13b. Audit policy gates 4688 and 4663 telemetry', () => {
+    const finWs01 = realityEngine.registry.getMachine('FIN-WS01')!;
+    const file01 = realityEngine.registry.getMachine('FILE01')!;
+
+    gpoEngine.auditEngine.applyAuditPolicy('FIN-WS01', {
+      auditPolicy: { processCreation: 'disabled', includeCmdLine: false },
+    });
+    globalSimulationRuntime.events.clear();
+
+    finWs01.desktop.processes.createProcess({
+      name: 'audit-off.exe',
+      executablePath: 'C:\\Windows\\System32\\audit-off.exe',
+      commandLine: 'audit-off.exe /test',
+      userSid: 'S-1-5-21-99887766-2001',
+      userName: 'sara.finance',
+      parentPid: 4,
+      sessionId: 1,
+      integrityLevel: 'Medium',
+      vTime: 100,
+    });
+
+    expect(
+      globalSimulationRuntime.events.getHistory().some((evt) => evt.type === 'WINDOWS_PROCESS_CREATED')
+    ).toBe(false);
+
+    gpoEngine.auditEngine.applyAuditPolicy('FIN-WS01', {
+      auditPolicy: { processCreation: 'enabled', includeCmdLine: true },
+    });
+    globalSimulationRuntime.events.clear();
+
+    finWs01.desktop.processes.createProcess({
+      name: 'audit-on.exe',
+      executablePath: 'C:\\Windows\\System32\\audit-on.exe',
+      commandLine: 'audit-on.exe /test',
+      userSid: 'S-1-5-21-99887766-2001',
+      userName: 'sara.finance',
+      parentPid: 4,
+      sessionId: 1,
+      integrityLevel: 'Medium',
+      vTime: 101,
+    });
+
+    expect(
+      globalSimulationRuntime.events.getHistory().some((evt) => evt.type === 'WINDOWS_PROCESS_CREATED')
+    ).toBe(true);
+
+    const fileSystemSnapshot = file01.desktop.fileSystem.exportSnapshot();
+
+    gpoEngine.auditEngine.applyAuditPolicy('FILE01', {
+      auditPolicy: { objectAccess: 'disabled' },
+    });
+    globalSimulationRuntime.events.clear();
+
+    file01.desktop.fileSystem.deleteFile({
+      filePath: 'D:\\Shares\\Finance\\Budget_2026.xlsx',
+      userSid: 'S-1-5-21-99887766-2001',
+      userName: 'sara.finance',
+      permanent: true,
+      vTime: 102,
+    });
+
+    expect(
+      globalSimulationRuntime.events.getHistory().some((evt) => evt.type === 'WINDOWS_OBJECT_ACCESS_AUDIT')
+    ).toBe(false);
+
+    file01.desktop.fileSystem.restoreSnapshot(fileSystemSnapshot);
+    gpoEngine.auditEngine.applyAuditPolicy('FILE01', {
+      auditPolicy: { objectAccess: 'enabled' },
+    });
+    globalSimulationRuntime.events.clear();
+
+    file01.desktop.fileSystem.deleteFile({
+      filePath: 'D:\\Shares\\Finance\\Budget_2026.xlsx',
+      userSid: 'S-1-5-21-99887766-2001',
+      userName: 'sara.finance',
+      permanent: true,
+      vTime: 103,
+    });
+
+    expect(
+      globalSimulationRuntime.events.getHistory().some((evt) => evt.type === 'WINDOWS_OBJECT_ACCESS_AUDIT')
+    ).toBe(true);
   });
 
   it('14. Exports and Restores snapshot deterministically, including RSOP cache', () => {
