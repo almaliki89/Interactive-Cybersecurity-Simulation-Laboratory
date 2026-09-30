@@ -265,16 +265,32 @@ export class GroupPolicyEngine {
 
   public exportSnapshot(): GroupPolicySnapshot {
     const storeSnap = this.store.exportSnapshot();
-    const rsopCacheObj: Record<string, RsopResult> = {};
-    for (const [k, v] of this.lastRsopCache.entries()) {
-      rsopCacheObj[k] = JSON.parse(JSON.stringify(v));
+    const rsopCache: Record<string, RsopResult> = {};
+    const lastRefreshTime: Record<string, number> = {};
+    const appliedSettingsCache: GroupPolicySnapshot['appliedSettingsCache'] = {};
+
+    for (const [machineId, rsop] of this.lastRsopCache.entries()) {
+      const cloned = JSON.parse(JSON.stringify(rsop)) as RsopResult;
+      rsopCache[machineId] = cloned;
+      lastRefreshTime[machineId] = cloned.lastRefreshVirtualTime;
+
+      const userSettings = cloned.targetUserSid
+        ? { [cloned.targetUserSid]: cloned.effectiveUserSettings }
+        : undefined;
+
+      appliedSettingsCache[machineId] = {
+        computer: cloned.effectiveComputerSettings,
+        user: userSettings,
+      };
     }
+
     return {
       gpos: storeSnap.gpos,
       links: storeSnap.links,
       ouBlockInheritance: storeSnap.ouBlockInheritance,
-      lastRefreshTime: {},
-      appliedSettingsCache: {},
+      lastRefreshTime,
+      appliedSettingsCache,
+      rsopCache,
     };
   }
 
@@ -285,7 +301,11 @@ export class GroupPolicyEngine {
       links: snap.links,
       ouBlockInheritance: snap.ouBlockInheritance,
     });
+
     this.lastRsopCache.clear();
+    for (const [machineId, rsop] of Object.entries(snap.rsopCache || {})) {
+      this.lastRsopCache.set(machineId, JSON.parse(JSON.stringify(rsop)) as RsopResult);
+    }
   }
 }
 
