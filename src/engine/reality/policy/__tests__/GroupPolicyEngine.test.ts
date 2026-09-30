@@ -145,6 +145,45 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     expect(rsop.effectiveUserSettings.controlPanelAccess).toBe('disabled');
   });
 
+  it('5b. Merges modeled settings into RSOP and applies registry consequences', () => {
+    const finWs01 = realityEngine.registry.getMachine('FIN-WS01')!;
+    const result = gpoEngine.applyPolicy(
+      finWs01,
+      'sara.finance',
+      'S-1-5-21-99887766-2001',
+      50
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.rsop.effectiveComputerSettings.windowsUpdateMode).toBe('auto');
+    expect(result.rsop.effectiveComputerSettings.desktopRestrictions?.disableRemovableStorage).toBe(true);
+    expect(result.rsop.effectiveUserSettings.startMenuRestrictions?.hideRun).toBe(false);
+    expect(result.rsop.effectiveUserSettings.environmentVariables?.DEPARTMENT).toBe('Finance');
+
+    expect(
+      finWs01.desktop.registry.getValue(
+        'HKLM',
+        'SOFTWARE\\Policies\\Microsoft\\Windows\\RemovableStorageDevices',
+        'Deny_All'
+      )?.data
+    ).toBe(1);
+    expect(
+      finWs01.desktop.registry.getValue(
+        'HKLM',
+        'SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU',
+        'AUOptions'
+      )?.data
+    ).toBe(4);
+    expect(
+      finWs01.desktop.registry.getValue(
+        'HKCU',
+        'Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer',
+        'NoRun'
+      )?.data
+    ).toBe(0);
+    expect(finWs01.desktop.registry.getValue('HKCU', 'Environment', 'DEPARTMENT')?.data).toBe('Finance');
+  });
+
   it('6. Computes RSOP for omar.hr on HR-WS01 (Must NOT receive Finance GPO)', () => {
     const hrWs01 = realityEngine.registry.getMachine('HR-WS01')!;
     const mCtx = gpoEngine.getMachineContext(hrWs01);
