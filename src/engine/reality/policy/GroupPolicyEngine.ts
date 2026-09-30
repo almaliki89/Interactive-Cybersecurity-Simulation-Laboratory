@@ -134,7 +134,8 @@ export class GroupPolicyEngine {
     machine: WindowsMachine,
     userName?: string,
     userSid?: string,
-    vTime = 0
+    vTime = 0,
+    target: 'computer' | 'user' | 'both' = 'both'
   ): { success: boolean; rsop: RsopResult; error?: string } {
     // 1. Check gpsvc service status
     const gpsvc = machine.desktop.services.getService('gpsvc');
@@ -158,44 +159,59 @@ export class GroupPolicyEngine {
     const rsop = this.processor.processPolicy(mCtx, uCtx, vTime);
     this.lastRsopCache.set(machine.id, rsop);
 
-    // 3. Apply Registry Bridges
+    const applyComputer = target === 'computer' || target === 'both';
+    const applyUser = (target === 'user' || target === 'both') && Boolean(uCtx);
+
+    // 3. Apply Registry Bridges for the requested refresh target only.
     this.registryBridge.applyRegistryPolicies(
       machine,
-      rsop.effectiveComputerSettings,
-      rsop.effectiveUserSettings
+      applyComputer ? rsop.effectiveComputerSettings : {},
+      applyUser ? rsop.effectiveUserSettings : undefined
     );
 
-    // 4. Apply Service Bridges
-    this.serviceBridge.applyServicePolicies(machine, rsop.effectiveComputerSettings, vTime);
+    if (applyComputer) {
+      // 4. Apply Service Bridges
+      this.serviceBridge.applyServicePolicies(machine, rsop.effectiveComputerSettings, vTime);
 
-    // 5. Apply Audit Policy
-    this.auditEngine.applyAuditPolicy(machine.id, rsop.effectiveComputerSettings);
+      // 5. Apply Audit Policy
+      this.auditEngine.applyAuditPolicy(machine.id, rsop.effectiveComputerSettings);
 
-    // 6. Apply Firewall Policy Consequence
-    if (rsop.effectiveComputerSettings.firewallProfile) {
-      const fw = rsop.effectiveComputerSettings.firewallProfile;
-      if (fw.blockInboundSmb !== undefined) {
-        if (fw.blockInboundSmb) {
-          globalNetworkEngine.firewall.blockPort('TCP', 445, 'Block SMB via Group Policy');
-        } else {
-          globalNetworkEngine.firewall.unblockPort('TCP', 445);
+      // 6. Apply Firewall Policy Consequence
+      if (rsop.effectiveComputerSettings.firewallProfile) {
+        const fw = rsop.effectiveComputerSettings.firewallProfile;
+        if (fw.blockInboundSmb !== undefined) {
+          if (fw.blockInboundSmb) {
+            globalNetworkEngine.firewall.blockPort('TCP', 445, 'Block SMB via Group Policy');
+          } else {
+            globalNetworkEngine.firewall.unblockPort('TCP', 445);
+          }
         }
       }
     }
 
-    // 7. Apply Mapped Drives Consequence
-    if (uCtx && rsop.effectiveUserSettings.mappedDrives) {
+    // 7. Apply Mapped Drives Consequence only for user policy refreshes.
+    if (applyUser && rsop.effectiveUserSettings.mappedDrives) {
       machine.desktop.setMappedDrives(rsop.effectiveUserSettings.mappedDrives);
     }
 
-    // Emit Operational Events for Denied GPOs
-    for (const denied of [...rsop.deniedComputerGpos, ...rsop.deniedUserGpos]) {
+    // Emit Operational Events for denied GPOs in the requested target scope.
+    const deniedGpos = [
+      ...(applyComputer ? rsop.deniedComputerGpos : []),
+      ...(applyUser ? rsop.deniedUserGpos : []),
+    ];
+    for (const denied of deniedGpos) {
       const eventId = denied.filterResult && !denied.filterResult.eligible ? 5003 : 5004;
       this.emitGpoEvent(machine, eventId, 'Information', `GPO ${denied.gpoName} denied: ${denied.denialReason}`, vTime);
     }
 
     // Emit Operational Event 5002: Policy processing completed
-    this.emitGpoEvent(machine, 5002, 'Information', `Group Policy processing completed successfully for machine ${machine.hostname}.`, vTime);
+    this.emitGpoEvent(
+      machine,
+      5002,
+      'Information',
+      `Group Policy ${target} processing completed successfully for machine ${machine.hostname}.`,
+      vTime
+    );
 
     return { success: true, rsop };
   }
@@ -208,9 +224,18 @@ export class GroupPolicyEngine {
     userName?: string,
     userSid?: string,
     _force = false,
-    vTime = 0
+    vTime = 0,
+    target: 'computer' | 'user' | 'both' = 'both'
   ): { success: boolean; output: string; error?: string } {
-    const result = this.applyPolicy(machine, userName, userSid, vTime);
+    if (target === 'user' && !userName) {
+      return {
+        success: false,
+        error: 'NO_USER_CONTEXT',
+        output: 'Updating policy...\nFailed to process User Policy. Error: NO_USER_CONTEXT',
+      };
+    }
+
+    const result = this.applyPolicy(machine, userName, userSid, vTime, target);
     if (!result.success) {
       return {
         success: false,
@@ -220,8 +245,10 @@ export class GroupPolicyEngine {
     }
 
     let output = `Updating policy...\n`;
-    output += `Computer Policy update has completed successfully.\n`;
-    if (userName) {
+    if (target === 'computer' || target === 'both') {
+      output += `Computer Policy update has completed successfully.\n`;
+    }
+    if ((target === 'user' || target === 'both') && userName) {
       output += `User Policy update has completed successfully.`;
     }
 
