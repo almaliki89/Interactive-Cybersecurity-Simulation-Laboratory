@@ -11,6 +11,15 @@ import { FileSystemEngine } from './FileSystemEngine';
 import { WindowsProcessManager } from './WindowsProcessManager';
 import { WindowsServiceManager } from './WindowsServiceManager';
 import { globalGroupPolicyEngine } from '../policy/GroupPolicyEngine';
+import type { WindowsMachine } from './WindowsMachine';
+
+type RealityGlobal = typeof globalThis & {
+  globalRealityEngine?: {
+    registry: {
+      getMachine: (id: string) => WindowsMachine | undefined;
+    };
+  };
+};
 
 export interface ShellContext {
   machineId: string;
@@ -342,7 +351,7 @@ export class WindowsShellEngine {
     if (cmd === 'gpupdate') {
       const isForce = args.some((a) => a.toLowerCase() === '/force');
       try {
-        const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(ctx.machineId);
+        const regMachine = (globalThis as RealityGlobal).globalRealityEngine?.registry.getMachine(ctx.machineId);
         if (regMachine) {
           const res = globalGroupPolicyEngine.gpupdate(regMachine, ctx.userName, ctx.userSid, isForce);
           return {
@@ -352,18 +361,19 @@ export class WindowsShellEngine {
             currentDirectory: ctx.currentDirectory,
           };
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Unknown policy processing error';
         return {
           command: rawCommand,
           exitCode: 1,
-          output: `Updating policy...\nFailed to process Group Policy. Error: ${e.message}`,
+          output: `Updating policy...\nFailed to process Group Policy. Error: ${message}`,
           currentDirectory: ctx.currentDirectory,
         };
       }
       return {
         command: rawCommand,
-        exitCode: 0,
-        output: `Updating policy...\nComputer Policy update has completed successfully.\nUser Policy update has completed successfully.`,
+        exitCode: 1,
+        output: `Updating policy...\nFailed to process Group Policy. Error: target machine '${ctx.machineId}' is unavailable.`,
         currentDirectory: ctx.currentDirectory,
       };
     }
@@ -371,7 +381,7 @@ export class WindowsShellEngine {
     // 16. GPRESULT
     if (cmd === 'gpresult') {
       try {
-        const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(ctx.machineId);
+        const regMachine = (globalThis as RealityGlobal).globalRealityEngine?.registry.getMachine(ctx.machineId);
         if (regMachine) {
           const mCtx = globalGroupPolicyEngine.getMachineContext(regMachine);
           const uCtx = globalGroupPolicyEngine.getUserContext(ctx.userName, ctx.userSid);
@@ -425,20 +435,29 @@ export class WindowsShellEngine {
 
           out += `\n    The user is a member of the following security groups\n`;
           out += `    ------------------------------------------------------\n`;
-          out += `        Domain Users\n`;
-          if (ctx.userName.includes('finance')) out += `        Finance Users\n`;
-          if (ctx.userName.includes('hr')) out += `        HR Users\n`;
-          if (ctx.userName.includes('it')) out += `        IT Admins\n`;
-          out += `        Authenticated Users\n`;
+          for (const group of ctx.userGroups) {
+            out += `        ${group.name} (${group.sid})\n`;
+          }
+          if (ctx.userGroups.length === 0) {
+            out += `        N/A\n`;
+          }
 
           return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
         }
-      } catch (_) {}
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Unknown RSOP processing error';
+        return {
+          command: rawCommand,
+          exitCode: 1,
+          output: `ERROR: Unable to generate RSOP data. ${message}`,
+          currentDirectory: ctx.currentDirectory,
+        };
+      }
 
       return {
         command: rawCommand,
-        exitCode: 0,
-        output: `RSOP Results for ${ctx.userName} on ${ctx.hostname}:\nApplied GPOs: NEXORA - Domain Security Baseline, NEXORA - Workstation Baseline`,
+        exitCode: 1,
+        output: `ERROR: Unable to generate RSOP data because target machine '${ctx.machineId}' is unavailable.`,
         currentDirectory: ctx.currentDirectory,
       };
     }
