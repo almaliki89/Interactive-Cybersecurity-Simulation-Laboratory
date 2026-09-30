@@ -366,6 +366,24 @@ export class PolicyProcessor {
       }
     }
 
+    // Windows Update mode
+    if (cs.windowsUpdateMode !== undefined) {
+      const key = 'computer.windowsUpdateMode';
+      if (this.shouldSettingOverride(sources[key], enforced)) {
+        target.windowsUpdateMode = cs.windowsUpdateMode;
+        sources[key] = {
+          key,
+          effectiveValue: cs.windowsUpdateMode,
+          winningGpoId: gpo.id,
+          winningGpoName: gpo.displayName,
+          precedence,
+          containerPath,
+          enforced,
+          scope: 'Computer',
+        };
+      }
+    }
+
     // Desktop Restrictions (Computer)
     if (cs.desktopRestrictions) {
       if (cs.desktopRestrictions.screenLockTimeout !== undefined) {
@@ -486,6 +504,57 @@ export class PolicyProcessor {
             scope: 'User',
           };
         }
+      }
+    }
+
+    if (us.desktopWallpaper) {
+      const key = 'user.desktopWallpaper';
+      if (this.shouldSettingOverride(sources[key], enforced)) {
+        target.desktopWallpaper = { ...target.desktopWallpaper, ...us.desktopWallpaper };
+        sources[key] = {
+          key,
+          effectiveValue: target.desktopWallpaper,
+          winningGpoId: gpo.id,
+          winningGpoName: gpo.displayName,
+          precedence,
+          containerPath,
+          enforced,
+          scope: 'User',
+        };
+      }
+    }
+
+    if (us.startMenuRestrictions) {
+      const key = 'user.startMenuRestrictions';
+      if (this.shouldSettingOverride(sources[key], enforced)) {
+        target.startMenuRestrictions = { ...target.startMenuRestrictions, ...us.startMenuRestrictions };
+        sources[key] = {
+          key,
+          effectiveValue: target.startMenuRestrictions,
+          winningGpoId: gpo.id,
+          winningGpoName: gpo.displayName,
+          precedence,
+          containerPath,
+          enforced,
+          scope: 'User',
+        };
+      }
+    }
+
+    if (us.explorerRestrictions) {
+      const key = 'user.explorerRestrictions';
+      if (this.shouldSettingOverride(sources[key], enforced)) {
+        target.explorerRestrictions = { ...target.explorerRestrictions, ...us.explorerRestrictions };
+        sources[key] = {
+          key,
+          effectiveValue: target.explorerRestrictions,
+          winningGpoId: gpo.id,
+          winningGpoName: gpo.displayName,
+          precedence,
+          containerPath,
+          enforced,
+          scope: 'User',
+        };
       }
     }
 
