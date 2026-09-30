@@ -51,6 +51,10 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
   const gpos = store.getAllGpos();
   const selectedGpo = store.getGpo(selectedGpoId);
   const links = store.getAllLinks();
+  const selectedOuLinks = links
+    .filter((link) => link.containerPath.toUpperCase() === selectedOu.toUpperCase())
+    .sort((a, b) => a.linkOrder - b.linkOrder);
+  const selectedGpoLinked = selectedOuLinks.some((link) => link.gpoId === selectedGpoId);
   const isBlockInheritance = store.isOuBlockingInheritance(selectedOu);
   const activeMachine = activeMachineId
     ? (globalThis as RealityGlobal).globalRealityEngine?.registry.getMachine(activeMachineId)
@@ -120,19 +124,40 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
     if (onRefresh) onRefresh();
   };
 
+  const refreshConsole = () => {
+    setRevision((value) => value + 1);
+    if (onRefresh) onRefresh();
+  };
+
   const handleToggleEnforced = (link: GpoLink) => {
     store.setLinkEnforced(link.id, !link.enforced);
-    if (onRefresh) onRefresh();
+    refreshConsole();
   };
 
   const handleToggleBlockInheritance = () => {
     store.setOuBlockInheritance(selectedOu, !isBlockInheritance);
-    if (onRefresh) onRefresh();
+    refreshConsole();
   };
 
   const handleToggleLinkEnabled = (link: GpoLink) => {
     store.setLinkEnabled(link.id, !link.enabled);
-    if (onRefresh) onRefresh();
+    refreshConsole();
+  };
+
+  const handleMoveLink = (link: GpoLink, delta: number) => {
+    store.setLinkOrder(link.id, link.linkOrder + delta);
+    refreshConsole();
+  };
+
+  const handleLinkSelectedGpo = () => {
+    if (!selectedGpo || selectedGpoLinked) return;
+    store.linkGpo(selectedOu, selectedGpo.id);
+    refreshConsole();
+  };
+
+  const handleUnlinkGpo = (link: GpoLink) => {
+    store.unlinkGpo(link.containerPath, link.gpoId);
+    refreshConsole();
   };
 
   return (
@@ -239,9 +264,20 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
 
           {/* GPO Links in Selected OU */}
           <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-3.5 space-y-2">
-            <div className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-              <Link className="w-4 h-4 text-cyan-400" />
-              <span>GPO Links in {selectedOu.split(',')[0]}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <Link className="w-4 h-4 text-cyan-400" />
+                <span>GPO Links in {selectedOu.split(',')[0]}</span>
+              </div>
+              <button
+                type="button"
+                data-testid="gpo-link-selected"
+                disabled={!selectedGpo || selectedGpoLinked}
+                onClick={handleLinkSelectedGpo}
+                className="rounded border border-cyan-800 bg-cyan-950 px-2.5 py-1 text-[10px] font-bold text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {selectedGpoLinked ? 'Already Linked' : 'Link Selected GPO'}
+              </button>
             </div>
 
             <div className="overflow-x-auto">
@@ -252,19 +288,21 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
                     <th className="py-1.5 px-2">GPO Name</th>
                     <th className="py-1.5 px-2">Enabled</th>
                     <th className="py-1.5 px-2">Enforced (No Override)</th>
+                    <th className="py-1.5 px-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {links
-                    .filter((l) => l.containerPath.toUpperCase() === selectedOu.toUpperCase())
-                    .map((link) => {
+                  {selectedOuLinks.map((link) => {
                       const linkedGpo = store.getGpo(link.gpoId);
                       return (
                         <tr key={link.id} data-testid={`gpo-link-${link.gpoId}`} className="hover:bg-slate-900/60">
-                          <td className="py-2 px-2 font-mono text-cyan-400 font-bold">{link.linkOrder}</td>
+                          <td className="py-2 px-2 font-mono text-cyan-400 font-bold">
+                            <span data-testid={`gpo-link-order-${link.gpoId}`}>{link.linkOrder}</span>
+                          </td>
                           <td className="py-2 px-2 font-semibold text-slate-200">{linkedGpo?.displayName || link.gpoId}</td>
                           <td className="py-2 px-2">
                             <button
+                              data-testid={`gpo-link-enabled-${link.gpoId}`}
                               onClick={() => handleToggleLinkEnabled(link)}
                               className={`px-2 py-0.5 rounded text-[10px] font-bold ${link.enabled ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-500'}`}
                             >
@@ -281,12 +319,42 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
                               {link.enforced ? 'ENFORCED' : 'NOT ENFORCED'}
                             </button>
                           </td>
+                          <td className="py-2 px-2">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                data-testid={`gpo-link-order-up-${link.gpoId}`}
+                                disabled={link.linkOrder <= 1}
+                                onClick={() => handleMoveLink(link, -1)}
+                                className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] disabled:opacity-30"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                data-testid={`gpo-link-order-down-${link.gpoId}`}
+                                disabled={link.linkOrder >= selectedOuLinks.length}
+                                onClick={() => handleMoveLink(link, 1)}
+                                className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] disabled:opacity-30"
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                data-testid={`gpo-unlink-${link.gpoId}`}
+                                onClick={() => handleUnlinkGpo(link)}
+                                className="rounded border border-rose-900 bg-rose-950/40 px-1.5 py-0.5 text-[10px] text-rose-300"
+                              >
+                                Unlink
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
-                  {links.filter((l) => l.containerPath.toUpperCase() === selectedOu.toUpperCase()).length === 0 && (
+                  {selectedOuLinks.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-3 px-2 text-center text-slate-500 italic">
+                      <td colSpan={5} className="py-3 px-2 text-center text-slate-500 italic">
                         No direct GPO links configured on this OU.
                       </td>
                     </tr>
