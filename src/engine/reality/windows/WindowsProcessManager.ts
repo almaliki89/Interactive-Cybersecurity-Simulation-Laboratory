@@ -7,6 +7,7 @@
 
 import { WindowsProcess, ProcessIntegrityLevel } from './types';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
+import { globalPolicyAuditEngine } from '../policy/PolicyAuditEngine';
 
 export class WindowsProcessManager {
   private machineId: string;
@@ -269,27 +270,31 @@ export class WindowsProcessManager {
 
     this.processes.set(pid, proc);
 
-    // Emit Windows Security Event 4688
-    globalSimulationRuntime.dispatch({
-      type: 'WINDOWS_PROCESS_CREATED',
-      category: 'SYSTEM',
-      source: this.machineId,
-      severity: 'info',
-      description: `Event 4688: A new process has been created (${proc.name}, PID: ${proc.pid}, Parent PID: ${proc.parentPid}).`,
-      payload: {
-        machineId: this.machineId,
-        eventId: 4688,
-        logName: 'Security',
-        newProcessId: `0x${proc.pid.toString(16)}`,
-        newProcessName: proc.executablePath,
-        parentProcessId: `0x${proc.parentPid.toString(16)}`,
-        commandLine: proc.commandLine,
-        subjectUserSid: proc.userSid,
-        subjectUserName: proc.userName,
-        mandatoryLabel: `Mandatory Label\\${proc.integrityLevel} Mandatory Level`,
-        virtualTime: vt,
-      },
-    });
+    // Emit Windows Security Event 4688 only when process creation auditing is enabled.
+    if (globalPolicyAuditEngine.isProcessCreationAuditingEnabled(this.machineId)) {
+      globalSimulationRuntime.dispatch({
+        type: 'WINDOWS_PROCESS_CREATED',
+        category: 'SYSTEM',
+        source: this.machineId,
+        severity: 'info',
+        description: `Event 4688: A new process has been created (${proc.name}, PID: ${proc.pid}, Parent PID: ${proc.parentPid}).`,
+        payload: {
+          machineId: this.machineId,
+          eventId: 4688,
+          logName: 'Security',
+          newProcessId: `0x${proc.pid.toString(16)}`,
+          newProcessName: proc.executablePath,
+          parentProcessId: `0x${proc.parentPid.toString(16)}`,
+          commandLine: globalPolicyAuditEngine.isCmdLineLoggingEnabled(this.machineId)
+            ? proc.commandLine
+            : '',
+          subjectUserSid: proc.userSid,
+          subjectUserName: proc.userName,
+          mandatoryLabel: `Mandatory Label\\${proc.integrityLevel} Mandatory Level`,
+          virtualTime: vt,
+        },
+      });
+    }
 
     return proc;
   }
@@ -304,25 +309,27 @@ export class WindowsProcessManager {
     const vt = vTime ?? globalSimulationRuntime.clock.getVirtualTime();
     proc.status = 'TERMINATED';
 
-    // Emit Windows Security Event 4689
-    globalSimulationRuntime.dispatch({
-      type: 'WINDOWS_PROCESS_TERMINATED',
-      category: 'SYSTEM',
-      source: this.machineId,
-      severity: 'info',
-      description: `Event 4689: A process has exited (${proc.name}, PID: ${proc.pid}, Exit Status: 0x${exitCode.toString(16)}).`,
-      payload: {
-        machineId: this.machineId,
-        eventId: 4689,
-        logName: 'Security',
-        processId: `0x${proc.pid.toString(16)}`,
-        processName: proc.executablePath,
-        exitStatus: `0x${exitCode.toString(16)}`,
-        subjectUserSid: proc.userSid,
-        subjectUserName: proc.userName,
-        virtualTime: vt,
-      },
-    });
+    // Process tracking audit policy also governs termination telemetry.
+    if (globalPolicyAuditEngine.isProcessCreationAuditingEnabled(this.machineId)) {
+      globalSimulationRuntime.dispatch({
+        type: 'WINDOWS_PROCESS_TERMINATED',
+        category: 'SYSTEM',
+        source: this.machineId,
+        severity: 'info',
+        description: `Event 4689: A process has exited (${proc.name}, PID: ${proc.pid}, Exit Status: 0x${exitCode.toString(16)}).`,
+        payload: {
+          machineId: this.machineId,
+          eventId: 4689,
+          logName: 'Security',
+          processId: `0x${proc.pid.toString(16)}`,
+          processName: proc.executablePath,
+          exitStatus: `0x${exitCode.toString(16)}`,
+          subjectUserSid: proc.userSid,
+          subjectUserName: proc.userName,
+          virtualTime: vt,
+        },
+      });
+    }
 
     return true;
   }
