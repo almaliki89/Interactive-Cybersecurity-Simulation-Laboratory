@@ -78,9 +78,8 @@ async function switchLanguage(page: Page, targetLang: 'en' | 'ar') {
  */
 async function navigateToWorld(page: Page, worldId: string) {
   await page.goto(`/#${worldId}`, { waitUntil: 'domcontentloaded' });
-  // Wait for header to be visible
+  // The visible header is the readiness signal; screenshots disable animations.
   await expect(page.locator('header')).toBeVisible({ timeout: 10000 });
-  await page.waitForTimeout(300); // Allow react suspense/animation to settle
 }
 
 test.describe('OMEGA Phase 4B — Real Browser Visual QA', () => {
