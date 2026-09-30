@@ -14,6 +14,7 @@ import {
 import { NtfsAclEngine } from './NtfsAclEngine';
 import { RecycleBinEngine } from './RecycleBinEngine';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
+import { globalPolicyAuditEngine } from '../policy/PolicyAuditEngine';
 
 export class FileSystemEngine {
   public readonly machineId: string;
@@ -797,6 +798,10 @@ export class FileSystemEngine {
     subjectUserName: string;
     vTime: number;
   }): void {
+    if (!globalPolicyAuditEngine.isObjectAccessAuditingEnabled(this.machineId)) {
+      return;
+    }
+
     globalSimulationRuntime.dispatch({
       type: 'WINDOWS_OBJECT_ACCESS_AUDIT',
       category: 'SECURITY',
