@@ -32,7 +32,21 @@ export class GpoLinkResolver {
     const scopes: ContainerScope[] = [];
     const normTarget = targetContainerPath.toUpperCase().trim();
 
-    // 1. Domain Level
+    // 1. Local computer policy scope.
+    scopes.push({
+      level: 'Local',
+      containerPath: 'LOCAL=MACHINE',
+      blockInheritance: false,
+    });
+
+    // 2. Active Directory site policy scope.
+    scopes.push({
+      level: 'Site',
+      containerPath: 'SITE=Default-First-Site-Name',
+      blockInheritance: false,
+    });
+
+    // 3. Domain Level
     const domainPath = 'DC=NEXORA,DC=LOCAL';
     scopes.push({
       level: 'Domain',
@@ -40,7 +54,7 @@ export class GpoLinkResolver {
       blockInheritance: this.gpoStore.isOuBlockingInheritance(domainPath),
     });
 
-    // 2. OU Levels (Parent -> Child if nested)
+    // 4. OU Levels (Parent -> Child if nested)
     if (normTarget.includes('OU=')) {
       // Extract all OU components in the order they appear in the DN (most specific to least specific)
       const parts = normTarget.split(',').filter((p) => p.startsWith('OU='));
@@ -79,12 +93,14 @@ export class GpoLinkResolver {
       const scope = scopes[i];
       const links = this.gpoStore.getLinksForContainer(scope.containerPath);
 
-      // Check if any scope below this one has blockInheritance
+      // Block Inheritance applies to inherited AD scopes, not local machine policy.
       let blockedFromBelow = false;
-      for (let j = i + 1; j < scopes.length; j++) {
-        if (scopes[j].blockInheritance) {
-          blockedFromBelow = true;
-          break;
+      if (scope.level !== 'Local') {
+        for (let j = i + 1; j < scopes.length; j++) {
+          if (scopes[j].blockInheritance) {
+            blockedFromBelow = true;
+            break;
+          }
         }
       }
 
