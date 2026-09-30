@@ -155,4 +155,5 @@ export interface GroupPolicySnapshot {
   ouBlockInheritance: Record<string, boolean>; // ouPath -> blockInheritance
   lastRefreshTime: Record<string, number>; // machineId -> vTime
   appliedSettingsCache: Record<string, { computer: ComputerPolicySettings; user?: Record<string, UserPolicySettings> }>;
+  rsopCache?: Record<string, RsopResult>;
 }
