@@ -276,13 +276,28 @@ describe('GroupPolicyEngine Unit & Integration Suite', () => {
     expect(res.error).toBe('GROUP_POLICY_SERVICE_UNAVAILABLE');
   });
 
-  it('14. Exports and Restores snapshot deterministically', () => {
+  it('14. Exports and Restores snapshot deterministically, including RSOP cache', () => {
     gpoStore.setOuBlockInheritance('OU=Workstations,DC=NEXORA,DC=LOCAL', true);
+
+    const finWs01 = realityEngine.registry.getMachine('FIN-WS01')!;
+    const applied = gpoEngine.applyPolicy(
+      finWs01,
+      'sara.finance',
+      'S-1-5-21-99887766-2001',
+      321
+    );
+    expect(applied.success).toBe(true);
+
     const snap = gpoEngine.exportSnapshot();
+    expect(snap.lastRefreshTime['FIN-WS01']).toBe(321);
+    expect(snap.appliedSettingsCache['FIN-WS01']).toBeDefined();
+    expect(snap.rsopCache?.['FIN-WS01']?.targetUserName).toBe('sara.finance');
 
     const newEngine = new GroupPolicyEngine(new GpoStore(), new GpoLinkResolver(), new PolicyProcessor());
     newEngine.restoreSnapshot(snap);
 
     expect(newEngine.store.isOuBlockingInheritance('OU=Workstations,DC=NEXORA,DC=LOCAL')).toBe(true);
+    expect(newEngine.getCachedRsop('FIN-WS01')?.lastRefreshVirtualTime).toBe(321);
+    expect(newEngine.getCachedRsop('FIN-WS01')?.targetUserName).toBe('sara.finance');
   });
 });
