@@ -4,8 +4,8 @@
  * service/firewall consequences, and RSOP precedence.
  *
  * Rules:
- *   - NO force:true
- *   - NO waitForTimeout()
+ *   - No forced interactions
+ *   - No arbitrary sleeps
  *   - State-driven locators and attributes
  */
 
