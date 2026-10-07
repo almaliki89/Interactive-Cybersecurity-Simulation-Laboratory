@@ -19,7 +19,6 @@ import { UserProfileEngine } from './UserProfileEngine';
 import { WindowsRegistryEngine } from './WindowsRegistryEngine';
 import { RecycleBinEngine } from './RecycleBinEngine';
 import { WindowsShellEngine } from './WindowsShellEngine';
-import { globalGroupPolicyEngine } from '../policy/GroupPolicyEngine';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
 
 export class WindowsDesktopEngine {
@@ -123,8 +122,9 @@ export class WindowsDesktopEngine {
     // 4. Apply User & Computer Group Policy
     try {
       const regMachine = (globalThis as any).globalRealityEngine?.registry?.getMachine?.(this.machineId);
-      if (regMachine) {
-        globalGroupPolicyEngine.applyPolicy(regMachine, params.userName, params.userSid, vt);
+      const gpoEng = (globalThis as any).globalGroupPolicyEngine;
+      if (regMachine && gpoEng) {
+        gpoEng.applyPolicy(regMachine, params.userName, params.userSid, vt);
       }
     } catch (_) {}
 
@@ -245,6 +245,12 @@ export class WindowsDesktopEngine {
         break;
       case 'NOTEPAD':
         defaultTitle = params.initialPath ? `Notepad - ${params.initialPath.split('\\').pop()}` : 'Notepad';
+        break;
+      case 'ACTIVE_DIRECTORY':
+        defaultTitle = 'Active Directory Users and Computers (dsa.msc)';
+        break;
+      case 'GROUP_POLICY':
+        defaultTitle = 'Group Policy Management (gpmc.msc)';
         break;
     }
 

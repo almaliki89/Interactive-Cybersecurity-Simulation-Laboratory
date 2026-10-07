@@ -17,13 +17,14 @@ import { globalRealityEngine } from './RealityEngine';
 import { globalSimulationRuntime } from '../runtime/SimulationRuntime';
 import { globalNetworkEngine } from './network/NetworkEngine';
 import { globalNetworkConsequenceBridge } from './network/NetworkConsequenceBridge';
+import { globalSoundRealityEngine } from './SoundRealityEngine';
 
 interface DigitalTwinActions {
   selectDevice: (deviceId: string | null) => void;
   selectCable: (cableId: string | null) => void;
   selectRoom: (roomId: RoomId) => void;
   setCameraMode: (mode: CameraViewMode) => void;
-  setRenderMode: (mode: '3d-webgl' | '2d-schematic') => void;
+  setRenderMode: (mode: '3d-webgl' | '2d-schematic' | 'vm-console') => void;
   toggleDevicePower: (deviceId: string) => void;
   disconnectCable: (cableId: string) => void;
   connectCable: (cableId: string) => void;
@@ -826,6 +827,8 @@ export const useDigitalTwinStore = create<DigitalTwinState & DigitalTwinActions>
     const cable = cables[cableId];
     if (!cable || !cable.connected) return;
 
+    globalSoundRealityEngine.playCableSnap(false);
+
     cables[cableId] = {
       ...cable,
       status: 'DISCONNECTED',
@@ -909,6 +912,8 @@ export const useDigitalTwinStore = create<DigitalTwinState & DigitalTwinActions>
     const cables = { ...get().cables };
     const cable = cables[cableId];
     if (!cable || cable.connected) return;
+
+    globalSoundRealityEngine.playCableSnap(true);
 
     cables[cableId] = {
       ...cable,

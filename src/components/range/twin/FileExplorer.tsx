@@ -33,6 +33,7 @@ import { WindowsDesktopEngine } from '../../../engine/reality/windows/WindowsDes
 import { FileObject, SimulatedDrive, RecycleBinItem } from '../../../engine/reality/windows/types';
 import { globalNetworkEngine } from '../../../engine/reality/network/NetworkEngine';
 import { globalRealityEngine } from '../../../engine/reality/RealityEngine';
+import { globalSoundRealityEngine } from '../../../engine/reality/SoundRealityEngine';
 
 interface FileExplorerProps {
   desktop: WindowsDesktopEngine;
@@ -144,6 +145,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       });
 
       if (!smbRes.success) {
+        globalSoundRealityEngine.playErrorDing();
         const isUnavailable =
           smbRes.failureReason === 'SERVICE_UNAVAILABLE' ||
           smbRes.error === 'SERVICE_UNAVAILABLE';
@@ -504,21 +506,21 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 text-left ${currentPath.startsWith('\\\\FILE01\\Finance') ? 'bg-cyan-950/60 text-cyan-300 font-medium' : 'text-slate-300'}`}
           >
             <Network className="w-4 h-4 text-emerald-400" />
-            \\\\FILE01\\Finance
+            {"\\\\FILE01\\Finance"}
           </button>
           <button
             onClick={() => navigateTo('\\\\FILE01\\HR')}
             className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 text-left ${currentPath.startsWith('\\\\FILE01\\HR') ? 'bg-cyan-950/60 text-cyan-300 font-medium' : 'text-slate-300'}`}
           >
             <Network className="w-4 h-4 text-blue-400" />
-            \\\\FILE01\\HR
+            {"\\\\FILE01\\HR"}
           </button>
           <button
             onClick={() => navigateTo('\\\\FILE01\\IT')}
             className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 text-left ${currentPath.startsWith('\\\\FILE01\\IT') ? 'bg-cyan-950/60 text-cyan-300 font-medium' : 'text-slate-300'}`}
           >
             <Network className="w-4 h-4 text-purple-400" />
-            \\\\FILE01\\IT
+            {"\\\\FILE01\\IT"}
           </button>
 
           <div className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase px-2 py-1 pt-3">

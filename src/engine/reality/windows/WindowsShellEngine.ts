@@ -10,8 +10,10 @@ import { ShellCommandResult } from './types';
 import { FileSystemEngine } from './FileSystemEngine';
 import { WindowsProcessManager } from './WindowsProcessManager';
 import { WindowsServiceManager } from './WindowsServiceManager';
-import { globalGroupPolicyEngine } from '../policy/GroupPolicyEngine';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
+const getGroupPolicyEngine = () => (globalThis as any).globalGroupPolicyEngine;
+const getNetworkEngine = () => (globalThis as any).globalNetworkEngine;
+const getActiveDirectoryEngine = () => (globalThis as any).globalActiveDirectoryEngine;
 import type { WindowsMachine } from './WindowsMachine';
 
 type RealityGlobal = typeof globalThis & {
@@ -362,8 +364,9 @@ export class WindowsShellEngine {
 
       try {
         const regMachine = (globalThis as RealityGlobal).globalRealityEngine?.registry.getMachine(ctx.machineId);
-        if (regMachine) {
-          const res = globalGroupPolicyEngine.gpupdate(
+        const gpoEng = getGroupPolicyEngine();
+        if (regMachine && gpoEng) {
+          const res = gpoEng.gpupdate(
             regMachine,
             ctx.userName,
             ctx.userSid,
@@ -399,16 +402,17 @@ export class WindowsShellEngine {
     if (cmd === 'gpresult') {
       try {
         const regMachine = (globalThis as RealityGlobal).globalRealityEngine?.registry.getMachine(ctx.machineId);
-        if (regMachine) {
-          const mCtx = globalGroupPolicyEngine.getMachineContext(regMachine);
-          const uCtx = globalGroupPolicyEngine.getUserContext(ctx.userName, ctx.userSid);
-          const cachedRsop = globalGroupPolicyEngine.getCachedRsop(ctx.machineId);
+        const gpoEng = getGroupPolicyEngine();
+        if (regMachine && gpoEng) {
+          const mCtx = gpoEng.getMachineContext(regMachine);
+          const uCtx = gpoEng.getUserContext(ctx.userName, ctx.userSid);
+          const cachedRsop = gpoEng.getCachedRsop(ctx.machineId);
           const cachedMatchesUser =
             cachedRsop?.targetUserSid === ctx.userSid ||
             cachedRsop?.targetUserName?.toLowerCase() === ctx.userName.toLowerCase();
           const rsop = cachedMatchesUser
             ? cachedRsop
-            : globalGroupPolicyEngine.processor.processPolicy(
+            : gpoEng.processor.processPolicy(
                 mCtx,
                 uCtx,
                 globalSimulationRuntime.clock.getVirtualTime()
@@ -488,6 +492,249 @@ export class WindowsShellEngine {
         output: `ERROR: Unable to generate RSOP data because target machine '${ctx.machineId}' is unavailable.`,
         currentDirectory: ctx.currentDirectory,
       };
+    }
+
+    // 17. IPCONFIG, PING, NSLOOKUP, ARP, ROUTE (Network CLI Delegators)
+    if (['ipconfig', 'ping', 'nslookup', 'arp', 'route'].includes(cmd)) {
+      try {
+        const netEng = getNetworkEngine();
+        const out = netEng
+          ? netEng.executeCommand(ctx.machineId, rawCommand, globalSimulationRuntime.clock.getVirtualTime())
+          : 'Network subsystem initializing...';
+        return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Network execution failure';
+        return { command: rawCommand, exitCode: 1, output: msg, currentDirectory: ctx.currentDirectory };
+      }
+    }
+
+    // 18. NET USER
+    if (cmd === 'net' && args[0]?.toLowerCase() === 'user') {
+      const ad = getActiveDirectoryEngine();
+      const targetUser = args[1];
+      if (!targetUser) {
+        const users = ad ? ad.store.getAllUsers() : [];
+        let out = `\nUser accounts for \\\\${ctx.hostname.toUpperCase()}\n\n`;
+        out += `-------------------------------------------------------------------------------\n`;
+        const rawNames = users.map((u: any) => u?.sAMAccountName || u?.name || u?.username).filter(Boolean);
+        const names = rawNames.length > 0 ? rawNames : ['Administrator', 'DefaultAccount', 'Guest', ctx.userName.toLowerCase()];
+        for (let i = 0; i < names.length; i += 3) {
+          const row = names.slice(i, i + 3).map((n: string) => String(n || '').padEnd(25, ' ')).join('');
+          out += `${row}\n`;
+        }
+        out += `The command completed successfully.\n`;
+        return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+      } else {
+        const allUsers = ad ? ad.store.getAllUsers() : [];
+        const u = allUsers.find(
+          (user: any) =>
+            user.sAMAccountName?.toLowerCase() === targetUser.toLowerCase() ||
+            user.name?.toLowerCase() === targetUser.toLowerCase() ||
+            user.username?.toLowerCase() === targetUser.toLowerCase() ||
+            user.sid?.toLowerCase() === targetUser.toLowerCase()
+        ) || (typeof (ad?.store as any)?.findUser === 'function' ? (ad?.store as any).findUser(targetUser) : null);
+        if (!u) {
+          return {
+            command: rawCommand,
+            exitCode: 2,
+            output: `The user name could not be found.\n\nMore help is available by typing NET HELPMSG 2221.`,
+            currentDirectory: ctx.currentDirectory,
+          };
+        }
+        const userGroups = ad ? ad.groupResolver.resolveUserGroupSids(u.sid) : [];
+        const groupNames = userGroups.map((sid: string) => {
+          const grp = ad?.store.findGroup(sid);
+          return grp ? `*${grp.name}` : `*${sid}`;
+        });
+
+        const uName = u.sAMAccountName || u.name || u.username || targetUser;
+        const uDisplayName = u.displayName || u.fullName || uName;
+        let out = `User name                    ${uName}\n`;
+        out += `Full Name                    ${uDisplayName}\n`;
+        out += `Comment                      ${u.description || 'Enterprise Domain User'}\n`;
+        out += `User's comment               \n`;
+        out += `Country/region code          000 (System Default)\n`;
+        out += `Account active               ${u.accountStatus === 'DISABLED' || u.enabled === false ? 'No' : 'Yes'}\n`;
+        out += `Account expires              Never\n\n`;
+        out += `Password last set            09/15/2026 08:30:00 AM\n`;
+        out += `Password expires             Never\n`;
+        out += `Password changeable          Yes\n`;
+        out += `Password required            Yes\n`;
+        out += `User may change password     Yes\n\n`;
+        out += `Workstations allowed         All\n`;
+        out += `Logon script                 \n`;
+        out += `User profile                 C:\\Users\\${uName.toLowerCase()}\n`;
+        out += `Home directory               \n`;
+        out += `Last logon                   09/28/2026 08:00:00 AM\n\n`;
+        out += `Logon hours allowed          All\n\n`;
+        out += `Local Group Memberships      *Users\n`;
+        out += `Global Group memberships     ${groupNames.join('  ') || '*Domain Users'}\n`;
+        out += `The command completed successfully.\n`;
+        return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+      }
+    }
+
+    // 19. NET SHARE
+    if (cmd === 'net' && args[0]?.toLowerCase() === 'share') {
+      let out = `\nShare name   Resource                        Remark\n\n`;
+      out += `-------------------------------------------------------------------------------\n`;
+      out += `C$           C:\\                             Default share\n`;
+      out += `ADMIN$       C:\\Windows                      Remote Admin\n`;
+      out += `IPC$                                         Remote IPC\n`;
+      if (ctx.machineId === 'FILE01') {
+        out += `Finance      D:\\Shares\\Finance               Department Financial Records\n`;
+        out += `HR           D:\\Shares\\HR                    Human Resources & Payroll\n`;
+        out += `IT           D:\\Shares\\IT                    IT Infrastructure & Scripts\n`;
+      }
+      out += `The command completed successfully.\n`;
+      return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+    }
+
+    // 20. NET START / NET STOP
+    if (cmd === 'net' && (args[0]?.toLowerCase() === 'start' || args[0]?.toLowerCase() === 'stop')) {
+      const action = args[0].toLowerCase();
+      const svcName = args.slice(1).join(' ');
+      if (!svcName) {
+        if (action === 'start') {
+          const running = ctx.serviceManager.getAllServices().filter((s) => s.status === 'RUNNING');
+          let out = `These Windows services are started:\n\n`;
+          for (const s of running) {
+            out += `   ${s.displayName || s.name}\n`;
+          }
+          out += `\nThe command completed successfully.\n`;
+          return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+        }
+        return {
+          command: rawCommand,
+          exitCode: 1,
+          output: `The syntax of this command is:\n\nNET STOP service`,
+          currentDirectory: ctx.currentDirectory,
+        };
+      }
+      if (action === 'start') {
+        const res = ctx.serviceManager.startService(svcName);
+        if (!res.success) {
+          return {
+            command: rawCommand,
+            exitCode: 1,
+            output: `The service could not be started: ${res.error}`,
+            currentDirectory: ctx.currentDirectory,
+          };
+        }
+        return {
+          command: rawCommand,
+          exitCode: 0,
+          output: `The ${svcName} service was started successfully.`,
+          currentDirectory: ctx.currentDirectory,
+        };
+      } else {
+        const res = ctx.serviceManager.stopService(svcName);
+        if (!res.success) {
+          return {
+            command: rawCommand,
+            exitCode: 1,
+            output: `The service could not be stopped: ${res.error}`,
+            currentDirectory: ctx.currentDirectory,
+          };
+        }
+        return {
+          command: rawCommand,
+          exitCode: 0,
+          output: `The ${svcName} service was stopped successfully.`,
+          currentDirectory: ctx.currentDirectory,
+        };
+      }
+    }
+
+    // 21. NETSTAT
+    if (cmd === 'netstat') {
+      const netEng = getNetworkEngine();
+      const iface = netEng?.getInterface(ctx.machineId);
+      const ip = iface?.ipAddress || '127.0.0.1';
+      let out = `\nActive Connections\n\n`;
+      out += `  Proto  Local Address          Foreign Address        State           PID\n`;
+      if (ctx.machineId === 'DC01') {
+        out += `  TCP    0.0.0.0:53             0.0.0.0:0              LISTENING       1120\n`;
+        out += `  TCP    0.0.0.0:88             0.0.0.0:0              LISTENING       1088\n`;
+        out += `  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       924\n`;
+        out += `  TCP    0.0.0.0:389            0.0.0.0:0              LISTENING       1040\n`;
+        out += `  TCP    0.0.0.0:445            0.0.0.0:0              LISTENING       4\n`;
+      } else if (ctx.machineId === 'FILE01') {
+        const isSmbRunning = ctx.serviceManager.getService('LanmanServer')?.status === 'RUNNING';
+        out += `  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       892\n`;
+        if (isSmbRunning) {
+          out += `  TCP    0.0.0.0:445            0.0.0.0:0              LISTENING       4\n`;
+        }
+      } else {
+        out += `  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       840\n`;
+        out += `  TCP    ${ip}:49668       10.10.10.10:88         ESTABLISHED     648\n`;
+      }
+      const activeConns = netEng
+        ? netEng.connections.getConnections().filter((c: any) => c.sourceDevice === ctx.machineId || c.destinationDevice === ctx.machineId)
+        : [];
+      for (const c of activeConns) {
+        out += `  TCP    ${c.sourceIp}:${c.sourcePort}        ${c.destinationIp}:${c.destinationPort}        ${c.state.padEnd(15, ' ')} 4\n`;
+      }
+      return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+    }
+
+    // 22. SYSTEMINFO
+    if (cmd === 'systeminfo') {
+      const netEng = getNetworkEngine();
+      const iface = netEng?.getInterface(ctx.machineId);
+      let out = `\nHost Name:                 ${ctx.hostname.toUpperCase()}\n`;
+      out += `OS Name:                   Microsoft Windows 10 Enterprise\n`;
+      out += `OS Version:                10.0.19045 N/A Build 19045\n`;
+      out += `OS Manufacturer:           Microsoft Corporation\n`;
+      out += `OS Configuration:          Member Workstation\n`;
+      out += `OS Build Type:             Multiprocessor Free\n`;
+      out += `Registered Owner:          ${ctx.userName}\n`;
+      out += `Registered Organization:   NEXORA Defense & Security\n`;
+      out += `Product ID:                00329-00000-00003-AA684\n`;
+      out += `System Boot Time:          09/28/2026, 08:00:00 AM\n`;
+      out += `System Manufacturer:       Dell Inc.\n`;
+      out += `System Model:              OptiPlex 7090\n`;
+      out += `System Type:               x64-based PC\n`;
+      out += `Processor(s):              1 Processor(s) Installed.\n`;
+      out += `                           [01]: Intel64 Family 6 Model 167 ~3.60GHz\n`;
+      out += `Domain:                    ${ctx.domain.toLowerCase()}\n`;
+      out += `Logon Server:              \\\\DC01\n`;
+      out += `Network Card(s):           1 NIC(s) Installed.\n`;
+      out += `                           [01]: ${iface?.name || 'Ethernet0'}\n`;
+      out += `                                 Connection Name: Ethernet0\n`;
+      out += `                                 DHCP Enabled:    No\n`;
+      out += `                                 IP address(es)\n`;
+      out += `                                 [01]: ${iface?.ipAddress || '10.10.30.15'}\n`;
+      return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
+    }
+
+    // 23. HELP / ?
+    if (cmd === 'help' || cmd === '?') {
+      let out = `For more information on a specific command, type HELP command-name\n\n`;
+      out += `ARP            Displays and modifies the IP-to-Physical address translation tables.\n`;
+      out += `CD / CHDIR     Displays the name of or changes the current directory.\n`;
+      out += `CLS            Clears the screen.\n`;
+      out += `DEL / ERASE    Deletes one or more files.\n`;
+      out += `DIR            Displays a list of files and subdirectories in a directory.\n`;
+      out += `ECHO           Displays messages, or turns command-echoing on or off.\n`;
+      out += `GPRESULT       Displays Resultant Set of Policy (RSoP) information for target.\n`;
+      out += `GPUPDATE       Updates Group Policy settings.\n`;
+      out += `HOSTNAME       Prints the name of the current host.\n`;
+      out += `IPCONFIG       Displays all current TCP/IP network configuration values.\n`;
+      out += `KLIST          Displays currently cached Kerberos tickets.\n`;
+      out += `MKDIR / MD     Creates a directory.\n`;
+      out += `NET            Used to manage network resources, users, shares, and services.\n`;
+      out += `NETSTAT        Displays protocol statistics and current TCP/IP network connections.\n`;
+      out += `NSLOOKUP       Queries Domain Name System (DNS) servers.\n`;
+      out += `PING           Verifies IP-level connectivity to another TCP/IP computer.\n`;
+      out += `ROUTE          Manipulates network routing tables.\n`;
+      out += `SC             Communicates with the Service Controller and installed services.\n`;
+      out += `SET            Displays, sets, or removes Windows environment variables.\n`;
+      out += `SYSTEMINFO     Displays machine-specific properties and configuration.\n`;
+      out += `TASKLIST       Displays all currently running tasks including services.\n`;
+      out += `TYPE           Displays the contents of a text file.\n`;
+      out += `WHOAMI         Displays user, group and privileges information for current user.\n`;
+      return { command: rawCommand, exitCode: 0, output: out, currentDirectory: ctx.currentDirectory };
     }
 
     return {

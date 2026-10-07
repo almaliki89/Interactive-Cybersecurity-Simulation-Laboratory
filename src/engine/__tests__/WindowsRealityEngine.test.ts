@@ -8,6 +8,8 @@ import { UserProfileEngine } from '../reality/windows/UserProfileEngine';
 import { WindowsRegistryEngine } from '../reality/windows/WindowsRegistryEngine';
 import { RecycleBinEngine } from '../reality/windows/RecycleBinEngine';
 import { WindowsShellEngine, ShellContext } from '../reality/windows/WindowsShellEngine';
+import '../reality/network/NetworkEngine';
+import '../reality/identity/ActiveDirectoryEngine';
 
 describe('OMEGA ULTRA REALITY V1.4 — Windows Reality Engine Unit Tests', () => {
   let desktopEngine: WindowsDesktopEngine;
@@ -343,6 +345,76 @@ describe('OMEGA ULTRA REALITY V1.4 — Windows Reality Engine Unit Tests', () =>
       expect(scRes.exitCode).toBe(0);
       expect(scRes.output).toContain('LanmanServer');
       expect(scRes.output).toContain('4  RUNNING');
+    });
+
+    it('executes realistic networking and enterprise commands: ipconfig, ping, nslookup, net user, net share, netstat, systeminfo, help', () => {
+      const shell = desktopEngine.shell;
+      const ctx: ShellContext = {
+        machineId: 'FIN-WS01',
+        hostname: 'FIN-WS01',
+        domain: 'CORP.OMEGA.LOCAL',
+        userName: 'sara.finance',
+        userSid: 'S-1-5-21-3849201948-1001',
+        userGroups: [{ name: 'Finance-ReadWrite', sid: 'S-1-5-21-3849201948-1101', type: 'Group' }],
+        currentDirectory: 'C:\\Users\\sara.finance',
+        fileSystem: desktopEngine.fileSystem,
+        processManager: desktopEngine.processes,
+        serviceManager: desktopEngine.services,
+      };
+
+      // 1. IPCONFIG
+      const ipRes = shell.execute('ipconfig /all', ctx);
+      expect(ipRes.exitCode).toBe(0);
+      expect(ipRes.output).toContain('Windows IP Configuration');
+      expect(ipRes.output).toContain('IPv4 Address');
+      expect(ipRes.output).toContain('Subnet Mask');
+
+      // 2. PING
+      const pingRes = shell.execute('ping 10.10.10.10', ctx);
+      expect(pingRes.exitCode).toBe(0);
+      expect(pingRes.output).toContain('Pinging 10.10.10.10');
+      expect(pingRes.output).toContain('bytes=32');
+
+      // 3. NSLOOKUP
+      const nsRes = shell.execute('nslookup dc01', ctx);
+      expect(nsRes.exitCode).toBe(0);
+      expect(nsRes.output).toContain('dc01');
+
+      // 4. NET USER
+      const netUserRes = shell.execute('net user', ctx);
+      expect(netUserRes.exitCode).toBe(0);
+      expect(netUserRes.output).toContain('User accounts for \\\\FIN-WS01');
+
+      // 5. NET USER SARA.FINANCE
+      const userDetailRes = shell.execute('net user sara.finance', ctx);
+      expect(userDetailRes.exitCode).toBe(0);
+      expect(userDetailRes.output).toContain('sara.finance');
+      expect(userDetailRes.output).toContain('Account active');
+
+      // 6. NET SHARE
+      const netShareRes = shell.execute('net share', ctx);
+      expect(netShareRes.exitCode).toBe(0);
+      expect(netShareRes.output).toContain('C$');
+      expect(netShareRes.output).toContain('ADMIN$');
+
+      // 7. NETSTAT
+      const netstatRes = shell.execute('netstat', ctx);
+      expect(netstatRes.exitCode).toBe(0);
+      expect(netstatRes.output).toContain('Active Connections');
+      expect(netstatRes.output).toContain('Proto');
+
+      // 8. SYSTEMINFO
+      const sysinfoRes = shell.execute('systeminfo', ctx);
+      expect(sysinfoRes.exitCode).toBe(0);
+      expect(sysinfoRes.output).toContain('Host Name:');
+      expect(sysinfoRes.output).toContain('Microsoft Windows 10 Enterprise');
+
+      // 9. HELP
+      const helpRes = shell.execute('help', ctx);
+      expect(helpRes.exitCode).toBe(0);
+      expect(helpRes.output).toContain('IPCONFIG');
+      expect(helpRes.output).toContain('PING');
+      expect(helpRes.output).toContain('WHOAMI');
     });
   });
 

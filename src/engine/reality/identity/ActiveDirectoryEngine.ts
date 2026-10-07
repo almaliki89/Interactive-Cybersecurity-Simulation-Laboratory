@@ -528,3 +528,4 @@ export class ActiveDirectoryEngine {
 
 // Global Active Directory Engine singleton
 export const globalActiveDirectoryEngine = new ActiveDirectoryEngine();
+(globalThis as any).globalActiveDirectoryEngine = globalActiveDirectoryEngine;

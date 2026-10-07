@@ -10,12 +10,15 @@ import { DigitalTwinCanvas } from './twin/DigitalTwinCanvas';
 import { DeviceNavigator } from './twin/DeviceNavigator';
 import { DeviceInspector } from './twin/DeviceInspector';
 import { SchematicView2D } from './twin/SchematicView2D';
+import { VirtualMachineConsole } from './twin/VirtualMachineConsole';
 import { CameraViewMode } from '../../engine/reality/digitalTwinTypes';
+import { globalSoundRealityEngine } from '../../engine/reality/SoundRealityEngine';
 import {
   Building,
   Server,
   Layers,
   Laptop,
+  Monitor,
   Maximize2,
   Volume2,
   VolumeX,
@@ -58,6 +61,11 @@ export const CyberRange: React.FC = () => {
   useEffect(() => {
     syncWithRealityEngine();
   }, [syncWithRealityEngine]);
+
+  // Synchronize server room ventilation acoustics
+  useEffect(() => {
+    globalSoundRealityEngine.setAmbientMuted(ambientNoiseMuted);
+  }, [ambientNoiseMuted]);
 
   // Keyboard navigation shortcuts (1: Building, 2: Server Room, 3: Rack-01, 4: Workstation)
   useEffect(() => {
@@ -127,9 +135,9 @@ export const CyberRange: React.FC = () => {
           })}
         </div>
 
-        {/* Right: Render Mode (3D vs 2D) & Ambient Mute */}
+        {/* Right: Render Mode (3D vs VM Console vs 2D) & Ambient Mute */}
         <div className="flex items-center gap-2">
-          {/* 3D WebGL vs 2D Accessible Schematic Toggle */}
+          {/* 3D WebGL vs VM Console vs 2D Accessible Schematic Toggle */}
           <div className="flex items-center p-0.5 bg-slate-900 rounded-lg border border-slate-800">
             <button
               data-testid="digital-twin-mode-3d"
@@ -141,6 +149,19 @@ export const CyberRange: React.FC = () => {
               }`}
             >
               3D WebGL
+            </button>
+            <button
+              data-testid="digital-twin-mode-vm-console"
+              onClick={() => setRenderMode('vm-console')}
+              className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors flex items-center gap-1 ${
+                renderMode === 'vm-console'
+                  ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title={language === 'ar' ? 'وحدة التحكم الافتراضية بنظام التشغيل' : 'Virtual Machine OS Console'}
+            >
+              <Monitor className="w-3 h-3 text-cyan-400" />
+              <span>{language === 'ar' ? 'وحدة التحكم RDP' : 'VM Console (RDP)'}</span>
             </button>
             <button
               data-testid="digital-twin-mode-2d"
@@ -171,10 +192,12 @@ export const CyberRange: React.FC = () => {
         {/* Left: Device & Location Tree Navigator */}
         <DeviceNavigator language={language} />
 
-        {/* Center: 3D WebGL Canvas or 2D Accessible Schematic */}
-        <div className="flex-1 h-full relative overflow-hidden bg-slate-950">
+        {/* Center: 3D WebGL Canvas, VM Console (RDP), or 2D Accessible Schematic */}
+        <div className="flex-1 h-full relative overflow-hidden bg-slate-950 z-0">
           {renderMode === '3d-webgl' ? (
             <DigitalTwinCanvas />
+          ) : renderMode === 'vm-console' ? (
+            <VirtualMachineConsole language={language} />
           ) : (
             <SchematicView2D language={language} />
           )}

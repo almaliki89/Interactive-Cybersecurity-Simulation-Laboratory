@@ -165,7 +165,7 @@ export interface DigitalTwinState {
   selectedCableId: string | null;
   selectedRoomId: RoomId;
   cameraMode: CameraViewMode;
-  renderMode: '3d-webgl' | '2d-schematic';
+  renderMode: '3d-webgl' | '2d-schematic' | 'vm-console';
   rooms: Record<RoomId, BuildingRoom>;
   racks: Record<string, ServerRack>;
   devices: Record<string, DigitalTwinDevice>;

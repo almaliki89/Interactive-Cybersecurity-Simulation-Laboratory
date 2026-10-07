@@ -8,6 +8,7 @@ import { Terminal } from 'lucide-react';
 import { WindowsDesktopEngine } from '../../../engine/reality/windows/WindowsDesktopEngine';
 import { ShellContext } from '../../../engine/reality/windows/WindowsShellEngine';
 import { globalActiveDirectoryEngine } from '../../../engine/reality/identity/ActiveDirectoryEngine';
+import { globalSoundRealityEngine } from '../../../engine/reality/SoundRealityEngine';
 
 interface CommandPromptProps {
   desktop: WindowsDesktopEngine;
@@ -38,6 +39,9 @@ export const CommandPrompt: React.FC<CommandPromptProps> = ({ desktop }) => {
   }, [history]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Play realistic mechanical switch clack
+    globalSoundRealityEngine.playKeyClick(e.key === 'Enter' ? 'enter' : e.key === ' ' ? 'space' : 'clack');
+
     if (e.key === 'Enter') {
       const cmd = inputVal;
       setInputVal('');

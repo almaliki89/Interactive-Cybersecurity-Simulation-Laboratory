@@ -58,7 +58,9 @@ export class GroupPolicyEngine {
     let ouPath = 'OU=Workstations,DC=NEXORA,DC=LOCAL';
 
     // Try to lookup real OU in AD
-    const adComp = globalActiveDirectoryEngine.store.findComputer(machine.hostname);
+    const adComp = typeof globalActiveDirectoryEngine !== 'undefined' && globalActiveDirectoryEngine?.store
+      ? globalActiveDirectoryEngine.store.findComputer(machine.hostname)
+      : undefined;
     if (adComp) {
       ouPath = adComp.ou;
       if (adComp.ou.toUpperCase().includes('DOMAIN CONTROLLERS')) {
@@ -97,7 +99,9 @@ export class GroupPolicyEngine {
     const lowerUser = cleanUser.toLowerCase();
 
     // Try to lookup real user in AD
-    const adUser = globalActiveDirectoryEngine.store.findUser(userSid || userName);
+    const adUser = typeof globalActiveDirectoryEngine !== 'undefined' && globalActiveDirectoryEngine?.store
+      ? globalActiveDirectoryEngine.store.findUser(userSid || userName)
+      : undefined;
 
     let sid = userSid || adUser?.sid || 'S-1-5-21-99887766-2000';
     let ouPath = adUser?.ou || 'OU=Users,DC=NEXORA,DC=LOCAL';
@@ -337,3 +341,4 @@ export class GroupPolicyEngine {
 }
 
 export const globalGroupPolicyEngine = new GroupPolicyEngine();
+(globalThis as any).globalGroupPolicyEngine = globalGroupPolicyEngine;

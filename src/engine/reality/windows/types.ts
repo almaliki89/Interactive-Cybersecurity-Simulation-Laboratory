@@ -198,7 +198,7 @@ export interface DesktopIcon {
 export interface OpenWindow {
   id: string;
   title: string;
-  appType: 'FILE_EXPLORER' | 'TASK_MANAGER' | 'SERVICES' | 'CMD' | 'EVENT_VIEWER' | 'NOTEPAD';
+  appType: 'FILE_EXPLORER' | 'TASK_MANAGER' | 'SERVICES' | 'CMD' | 'EVENT_VIEWER' | 'NOTEPAD' | 'ACTIVE_DIRECTORY' | 'GROUP_POLICY';
   initialPath?: string;
   isMinimized: boolean;
   isMaximized: boolean;

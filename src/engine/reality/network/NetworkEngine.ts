@@ -24,8 +24,7 @@ import {
 } from './types';
 import { PhysicalConnectivityEngine } from '../PhysicalConnectivityEngine';
 import type { RealitySessionState } from '../types';
-// Removed top-level globalRealityEngine import to break circular dependency
-// import { globalRealityEngine } from '../RealityEngine';
+import { globalRealityEngine } from '../RealityEngine';
 import { globalSimulationRuntime } from '../../runtime/SimulationRuntime';
 import { globalActiveDirectoryEngine } from '../identity/ActiveDirectoryEngine';
 
@@ -515,7 +514,7 @@ export class NetworkEngine {
     }
 
     // 6. Verify DNS Server Machine State & DnsCache/DNS Service Status
-    const dcMachine = (globalThis as any).globalRealityEngine.registry.getMachine('DC01');
+    const dcMachine = globalRealityEngine.registry.getMachine('DC01');
     const dcDev = store.devices['DC01'];
     if (!dcMachine || dcMachine.status !== 'ONLINE' || dcDev?.powerStatus !== 'ONLINE') {
       const failure: DnsQueryResult = {
@@ -673,7 +672,7 @@ export class NetworkEngine {
     }
 
     // 2. Target Machine Power State
-    const targetMachine = (globalThis as any).globalRealityEngine.registry.getMachine(cleanServer);
+    const targetMachine = globalRealityEngine.registry.getMachine(cleanServer);
     const targetDev = store.devices[cleanServer];
     const isFileServerOnline = (targetDev ? targetDev.powerStatus === 'ONLINE' : true) && (targetMachine ? targetMachine.status === 'ONLINE' : true);
 
@@ -776,7 +775,7 @@ export class NetworkEngine {
     }
 
     // 7. Resolve Real Authenticated Session on the Workstation
-    const workstationMachine = (globalThis as any).globalRealityEngine.registry.getMachine(params.sourceDeviceId);
+    const workstationMachine = globalRealityEngine.registry.getMachine(params.sourceDeviceId);
     const activeSession = workstationMachine?.getSessions().find((s: RealitySessionState) => s.status === 'ACTIVE');
 
     if (!activeSession) {
@@ -1041,7 +1040,7 @@ export class NetworkEngine {
       };
     }
 
-    const targetDev = store.devices[targetDeviceId];
+    const targetDev = store?.devices?.[targetDeviceId];
     if (targetDev && targetDev.powerStatus !== 'ONLINE') {
       return {
         success: false,
@@ -1267,7 +1266,7 @@ Ping statistics for ${target}:
     }
 
     if (cmd === 'whoami') {
-      const machine = (globalThis as any).globalRealityEngine.registry.getMachine(sourceDeviceId);
+      const machine = globalRealityEngine.registry.getMachine(sourceDeviceId);
       const activeSession = machine?.getSessions().find((s: RealitySessionState) => s.status === 'ACTIVE');
       const username = activeSession ? activeSession.userName : 'sara.finance';
       const userObj = globalActiveDirectoryEngine.store.findUser(username);
@@ -1345,3 +1344,4 @@ Ping statistics for ${target}:
 }
 
 export const globalNetworkEngine = new NetworkEngine();
+(globalThis as any).globalNetworkEngine = globalNetworkEngine;

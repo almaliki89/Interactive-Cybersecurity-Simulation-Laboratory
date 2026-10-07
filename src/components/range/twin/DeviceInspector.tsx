@@ -13,6 +13,7 @@ import { Dc01Inspector } from './Dc01Inspector';
 import { WindowsDesktop } from './WindowsDesktop';
 import { GroupPolicyConsole } from './GroupPolicyConsole';
 import { ResultantSetOfPolicy } from './ResultantSetOfPolicy';
+import { globalSoundRealityEngine } from '../../../engine/reality/SoundRealityEngine';
 import {
   Power,
   Cpu,
@@ -33,6 +34,8 @@ import {
   FolderLock,
   Globe,
   Users,
+  Monitor,
+  Maximize2,
 } from 'lucide-react';
 
 type InspectorTab =
@@ -129,7 +132,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
     if (cable) {
       const isConnected = cable.status === 'CONNECTED';
       return (
-        <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden" data-testid="cable-inspector">
+        <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden relative z-10 shrink-0" data-testid="cable-inspector">
           <div className="p-3.5 border-b border-slate-900 bg-slate-900/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-rose-500'}`} />
@@ -180,7 +183,11 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
               </p>
               <button
                 data-testid={isConnected ? "cable-disconnect-btn" : "cable-reconnect-btn"}
-                onClick={() => isConnected ? disconnectCable(cable.id) : connectCable(cable.id)}
+                onClick={() => {
+                  globalSoundRealityEngine.playCableSnap(!isConnected);
+                  if (isConnected) disconnectCable(cable.id);
+                  else connectCable(cable.id);
+                }}
                 className={`w-full py-2 px-3 rounded text-xs font-bold transition-all shadow-sm ${
                   isConnected
                     ? 'bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800'
@@ -219,7 +226,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
   if (!selectedDeviceId) {
     return (
-      <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 p-6 flex flex-col items-center justify-center text-center select-none text-slate-500">
+      <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 p-6 flex flex-col items-center justify-center text-center select-none text-slate-500 relative z-10 shrink-0">
         <Server className="w-10 h-10 mb-3 text-slate-800" />
         <div className="text-sm font-semibold text-slate-400">
           {language === 'ar' ? 'لم يتم تحديد أي جهاز' : 'No Device Selected'}
@@ -249,7 +256,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
   const eventLogs = realityMachine ? realityMachine.getEventLogs() : [];
 
   return (
-    <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden" data-testid={`device-inspector-${selectedDeviceId}`}>
+    <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden relative z-10 shrink-0" data-testid={`device-inspector-${selectedDeviceId}`}>
       {/* Device Header */}
       <div className="p-3.5 border-b border-slate-900 bg-slate-900/30 space-y-2">
         <div className="flex items-start justify-between gap-2">
@@ -272,7 +279,10 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
           {/* Power Button */}
           <button
-            onClick={() => toggleDevicePower(device.id)}
+            onClick={() => {
+              if (!isOnline) globalSoundRealityEngine.playPostBeep();
+              toggleDevicePower(device.id);
+            }}
             className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm ${
               isOnline
                 ? 'bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60'
@@ -301,6 +311,20 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
             <div className="text-amber-400 font-bold">{device.powerWatts} W</div>
           </div>
         </div>
+
+        {/* Quick RDP Fullscreen Launch */}
+        {realityMachine && (
+          <button
+            onClick={() => {
+              useDigitalTwinStore.getState().setRenderMode('vm-console');
+              globalSoundRealityEngine.playLogonChime();
+            }}
+            className="w-full mt-2 py-1.5 px-3 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-700/60 text-cyan-300 font-mono text-[11px] font-semibold flex items-center justify-center gap-2 transition-all shadow-md group"
+          >
+            <Monitor className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+            <span>{language === 'ar' ? '🖥️ فتح وحدة التحكم الكاملة RDP' : '🖥️ Open Full VM Console (RDP)'}</span>
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -456,8 +480,23 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
       <div className="flex-1 overflow-y-auto p-3.5 space-y-4 custom-scrollbar text-xs">
         {/* ================= TAB: WINDOWS DESKTOP REALITY ================= */}
         {activeTab === 'desktop' && realityMachine && (
-          <div className="h-[600px] w-full rounded-lg overflow-hidden border border-slate-800 shadow-2xl">
-            <WindowsDesktop machine={realityMachine} />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-cyan-950/40 border border-cyan-800/40 text-[10px] font-mono text-cyan-300">
+              <span>{language === 'ar' ? 'معاينة مصغرة لسطح المكتب' : 'Mini Desktop Preview'}</span>
+              <button
+                onClick={() => {
+                  useDigitalTwinStore.getState().setRenderMode('vm-console');
+                  globalSoundRealityEngine.playLogonChime();
+                }}
+                className="flex items-center gap-1 font-bold underline hover:text-white"
+              >
+                <Maximize2 className="w-3 h-3" />
+                <span>{language === 'ar' ? 'تكبير كامل (RDP)' : 'Expand Full RDP'}</span>
+              </button>
+            </div>
+            <div className="h-[600px] w-full rounded-lg overflow-hidden border border-slate-800 shadow-2xl">
+              <WindowsDesktop machine={realityMachine} />
+            </div>
           </div>
         )}
 
