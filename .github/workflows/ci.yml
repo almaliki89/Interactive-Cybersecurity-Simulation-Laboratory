@@ -65,4 +65,6 @@ jobs:
             artifacts/visual-qa/
             playwright-report/
             test-results/
+          if-no-files-found: ignore
+          overwrite: true
           retention-days: 14

@@ -904,5 +904,59 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
       expect(noBypassRes.success).toBe(false);
       expect(noBypassRes.failureReason).toBe('BAD_PASSWORD');
     });
+
+    it('15. rejects missing, empty, or whitespace password via UI attemptLogon', () => {
+      // Missing password
+      const resMissing = globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: '',
+      });
+      expect(resMissing.success).toBe(false);
+      expect(resMissing.failureReason).toBe('BAD_PASSWORD');
+
+      // Whitespace password
+      const resSpace = globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: '   ',
+      });
+      expect(resSpace.success).toBe(false);
+      expect(resSpace.failureReason).toBe('BAD_PASSWORD');
+    });
+
+    it('16. rejects incorrect and case-mismatched passwords', () => {
+      // Completely wrong password
+      const resWrong = globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: 'IncorrectPassword123',
+      });
+      expect(resWrong.success).toBe(false);
+      expect(resWrong.failureReason).toBe('BAD_PASSWORD');
+
+      // Case-mismatch (lowercase 'p' instead of capital 'P')
+      const resCase = globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: 'p@ssword123!',
+      });
+      expect(resCase.success).toBe(false);
+      expect(resCase.failureReason).toBe('BAD_PASSWORD');
+    });
+
+    it('17. proves untrusted UI parameters cannot activate allowEducationalBypass', () => {
+      // Malicious attempt to inject allowEducationalBypass into UI logon
+      const maliciousPayload: any = {
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: '',
+        allowEducationalBypass: true,
+      };
+
+      const res = globalRealityEngine.attemptLogon(maliciousPayload);
+      expect(res.success).toBe(false);
+      expect(res.failureReason).toBe('BAD_PASSWORD');
+    });
   });
 });

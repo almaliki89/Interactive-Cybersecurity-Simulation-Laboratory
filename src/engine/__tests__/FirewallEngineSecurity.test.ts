@@ -183,6 +183,53 @@ describe('FirewallEngine Security & Model Validation Suite', () => {
       expect(resRestored.allowed).toBe(true);
       expect(resRestored.matchedRule.id).toBe('FW-RULE-004');
     });
+
+    it('enforces Group Policy port blocks and subsequent unblock restoration', () => {
+      // 1. Initial state allows SMB port 445 via FW-RULE-004
+      const initialRes = fw.evaluate({
+        srcIp: '10.10.30.15',
+        dstIp: '10.10.20.10',
+        protocol: 'TCP',
+        dstPort: 445,
+      });
+      expect(initialRes.allowed).toBe(true);
+
+      // 2. GPO blocks port 445
+      fw.blockPort('TCP', 445, 'GPO Block SMB');
+      expect(fw.isPortBlocked('TCP', 445)).toBe(true);
+
+      const blockedRes = fw.evaluate({
+        srcIp: '10.10.30.15',
+        dstIp: '10.10.20.10',
+        protocol: 'TCP',
+        dstPort: 445,
+      });
+      expect(blockedRes.allowed).toBe(false);
+      expect(blockedRes.matchedRule.id).toBe('FW-GPO-BLOCK-TCP-445');
+
+      // GPO block rule also blocks same-address / loopback test on port 445
+      const loopbackBlocked = fw.evaluate({
+        srcIp: '127.0.0.1',
+        dstIp: '127.0.0.1',
+        protocol: 'TCP',
+        dstPort: 445,
+      });
+      expect(loopbackBlocked.allowed).toBe(false);
+      expect(loopbackBlocked.matchedRule.id).toBe('FW-GPO-BLOCK-TCP-445');
+
+      // 3. Unblock restores access
+      fw.unblockPort('TCP', 445);
+      expect(fw.isPortBlocked('TCP', 445)).toBe(false);
+
+      const restoredRes = fw.evaluate({
+        srcIp: '10.10.30.15',
+        dstIp: '10.10.20.10',
+        protocol: 'TCP',
+        dstPort: 445,
+      });
+      expect(restoredRes.allowed).toBe(true);
+      expect(restoredRes.matchedRule.id).toBe('FW-RULE-004');
+    });
   });
 
   describe('CIDR Boundaries & Prefix Matching', () => {
