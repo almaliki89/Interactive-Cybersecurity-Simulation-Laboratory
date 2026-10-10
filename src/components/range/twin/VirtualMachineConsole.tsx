@@ -275,7 +275,7 @@ export const VirtualMachineConsole: React.FC<VirtualMachineConsoleProps> = ({ la
           </div>
         ) : (
           <div className="flex-1 w-full h-full relative overflow-hidden">
-            <WindowsDesktop machine={machine} />
+            <WindowsDesktop key={machine.id} machine={machine} />
           </div>
         )}
 

@@ -58,9 +58,14 @@ export class GroupPolicyEngine {
     let ouPath = 'OU=Workstations,DC=NEXORA,DC=LOCAL';
 
     // Try to lookup real OU in AD
-    const adComp = typeof globalActiveDirectoryEngine !== 'undefined' && globalActiveDirectoryEngine?.store
-      ? globalActiveDirectoryEngine.store.findComputer(machine.hostname)
-      : undefined;
+    let adComp = undefined;
+    try {
+      if (typeof globalActiveDirectoryEngine !== 'undefined' && globalActiveDirectoryEngine?.store) {
+        adComp = globalActiveDirectoryEngine.store.findComputer(machine.hostname);
+      }
+    } catch {
+      // Handle circular initialization gracefully
+    }
     if (adComp) {
       ouPath = adComp.ou;
       if (adComp.ou.toUpperCase().includes('DOMAIN CONTROLLERS')) {

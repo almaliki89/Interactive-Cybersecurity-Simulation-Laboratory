@@ -111,11 +111,19 @@ export class AuthenticationEngine {
     // 6. Password Verification / Kerberos Pre-Auth
     let passwordOk = false;
     if (typeof params.passwordProvided === 'string') {
-      // Use explicit verification or baseline common password for simulation
-      passwordOk = (params.passwordProvided === user.credentialVerifierHash) || 
-                   (params.passwordProvided === 'P@ssword123!');
+      const provided = params.passwordProvided;
+      // Empty or blank password is rejected immediately
+      if (!provided || provided.trim().length === 0) {
+        passwordOk = false;
+      } else if (user.configuredPassword) {
+        // Authenticate strictly against this specific account's configured credentials
+        passwordOk = (provided === user.configuredPassword) || (provided === user.credentialVerifierHash);
+      } else {
+        // Fallback for custom accounts without explicit configuredPassword
+        passwordOk = (provided === user.credentialVerifierHash);
+      }
     } else {
-      passwordOk = params.passwordProvided; // Legacy boolean support
+      passwordOk = Boolean(params.passwordProvided); // Legacy boolean support
     }
 
     if (!passwordOk) {

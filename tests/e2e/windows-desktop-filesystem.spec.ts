@@ -202,6 +202,14 @@ test.describe('Windows Desktop & File System Reality Suite', () => {
     await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible();
 
     await page.getByTestId('tab-desktop').click();
+    const finLoginScreen = page.getByTestId('windows-login-screen');
+    if (await finLoginScreen.isVisible()) {
+      await page.getByTestId('domain-username-input').fill('sara.finance');
+      await page.getByTestId('domain-password-input').fill('P@ssword123!');
+      await page.getByTestId('domain-login-btn').click();
+      await expect(page.getByTestId('desktop-FIN-WS01')).toBeVisible({ timeout: 15000 });
+    }
+
     const feIcon = page.getByTestId('icon-file-explorer');
     await feIcon.dblclick();
     await expect(page.getByTestId('file-explorer')).toBeVisible();
@@ -238,6 +246,11 @@ test.describe('Windows Desktop & File System Reality Suite', () => {
     await expect(page.getByTestId('services-console')).toBeVisible();
 
     const startBtn = page.getByTestId('service-action-start-LanmanServer');
+    const stopBtn = page.getByTestId('service-action-stop-LanmanServer');
+    if (await stopBtn.isEnabled()) {
+      await stopBtn.click();
+      await expect(page.getByTestId('service-status-LanmanServer')).toHaveAttribute('data-state', 'STOPPED');
+    }
     await startBtn.click();
     await expect(page.getByTestId('service-status-LanmanServer')).toHaveAttribute('data-state', 'RUNNING');
 
@@ -247,6 +260,14 @@ test.describe('Windows Desktop & File System Reality Suite', () => {
     await expect(page.getByTestId('device-inspector-FIN-WS01')).toBeVisible();
 
     await page.getByTestId('tab-desktop').click();
+    const finLoginScreen2 = page.getByTestId('windows-login-screen');
+    if (await finLoginScreen2.isVisible()) {
+      await page.getByTestId('domain-username-input').fill('sara.finance');
+      await page.getByTestId('domain-password-input').fill('P@ssword123!');
+      await page.getByTestId('domain-login-btn').click();
+      await expect(page.getByTestId('desktop-FIN-WS01')).toBeVisible({ timeout: 15000 });
+    }
+
     await page.getByTestId('icon-file-explorer').dblclick();
     await expect(page.getByTestId('file-explorer')).toBeVisible();
 

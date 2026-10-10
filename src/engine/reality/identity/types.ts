@@ -24,6 +24,7 @@ export interface DirectoryUser {
   lastLogonVirtualTime: number;
   ou: string; // Distinguished Name e.g. 'OU=Finance,DC=NEXORA,DC=LOCAL'
   credentialVerifierHash: string; // Deterministic secret verifier
+  configuredPassword?: string; // Configured account password
   defaultIntegrityLevel: 'Low' | 'Medium' | 'High' | 'System';
   privileges: string[];
 }

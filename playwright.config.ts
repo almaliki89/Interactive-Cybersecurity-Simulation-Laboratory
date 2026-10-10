@@ -18,7 +18,7 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: process.env.RECORD_VIDEO ? 'retain-on-failure' : 'off',
   },
   projects: [
     {

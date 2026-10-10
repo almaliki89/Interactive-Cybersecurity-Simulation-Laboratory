@@ -3,7 +3,7 @@
  * Enterprise UI for Active Directory Sites, Domains, OUs, GPO Links, Security Filtering, and Enforcement.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { globalGroupPolicyEngine } from '../../../engine/reality/policy/GroupPolicyEngine';
 import { GroupPolicyObject, GpoLink } from '../../../engine/reality/policy/types';
 import { BASELINE_OUS } from '../../../engine/reality/identity/DirectoryStore';
@@ -47,6 +47,13 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
   const [, setRevision] = useState(0);
   const [applyState, setApplyState] = useState<'idle' | 'success' | 'failure'>('idle');
   const [applyMessage, setApplyMessage] = useState('');
+  const selectedGpoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (selectedGpoId && selectedGpoRef.current) {
+      selectedGpoRef.current.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    }
+  }, [selectedGpoId]);
 
   const gpos = store.getAllGpos();
   const selectedGpo = store.getGpo(selectedGpoId);
@@ -366,9 +373,9 @@ export const GroupPolicyConsole: React.FC<GroupPolicyConsoleProps> = ({ activeMa
 
           {/* Selected GPO Detailed View */}
           {selectedGpo && (
-            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex flex-col">
+            <div ref={selectedGpoRef} className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex flex-col relative z-10">
               {/* Header Tabs */}
-              <div className="px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+              <div className="px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-amber-400" />
                   <span className="font-bold text-slate-100 text-sm">{selectedGpo.displayName}</span>

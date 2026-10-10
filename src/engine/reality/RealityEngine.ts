@@ -152,18 +152,23 @@ export class RealityEngine {
       // Fallback for local non-domain users
       const user = machine.getUserByName(params.userName) || (params.userSid ? machine.getUser(params.userSid) : undefined);
       
-      const passwordOk = params.password === 'P@ssword123!' || params.password === 'secret' || params.password === 'password';
-      success = passwordOk;
-      
-      if (success) {
-        if (!user) {
-          success = false;
-          failureReason = 'UserNotFound';
-        } else if (!user.enabled) {
-          success = false;
-          failureReason = 'UserDisabled';
-        } else {
+      if (!user) {
+        success = false;
+        failureReason = 'UserNotFound';
+      } else if (!user.enabled) {
+        success = false;
+        failureReason = 'UserDisabled';
+      } else if (!params.password || params.password.trim().length === 0) {
+        success = false;
+        failureReason = 'BadPassword';
+      } else {
+        const expected = (user as any).configuredPassword || 'P@ssword123!';
+        if (params.password === expected) {
+          success = true;
           userSid = user.sid;
+        } else {
+          success = false;
+          failureReason = 'BadPassword';
         }
       }
 

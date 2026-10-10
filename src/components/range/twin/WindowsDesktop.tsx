@@ -145,7 +145,13 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ machine }) => {
 
   // Logon Screen Form State
   const [loginUsername, setLoginUsername] = useState<string>(
-    machine.id.includes('FIN') ? 'sara.finance' : machine.id.includes('HR') ? 'omar.hr' : 'ali.it'
+    machine.id.includes('FIN')
+      ? 'sara.finance'
+      : machine.id.includes('HR')
+        ? 'omar.hr'
+        : machine.id.includes('FILE') || machine.id.includes('DC')
+          ? 'administrator'
+          : 'ali.it'
   );
   const [loginPassword, setLoginPassword] = useState<string>('P@ssword123!');
   const [loginState, setLoginState] = useState<'idle' | 'authenticating' | 'authenticated' | 'failed'>('idle');
@@ -406,17 +412,28 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ machine }) => {
           if (win.isMinimized) return null;
           const isActive = activeWinId === win.id;
 
-          return (
-            <div
-              key={win.id}
-              onClick={() => handleFocusWindow(win.id)}
-              style={{
+          const isMax = win.isMaximized;
+          const style: React.CSSProperties = isMax
+            ? {
                 zIndex: win.zIndex,
                 top: 0,
                 left: 0,
                 width: '100%',
                 height: 'calc(100% - 40px)',
-              }}
+              }
+            : {
+                zIndex: win.zIndex,
+                top: 0,
+                left: 96,
+                width: 'calc(100% - 96px)',
+                height: 'calc(100% - 40px)',
+              };
+
+          return (
+            <div
+              key={win.id}
+              onClick={() => handleFocusWindow(win.id)}
+              style={style}
               className={`absolute rounded-lg border shadow-2xl flex flex-col overflow-hidden bg-slate-900 transition-shadow ${isActive ? 'border-cyan-500/80 shadow-cyan-950/50 ring-1 ring-cyan-500/30' : 'border-slate-700/70 shadow-black/80'}`}
             >
               {/* Window Titlebar */}

@@ -186,9 +186,120 @@ export const DeviceNavigator: React.FC<DeviceNavigatorProps> = ({ language }) =>
           </div>
         </div>
 
+        {/* ROOM 3: HR DEPT */}
+        <div className="space-y-1">
+          <button
+            onClick={() => selectRoom('hr-dept')}
+            className={`w-full px-2 py-1.5 rounded-lg flex items-center justify-between text-left rtl:text-right transition-colors ${
+              selectedRoomId === 'hr-dept'
+                ? 'bg-cyan-950/40 text-cyan-300 border border-cyan-800/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Laptop className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+              <span className="text-xs font-semibold truncate">
+                {rooms['hr-dept'] ? (language === 'ar' ? rooms['hr-dept'].nameAr : rooms['hr-dept'].nameEn) : 'HR Department'}
+              </span>
+            </div>
+            <span className="text-[9px] font-mono text-slate-500">Floor 2</span>
+          </button>
+
+          {/* Workstations in HR */}
+          <div className="pl-3 rtl:pl-0 rtl:pr-3 border-l rtl:border-l-0 rtl:border-r border-slate-900 ml-2 rtl:ml-0 rtl:mr-2 space-y-1">
+            {(rooms['hr-dept']?.devices || []).map((devId) => {
+              const dev = devices[devId];
+              if (!dev) return null;
+              const isSelected = selectedDeviceId === devId;
+              const Icon = getDeviceIcon(dev.category);
+              const isOnline = dev.powerStatus === 'ONLINE';
+
+              return (
+                <button
+                  key={dev.id}
+                  data-testid={`nav-device-${dev.id}`}
+                  onClick={() => selectDevice(dev.id)}
+                  className={`w-full px-2 py-1.5 rounded-md flex items-center justify-between text-left rtl:text-right transition-all group ${
+                    isSelected
+                      ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        isOnline ? 'bg-emerald-400 shadow-sm shadow-emerald-500/50 animate-pulse' : 'bg-slate-700'
+                      }`}
+                    />
+                    <Icon className="w-3.5 h-3.5 text-slate-400 group-hover:text-pink-400 shrink-0" />
+                    <span className="text-[11px] font-mono font-medium truncate">{dev.id}</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-slate-500">WS</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ROOM 4: IT DEPT */}
+        <div className="space-y-1">
+          <button
+            onClick={() => selectRoom('it-dept')}
+            className={`w-full px-2 py-1.5 rounded-lg flex items-center justify-between text-left rtl:text-right transition-colors ${
+              selectedRoomId === 'it-dept'
+                ? 'bg-cyan-950/40 text-cyan-300 border border-cyan-800/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Laptop className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span className="text-xs font-semibold truncate">
+                {rooms['it-dept'] ? (language === 'ar' ? rooms['it-dept'].nameAr : rooms['it-dept'].nameEn) : 'IT Department'}
+              </span>
+            </div>
+            <span className="text-[9px] font-mono text-slate-500">Floor 2</span>
+          </button>
+
+          {/* Workstations in IT */}
+          <div className="pl-3 rtl:pl-0 rtl:pr-3 border-l rtl:border-l-0 rtl:border-r border-slate-900 ml-2 rtl:ml-0 rtl:mr-2 space-y-1">
+            {(rooms['it-dept']?.devices || []).map((devId) => {
+              const dev = devices[devId];
+              if (!dev) return null;
+              const isSelected = selectedDeviceId === devId;
+              const Icon = getDeviceIcon(dev.category);
+              const isOnline = dev.powerStatus === 'ONLINE';
+
+              return (
+                <button
+                  key={dev.id}
+                  data-testid={`nav-device-${dev.id}`}
+                  onClick={() => selectDevice(dev.id)}
+                  className={`w-full px-2 py-1.5 rounded-md flex items-center justify-between text-left rtl:text-right transition-all group ${
+                    isSelected
+                      ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        isOnline ? 'bg-emerald-400 shadow-sm shadow-emerald-500/50 animate-pulse' : 'bg-slate-700'
+                      }`}
+                    />
+                    <Icon className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 shrink-0" />
+                    <span className="text-[11px] font-mono font-medium truncate">{dev.id}</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-slate-500">WS</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* OTHER SECTORS */}
-        {(['soc', 'it-dept', 'netops', 'reception'] as RoomId[]).map((rId) => {
+        {(['soc', 'netops', 'reception', 'data-center'] as RoomId[]).map((rId) => {
           const room = rooms[rId];
+          if (!room) return null;
           const isSelected = selectedRoomId === rId;
           return (
             <button

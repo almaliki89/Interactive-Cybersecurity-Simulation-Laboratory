@@ -170,13 +170,36 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     return null;
   };
 
+  const safeParseCompletedChallenges = (raw: string | null): string[] => {
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
+      }
+      // Handle legacy object schema e.g. { completed: string[] } or { challengeId: true }
+      if (parsed && typeof parsed === 'object') {
+        if (Array.isArray((parsed as any).completed)) {
+          return (parsed as any).completed.filter((c: any): c is string => typeof c === 'string' && c.trim().length > 0);
+        }
+        return Object.entries(parsed)
+          .filter(([key, val]) => val === true && typeof key === 'string' && key.trim().length > 0)
+          .map(([key]) => key);
+      }
+    } catch {
+      // Corrupted storage recovery - fallback gracefully without crashing
+    }
+    return [];
+  };
+
   const setStoredItem = (key: string, value: string): void => {
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(key, value);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      // Handle QuotaExceededError or browser privacy sandbox errors gracefully
+      console.warn(`[Storage] Set failed for key ${key}:`, err);
     }
   };
 
@@ -211,7 +234,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     onboardingStep: 0,
 
     selectedEntity: null,
-    completedChallenges: JSON.parse(getStoredItem('omega_completed_challenges') || '[]'),
+    completedChallenges: safeParseCompletedChallenges(getStoredItem('omega_completed_challenges')),
     activeChallengeId: null,
 
     setLanguage: (lang) => {

@@ -255,8 +255,19 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
   const sockets = realityMachine ? realityMachine.getSockets() : [];
   const eventLogs = realityMachine ? realityMachine.getEventLogs() : [];
 
+  const isExpandedTab =
+    activeTab === 'desktop' ||
+    activeTab === 'gpo' ||
+    activeTab === 'ad' ||
+    activeTab === 'rsop';
+
   return (
-    <div className="w-96 h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden relative z-10 shrink-0" data-testid={`device-inspector-${selectedDeviceId}`}>
+    <div
+      className={`${
+        isExpandedTab ? 'w-[720px] max-w-[85vw]' : 'w-96'
+      } h-full bg-slate-950 border-l rtl:border-l-0 rtl:border-r border-slate-900 flex flex-col select-none overflow-hidden relative z-10 shrink-0 transition-all duration-150`}
+      data-testid={`device-inspector-${selectedDeviceId}`}
+    >
       {/* Device Header */}
       <div className="p-3.5 border-b border-slate-900 bg-slate-900/30 space-y-2">
         <div className="flex items-start justify-between gap-2">
@@ -495,7 +506,7 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
               </button>
             </div>
             <div className="h-[600px] w-full rounded-lg overflow-hidden border border-slate-800 shadow-2xl">
-              <WindowsDesktop machine={realityMachine} />
+              <WindowsDesktop key={realityMachine.id} machine={realityMachine} />
             </div>
           </div>
         )}
@@ -1201,14 +1212,14 @@ export const DeviceInspector: React.FC<DeviceInspectorProps> = ({ language }) =>
 
         {/* ================= TAB: GROUP POLICY CONSOLE ================= */}
         {activeTab === 'gpo' && (
-          <div className="h-[450px]">
+          <div className="min-h-[580px] h-[600px]">
             <GroupPolicyConsole activeMachineId={device.id} />
           </div>
         )}
 
         {/* ================= TAB: RESULTANT SET OF POLICY ================= */}
         {activeTab === 'rsop' && (
-          <div className="h-[450px]">
+          <div className="min-h-[580px] h-[600px]">
             <ResultantSetOfPolicy activeMachineId={device.id} />
           </div>
         )}

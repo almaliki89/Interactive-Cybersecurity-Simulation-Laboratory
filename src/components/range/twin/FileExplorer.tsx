@@ -435,7 +435,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       {/* Main Split Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Navigation Tree */}
-        <div className="w-52 bg-slate-950/60 border-r border-slate-800 flex flex-col p-2 space-y-1 text-xs overflow-y-auto">
+        <div className="w-44 bg-slate-950/60 border-r border-slate-800 flex flex-col p-2 space-y-1 text-xs overflow-y-auto shrink-0">
           <div className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase px-2 py-1">
             Quick Access
           </div>
@@ -648,7 +648,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                       onDoubleClick={() => handleItemDoubleClick(item)}
                       className={`grid grid-cols-12 items-center px-2 py-1.5 rounded cursor-pointer text-xs transition-colors ${isSelected ? 'bg-cyan-950/70 border border-cyan-600/60 text-cyan-100' : 'hover:bg-slate-800/60 text-slate-200'}`}
                     >
-                      <div className="col-span-6 flex items-center gap-2 truncate">
+                      <div className="col-span-6 flex items-center gap-2 min-w-0">
                         {getFileIcon(item)}
                         <span className="truncate font-medium">{item.name}</span>
                       </div>
