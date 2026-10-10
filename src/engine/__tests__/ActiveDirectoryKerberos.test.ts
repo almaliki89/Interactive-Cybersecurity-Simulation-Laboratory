@@ -853,5 +853,56 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
       expect(res.success).toBe(true);
       expect(res.tgt).toBeDefined();
     });
+
+    it('13. rejects empty or whitespace passwords without bypass', () => {
+      const emptyRes = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: '',
+        vTime: 10,
+      });
+      expect(emptyRes.success).toBe(false);
+      expect(emptyRes.failureReason).toBe('BAD_PASSWORD');
+
+      const spaceRes = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: '   ',
+        vTime: 10,
+      });
+      expect(spaceRes.success).toBe(false);
+      expect(spaceRes.failureReason).toBe('BAD_PASSWORD');
+    });
+
+    it('14. supports explicit isolated educational bypass flag only when specifically enabled', () => {
+      const authEngine = (globalActiveDirectoryEngine as any).authEngine;
+      const bypassRes = authEngine.authenticateDomainUser({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: '',
+        vTime: 10,
+        networkPathAvailable: true,
+        dnsAvailable: true,
+        secureChannelHealthy: true,
+        dcMachineOnline: true,
+        allowEducationalBypass: true,
+      });
+      expect(bypassRes.success).toBe(true);
+      expect(bypassRes.tgt).toBeDefined();
+
+      const noBypassRes = authEngine.authenticateDomainUser({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: '',
+        vTime: 10,
+        networkPathAvailable: true,
+        dnsAvailable: true,
+        secureChannelHealthy: true,
+        dcMachineOnline: true,
+        allowEducationalBypass: false,
+      });
+      expect(noBypassRes.success).toBe(false);
+      expect(noBypassRes.failureReason).toBe('BAD_PASSWORD');
+    });
   });
 });

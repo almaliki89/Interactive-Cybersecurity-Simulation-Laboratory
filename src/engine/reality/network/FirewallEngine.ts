@@ -127,6 +127,36 @@ export class FirewallEngine {
     ];
   }
 
+  public addRule(rule: FirewallRule, position: 'top' | 'bottom' | 'before-default' = 'before-default'): void {
+    const existingIndex = this.rules.findIndex((r) => r.id === rule.id);
+    if (existingIndex >= 0) {
+      this.rules[existingIndex] = { ...rule };
+      return;
+    }
+
+    if (position === 'top') {
+      this.rules.unshift(rule);
+    } else if (position === 'bottom') {
+      this.rules.push(rule);
+    } else {
+      const defaultIndex = this.rules.findIndex((r) => r.id === 'FW-RULE-DEFAULT-DENY');
+      if (defaultIndex >= 0) {
+        this.rules.splice(defaultIndex, 0, rule);
+      } else {
+        this.rules.push(rule);
+      }
+    }
+  }
+
+  public removeRule(ruleId: string): boolean {
+    const idx = this.rules.findIndex((r) => r.id === ruleId);
+    if (idx >= 0) {
+      this.rules.splice(idx, 1);
+      return true;
+    }
+    return false;
+  }
+
   public getRules(): FirewallRule[] {
     return [...this.rules];
   }
@@ -137,7 +167,7 @@ export class FirewallEngine {
     if (existing) {
       existing.enabled = true;
     } else {
-      // Unshift before default deny rule
+      // Unshift at the very top for priority explicit deny enforcement
       const blockRule: FirewallRule = {
         id,
         name,
@@ -185,6 +215,21 @@ export class FirewallEngine {
   }
 
   /**
+   * Validates if a string is a well-formed IPv4 address (0.0.0.0 to 255.255.255.255).
+   */
+  public isValidIpv4(ip: string): boolean {
+    if (!ip || typeof ip !== 'string') return false;
+    const trimmed = ip.trim();
+    const parts = trimmed.split('.');
+    if (parts.length !== 4) return false;
+    return parts.every((p) => {
+      if (!/^\d+$/.test(p)) return false;
+      const num = parseInt(p, 10);
+      return num >= 0 && num <= 255;
+    });
+  }
+
+  /**
    * Evaluates if a packet or connection is permitted by firewall rules.
    */
   public evaluate(params: {
@@ -194,33 +239,63 @@ export class FirewallEngine {
     srcPort?: number;
     dstPort?: number;
   }): { allowed: boolean; matchedRule: FirewallRule } {
-    // Traffic on the exact same subnet/link doesn't pass perimeter firewall
-    if (params.srcIp === params.dstIp || params.srcIp === '127.0.0.1') {
+    // 1. Strict IP Header Validation (drop malformed IP packets)
+    if (!this.isValidIpv4(params.srcIp) || !this.isValidIpv4(params.dstIp)) {
       return {
-        allowed: true,
+        allowed: false,
         matchedRule: {
-          id: 'IMPLICIT-LOCAL',
-          name: 'Implicit Loopback/Local',
-          srcNetwork: '127.0.0.1',
-          dstNetwork: '127.0.0.1',
+          id: 'DROP-MALFORMED-IP',
+          name: 'Drop Malformed IP Address',
+          srcNetwork: 'ANY',
+          dstNetwork: 'ANY',
           protocol: 'ANY',
-          action: 'ALLOW',
+          action: 'DENY',
           enabled: true,
         },
       };
     }
 
+    const isLocalTraffic =
+      params.srcIp === params.dstIp ||
+      params.srcIp.startsWith('127.') ||
+      params.dstIp.startsWith('127.');
+
+    // 2. Sequential Rule Evaluation (First-Match Wins)
     for (const rule of this.rules) {
       if (!rule.enabled) continue;
+
+      // When encountering the catch-all inter-VLAN default deny, local/loopback traffic
+      // that was not explicitly denied by a prior rule is allowed via implicit loopback bypass.
+      if (rule.id === 'FW-RULE-DEFAULT-DENY' && isLocalTraffic) {
+        return {
+          allowed: true,
+          matchedRule: {
+            id: 'IMPLICIT-LOCAL',
+            name: 'Implicit Loopback/Local Link',
+            srcNetwork: '127.0.0.1',
+            dstNetwork: '127.0.0.1',
+            protocol: 'ANY',
+            action: 'ALLOW',
+            enabled: true,
+          },
+        };
+      }
 
       // Protocol match
       if (rule.protocol !== 'ANY' && rule.protocol !== params.protocol) {
         continue;
       }
 
-      // Port match
-      if (rule.dstPort !== undefined && rule.dstPort !== 'ANY' && params.dstPort !== undefined) {
-        if (rule.dstPort !== params.dstPort) {
+      // Destination Port match
+      if (rule.dstPort !== undefined && rule.dstPort !== 'ANY') {
+        if (params.dstPort === undefined || rule.dstPort !== params.dstPort) {
+          continue;
+        }
+      }
+
+      // Source Port match
+      if (rule.srcPort !== undefined && rule.srcPort !== 'ANY') {
+        if (params.srcPort === undefined || rule.srcPort !== params.srcPort) {
           continue;
         }
       }
@@ -242,7 +317,23 @@ export class FirewallEngine {
       };
     }
 
-    // Default deny fallback
+    // 3. Fallback for unhandled local traffic
+    if (isLocalTraffic) {
+      return {
+        allowed: true,
+        matchedRule: {
+          id: 'IMPLICIT-LOCAL',
+          name: 'Implicit Loopback/Local Link',
+          srcNetwork: '127.0.0.1',
+          dstNetwork: '127.0.0.1',
+          protocol: 'ANY',
+          action: 'ALLOW',
+          enabled: true,
+        },
+      };
+    }
+
+    // 4. Default deny fallback
     return {
       allowed: false,
       matchedRule: {
@@ -257,20 +348,25 @@ export class FirewallEngine {
     };
   }
 
-  private matchesNetwork(ip: string, networkPattern: string): boolean {
+  public matchesNetwork(ip: string, networkPattern: string): boolean {
     if (networkPattern === 'ANY') return true;
+    if (!this.isValidIpv4(ip)) return false;
 
     if (networkPattern.includes('/')) {
       const [netIp, prefixStr] = networkPattern.split('/');
+      if (!this.isValidIpv4(netIp)) return false;
       const prefix = parseInt(prefixStr, 10);
-      const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
+      if (isNaN(prefix) || prefix < 0 || prefix > 32) return false;
+      if (prefix === 0) return true; // 0.0.0.0/0 matches any valid IPv4 address
 
+      const mask = (~0 << (32 - prefix)) >>> 0;
       const ipNum = this.ipToNumber(ip);
       const netNum = this.ipToNumber(netIp);
 
       return (ipNum & mask) === (netNum & mask);
     }
 
+    if (!this.isValidIpv4(networkPattern)) return false;
     return ip === networkPattern;
   }
 

@@ -1,7 +1,8 @@
 {
-  "name": "react-example",
+  "name": "interactive-cybersecurity-simulation-laboratory",
+  "description": "Interactive cybersecurity simulation laboratory with packet flows, TCP handshakes, DNS resolution, Active Directory, Kerberos, and digital twin enterprise reality engines.",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.4.2",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",

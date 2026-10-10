@@ -31,13 +31,14 @@ export class AuthenticationEngine {
   public authenticateDomainUser(params: {
     workstationHost: string;
     userName: string;
-    passwordProvided: string | boolean;
+    passwordProvided: string;
     vTime: number;
     networkPathAvailable: boolean;
     dnsAvailable: boolean;
     secureChannelHealthy: boolean;
     dcMachineOnline: boolean;
     localUserEnabled?: boolean;
+    allowEducationalBypass?: boolean;
   }): DomainLogonResult {
     const cleanUserInput = params.userName.trim();
 
@@ -110,20 +111,21 @@ export class AuthenticationEngine {
 
     // 6. Password Verification / Kerberos Pre-Auth
     let passwordOk = false;
-    if (typeof params.passwordProvided === 'string') {
-      const provided = params.passwordProvided;
-      // Empty or blank password is rejected immediately
-      if (!provided || provided.trim().length === 0) {
-        passwordOk = false;
-      } else if (user.configuredPassword) {
+    const provided = typeof params.passwordProvided === 'string' ? params.passwordProvided.trim() : '';
+
+    if (provided.length > 0) {
+      if (user.configuredPassword) {
         // Authenticate strictly against this specific account's configured credentials
         passwordOk = (provided === user.configuredPassword) || (provided === user.credentialVerifierHash);
       } else {
         // Fallback for custom accounts without explicit configuredPassword
         passwordOk = (provided === user.credentialVerifierHash);
       }
+    } else if (params.allowEducationalBypass === true) {
+      // Intentional educational lab fixture bypass (explicitly isolated from user login flows)
+      passwordOk = true;
     } else {
-      passwordOk = Boolean(params.passwordProvided); // Legacy boolean support
+      passwordOk = false;
     }
 
     if (!passwordOk) {

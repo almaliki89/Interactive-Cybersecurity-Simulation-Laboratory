@@ -203,8 +203,13 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     }
   };
 
+  const safeParseLanguage = (raw: string | null): Language => {
+    if (raw === 'en' || raw === 'ar') return raw;
+    return 'ar';
+  };
+
   return {
-    language: (getStoredItem('omega_language') as Language) || 'ar',
+    language: safeParseLanguage(getStoredItem('omega_language')),
     activeSimulationId: (typeof window !== 'undefined' && window.location.hash.replace('#', '')) ? (window.location.hash.replace('#', '') as SimulationId) : 'landing',
     selectedMacroDomainId: null,
     selectedWorldId: null,
