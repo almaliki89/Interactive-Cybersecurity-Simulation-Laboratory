@@ -70,6 +70,43 @@ describe('OMEGA REALITY ENGINE V1.1 — Users, Sessions, and Security Tokens Sui
     expect(tokens[0].tokenId).toBe('tok-system');
   });
 
+  it('empty or whitespace password rejected and creates no token', () => {
+    const resEmpty = reality.attemptLogon({
+      targetHost: 'FIN-WS01',
+      userName: 'NEXORA\\sara.finance',
+      password: '',
+      logonType: 'Interactive',
+    });
+    expect(resEmpty.success).toBe(false);
+    expect(resEmpty.session).toBeNull();
+
+    const resSpace = reality.attemptLogon({
+      targetHost: 'FIN-WS01',
+      userName: 'NEXORA\\sara.finance',
+      password: '   ',
+      logonType: 'Interactive',
+    });
+    expect(resSpace.success).toBe(false);
+    expect(resSpace.session).toBeNull();
+  });
+
+  it('tampered payload with unexpected properties cannot bypass authentication', () => {
+    const tamperedPayload: any = {
+      targetHost: 'FIN-WS01',
+      userName: 'NEXORA\\sara.finance',
+      password: 'wrong',
+      allowEducationalBypass: true,
+      bypass: true,
+      isAdmin: true,
+      role: 'DomainAdmin',
+      logonType: 'Interactive',
+    };
+
+    const res = reality.attemptLogon(tamperedPayload);
+    expect(res.success).toBe(false);
+    expect(res.session).toBeNull();
+  });
+
   it('disabled user rejected', () => {
     const machine = reality.registry.getMachine('FIN-WS01')!;
     const user = machine.getUserByName('sara.finance')!;
