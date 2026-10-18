@@ -23,7 +23,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Run linter
         run: bun run lint
@@ -48,7 +48,10 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
+
+      - name: Install Arabic Fonts
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-core
 
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
@@ -56,10 +59,11 @@ jobs:
       - name: Run E2E Visual QA tests
         run: bun run test:e2e
 
-      # Diagnostic reports upload: only uploads test results and html report without duplicating
-      # repository baseline screenshots, with reduced retention (3 days) to protect storage quotas.
-      - name: Upload E2E Test Reports & Diagnostic Traces
-        if: always()
+      # Diagnostic reports upload: only uploads on failure to preserve storage quota.
+      # If repository storage quota is exhausted, continue-on-error ensures diagnostic upload
+      # issues do not fail an otherwise passing test, while failed tests remain strictly blocking.
+      - name: Upload E2E Test Reports & Diagnostic Traces (On Failure)
+        if: failure()
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -69,4 +73,4 @@ jobs:
             test-results/
           if-no-files-found: ignore
           overwrite: true
-          retention-days: 3
+          retention-days: 1

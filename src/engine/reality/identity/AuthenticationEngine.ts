@@ -114,13 +114,23 @@ export class AuthenticationEngine {
     const rawProvided = typeof params.passwordProvided === 'string' ? params.passwordProvided : '';
     const isEmpty = rawProvided.length === 0 || rawProvided.trim().length === 0;
 
-    if (!isEmpty) {
+    // Reject verifier hash submission: credentialVerifierHash is an internal stored verifier, NOT a literal credential.
+    const isVerifierHashSubmission = Boolean(
+      user.credentialVerifierHash &&
+      rawProvided.length > 0 &&
+      rawProvided === user.credentialVerifierHash
+    );
+
+    if (isVerifierHashSubmission) {
+      // Explicitly reject attempts to authenticate using the verifier hash itself
+      passwordOk = false;
+    } else if (!isEmpty) {
       if (user.configuredPassword) {
-        // Authenticate strictly against this specific account's configured credentials without trimming
-        passwordOk = (rawProvided === user.configuredPassword) || (rawProvided === user.credentialVerifierHash);
+        // Authenticate strictly against this specific account's configured password without trimming
+        passwordOk = (rawProvided === user.configuredPassword);
       } else {
-        // Fallback for custom accounts without explicit configuredPassword
-        passwordOk = (rawProvided === user.credentialVerifierHash);
+        // Accounts without an explicit configured password cannot authenticate
+        passwordOk = false;
       }
     } else if (params.allowEducationalBypass === true) {
       // Intentional educational lab fixture bypass (explicitly isolated from user login flows)

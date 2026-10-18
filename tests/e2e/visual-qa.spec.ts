@@ -70,6 +70,7 @@ async function switchLanguage(page: Page, targetLang: 'en' | 'ar') {
     );
   }
 
+  await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('html')).toHaveAttribute('dir', targetDir);
 }
 
@@ -78,6 +79,7 @@ async function switchLanguage(page: Page, targetLang: 'en' | 'ar') {
  */
 async function navigateToWorld(page: Page, worldId: string) {
   await page.goto(`/#${worldId}`, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => document.fonts.ready);
   // The visible header is the readiness signal; screenshots disable animations.
   await expect(page.locator('header')).toBeVisible({ timeout: 10000 });
 }

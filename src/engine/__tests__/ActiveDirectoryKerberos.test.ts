@@ -990,5 +990,148 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
       expect(resSurrounding.success).toBe(false);
       expect(resSurrounding.failureReason).toBe('BAD_PASSWORD');
     });
+
+    it('19. rejects attempts to authenticate by submitting credentialVerifierHash directly', () => {
+      // An attacker attempts to submit the stored verifier string as a password
+      const sara = globalActiveDirectoryEngine.store.findUser('sara.finance');
+      expect(sara).toBeDefined();
+      expect(sara?.credentialVerifierHash).toBe('hash-sara-secret-2026');
+
+      // Attempt domain logon using the verifier hash as the password
+      const resVerifierAuth = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: sara!.credentialVerifierHash,
+        vTime: 10,
+      });
+      expect(resVerifierAuth.success).toBe(false);
+      expect(resVerifierAuth.failureReason).toBe('BAD_PASSWORD');
+
+      // Attempt UI attemptLogon using the verifier hash as the password
+      const resUiVerifier = globalRealityEngine.attemptLogon({
+        targetHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        password: sara!.credentialVerifierHash,
+      });
+      expect(resUiVerifier.success).toBe(false);
+      expect(resUiVerifier.failureReason).toBe('BAD_PASSWORD');
+    });
+
+    it('20. rejects credentialVerifierHash submissions across all accounts', () => {
+      const usersToTest = ['omar.hr', 'ali.it', 'administrator', 'svc_backup'];
+      for (const username of usersToTest) {
+        const u = globalActiveDirectoryEngine.store.findUser(username);
+        expect(u).toBeDefined();
+        const res = globalActiveDirectoryEngine.performDomainLogon({
+          workstationHost: 'FIN-WS01',
+          userName: username,
+          passwordProvided: u!.credentialVerifierHash,
+          vTime: 15,
+        });
+        expect(res.success).toBe(false);
+        expect(res.failureReason).toBe('BAD_PASSWORD');
+      }
+    });
+
+    it('21. validates authentic credentials for all baseline enterprise accounts', () => {
+      // Sara Finance
+      const resSara = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 20,
+      });
+      expect(resSara.success).toBe(true);
+      expect(resSara.userPrincipal).toBe('sara.finance@NEXORA.LOCAL');
+
+      // Omar HR
+      const resOmar = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'HR-WS01',
+        userName: 'omar.hr',
+        passwordProvided: 'P@ssword123!',
+        vTime: 20,
+      });
+      expect(resOmar.success).toBe(true);
+
+      // Ali IT
+      const resAli = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'IT-WS01',
+        userName: 'ali.it',
+        passwordProvided: 'P@ssword123!',
+        vTime: 20,
+      });
+      expect(resAli.success).toBe(true);
+
+      // Backup Service
+      const resBackup = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'svc_backup',
+        passwordProvided: 'Backup#Kdc2026!',
+        vTime: 20,
+      });
+      expect(resBackup.success).toBe(true);
+    });
+
+    it('22. rejects disabled domain accounts with ACCOUNT_DISABLED even with valid password', () => {
+      const sara = globalActiveDirectoryEngine.store.findUser('sara.finance')!;
+      sara.enabled = false;
+      globalActiveDirectoryEngine.store.updateUser(sara);
+
+      const resDisabled = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123!',
+        vTime: 25,
+      });
+      expect(resDisabled.success).toBe(false);
+      expect(resDisabled.failureReason).toBe('ACCOUNT_DISABLED');
+
+      // Re-enable for subsequent tests
+      sara.enabled = true;
+      globalActiveDirectoryEngine.store.updateUser(sara);
+    });
+
+    it('23. rejects invalid passwords, typos, and variations', () => {
+      const invalidPasswords = [
+        'WrongPassword',
+        'p@ssword123!',
+        'P@ssword123',
+        'P@SSWORD123!',
+        '12345678',
+        'admin',
+      ];
+
+      for (const badPwd of invalidPasswords) {
+        const res = globalActiveDirectoryEngine.performDomainLogon({
+          workstationHost: 'FIN-WS01',
+          userName: 'sara.finance',
+          passwordProvided: badPwd,
+          vTime: 30,
+        });
+        expect(res.success).toBe(false);
+        expect(res.failureReason).toBe('BAD_PASSWORD');
+      }
+    });
+
+    it('24. rejects unexpected injection and authentication bypass fields', () => {
+      const maliciousRequests: any[] = [
+        { bypass: true, password: '' },
+        { skipAuth: true, password: 'fake' },
+        { isAdmin: true, password: '' },
+        { allowEducationalBypass: true, password: '' },
+        { tokenBypass: 'system-token', password: '' },
+        { password: '', forceSuccess: true },
+      ];
+
+      for (const req of maliciousRequests) {
+        const res = globalRealityEngine.attemptLogon({
+          targetHost: 'FIN-WS01',
+          userName: 'sara.finance',
+          ...req,
+        });
+        expect(res.success).toBe(false);
+        expect(res.failureReason).toBe('BAD_PASSWORD');
+      }
+    });
   });
 });
