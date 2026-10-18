@@ -958,5 +958,37 @@ describe('OMEGA ULTRA REALITY V1.3 — Active Directory & Kerberos Reality Suite
       expect(res.success).toBe(false);
       expect(res.failureReason).toBe('BAD_PASSWORD');
     });
+
+    it('18. rejects passwords with leading or trailing whitespace without unintended normalization', () => {
+      // Leading whitespace
+      const resLeading = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: ' P@ssword123!',
+        vTime: 10,
+      });
+      expect(resLeading.success).toBe(false);
+      expect(resLeading.failureReason).toBe('BAD_PASSWORD');
+
+      // Trailing whitespace
+      const resTrailing = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: 'P@ssword123! ',
+        vTime: 10,
+      });
+      expect(resTrailing.success).toBe(false);
+      expect(resTrailing.failureReason).toBe('BAD_PASSWORD');
+
+      // Surrounding whitespace
+      const resSurrounding = globalActiveDirectoryEngine.performDomainLogon({
+        workstationHost: 'FIN-WS01',
+        userName: 'sara.finance',
+        passwordProvided: '  P@ssword123!  ',
+        vTime: 10,
+      });
+      expect(resSurrounding.success).toBe(false);
+      expect(resSurrounding.failureReason).toBe('BAD_PASSWORD');
+    });
   });
 });

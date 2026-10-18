@@ -111,24 +111,24 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     { id: 'infrastructure', nameAr: 'البنية', nameEn: 'Infra' },
   ];
 
+  const handleBackToHub = onBackToHub || (() => setActiveSimulation('explorer'));
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 select-none font-sans">
       {/* 1. Technical Toolbar (Consolidated) */}
       <div className="h-9 border-b border-slate-900 bg-slate-900/20 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 overflow-x-auto no-scrollbar">
-        {/* Left: Domain Context Indicator & Optional Navigation */}
+        {/* Left: Domain Context Indicator & Ubiquitous Hub Navigation */}
         <div className="flex items-center gap-3">
-          {onBackToHub && (
-            <>
-              <button
-                onClick={onBackToHub}
-                className="flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest group shrink-0"
-              >
-                <ArrowLeft className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform rtl:rotate-180" />
-                <span>{language === 'ar' ? 'العودة للمركز' : 'Hub'}</span>
-              </button>
-              <div className="h-3 w-px bg-slate-800" />
-            </>
-          )}
+          <button
+            onClick={handleBackToHub}
+            data-testid="workspace-back-to-hub-btn"
+            className="flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors uppercase tracking-widest group shrink-0"
+            title={language === 'ar' ? 'العودة إلى الكون السيبراني والمختبرات' : 'Return to Universe Hub'}
+          >
+            <ArrowLeft className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform rtl:rotate-180" />
+            <span>{language === 'ar' ? 'الكون السيبراني' : 'Hub'}</span>
+          </button>
+          <div className="h-3 w-px bg-slate-800" />
           <div className="flex items-center gap-1.5 text-[9px] font-mono text-slate-400 uppercase tracking-widest shrink-0">
             <Sliders className="w-3 h-3 text-cyan-400" />
             <span className="hidden sm:inline">{language === 'ar' ? 'نمط العمل:' : 'MODE:'}</span>

@@ -56,15 +56,17 @@ jobs:
       - name: Run E2E Visual QA tests
         run: bun run test:e2e
 
-      - name: Upload Visual QA screenshots & artifacts
+      # Diagnostic reports upload: only uploads test results and html report without duplicating
+      # repository baseline screenshots, with reduced retention (3 days) to protect storage quotas.
+      - name: Upload E2E Test Reports & Diagnostic Traces
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: visual-qa-artifacts
+          name: e2e-playwright-report
           path: |
-            artifacts/visual-qa/
             playwright-report/
             test-results/
           if-no-files-found: ignore
           overwrite: true
-          retention-days: 14
+          retention-days: 3

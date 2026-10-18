@@ -111,15 +111,16 @@ export class AuthenticationEngine {
 
     // 6. Password Verification / Kerberos Pre-Auth
     let passwordOk = false;
-    const provided = typeof params.passwordProvided === 'string' ? params.passwordProvided.trim() : '';
+    const rawProvided = typeof params.passwordProvided === 'string' ? params.passwordProvided : '';
+    const isEmpty = rawProvided.length === 0 || rawProvided.trim().length === 0;
 
-    if (provided.length > 0) {
+    if (!isEmpty) {
       if (user.configuredPassword) {
-        // Authenticate strictly against this specific account's configured credentials
-        passwordOk = (provided === user.configuredPassword) || (provided === user.credentialVerifierHash);
+        // Authenticate strictly against this specific account's configured credentials without trimming
+        passwordOk = (rawProvided === user.configuredPassword) || (rawProvided === user.credentialVerifierHash);
       } else {
         // Fallback for custom accounts without explicit configuredPassword
-        passwordOk = (provided === user.credentialVerifierHash);
+        passwordOk = (rawProvided === user.credentialVerifierHash);
       }
     } else if (params.allowEducationalBypass === true) {
       // Intentional educational lab fixture bypass (explicitly isolated from user login flows)

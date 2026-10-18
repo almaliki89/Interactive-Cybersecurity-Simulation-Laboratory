@@ -142,7 +142,57 @@ interface SimulationStoreState {
 
   completeChallenge: (challengeId: string) => void;
   setActiveChallengeId: (challengeId: string | null) => void;
+  reloadFromStorage: () => void;
 }
+
+export const getStoredItem = (key: string): string | null => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem(key);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+export const safeParseCompletedChallenges = (raw: string | null): string[] => {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
+    }
+    // Handle legacy object schema e.g. { completed: string[] } or { challengeId: true }
+    if (parsed && typeof parsed === 'object') {
+      if (Array.isArray((parsed as any).completed)) {
+        return (parsed as any).completed.filter((c: any): c is string => typeof c === 'string' && c.trim().length > 0);
+      }
+      return Object.entries(parsed)
+        .filter(([key, val]) => val === true && typeof key === 'string' && key.trim().length > 0)
+        .map(([key]) => key);
+    }
+  } catch {
+    // Corrupted storage recovery - fallback gracefully without crashing
+  }
+  return [];
+};
+
+export const setStoredItem = (key: string, value: string): void => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, value);
+    }
+  } catch (err) {
+    // Handle QuotaExceededError or browser privacy sandbox errors gracefully
+    console.warn(`[Storage] Set failed for key ${key}:`, err);
+  }
+};
+
+export const safeParseLanguage = (raw: string | null): Language => {
+  if (raw === 'en' || raw === 'ar') return raw;
+  return 'ar';
+};
 
 export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   // Subscribe Zustand to globalSimulationRuntime
@@ -158,55 +208,6 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       connections: runtimeState.connections.length > 0 ? runtimeState.connections : get().connections,
     });
   });
-
-  const getStoredItem = (key: string): string | null => {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        return localStorage.getItem(key);
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  };
-
-  const safeParseCompletedChallenges = (raw: string | null): string[] => {
-    if (!raw) return [];
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
-      }
-      // Handle legacy object schema e.g. { completed: string[] } or { challengeId: true }
-      if (parsed && typeof parsed === 'object') {
-        if (Array.isArray((parsed as any).completed)) {
-          return (parsed as any).completed.filter((c: any): c is string => typeof c === 'string' && c.trim().length > 0);
-        }
-        return Object.entries(parsed)
-          .filter(([key, val]) => val === true && typeof key === 'string' && key.trim().length > 0)
-          .map(([key]) => key);
-      }
-    } catch {
-      // Corrupted storage recovery - fallback gracefully without crashing
-    }
-    return [];
-  };
-
-  const setStoredItem = (key: string, value: string): void => {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(key, value);
-      }
-    } catch (err) {
-      // Handle QuotaExceededError or browser privacy sandbox errors gracefully
-      console.warn(`[Storage] Set failed for key ${key}:`, err);
-    }
-  };
-
-  const safeParseLanguage = (raw: string | null): Language => {
-    if (raw === 'en' || raw === 'ar') return raw;
-    return 'ar';
-  };
 
   return {
     language: safeParseLanguage(getStoredItem('omega_language')),
@@ -385,5 +386,17 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     }
   },
   setActiveChallengeId: (activeChallengeId) => set({ activeChallengeId }),
+  reloadFromStorage: () => {
+    const lang = safeParseLanguage(getStoredItem('omega_language'));
+    const completed = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = lang;
+    }
+    set({
+      language: lang,
+      completedChallenges: completed,
+    });
+  },
 };
 });
