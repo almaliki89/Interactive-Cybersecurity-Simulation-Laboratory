@@ -11,6 +11,7 @@ import {
   Cloud,
   Play,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 
 export const LearningPathsView: React.FC = () => {
@@ -78,6 +79,35 @@ export const LearningPathsView: React.FC = () => {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Featured Beginner Track Callout */}
+      <div className="max-w-5xl w-full mb-6 p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-cyan-950/30 border border-emerald-800/60 shadow-xl flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+            <Sparkles className="w-6 sm:w-7 h-6 sm:h-7" />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950 border border-emerald-800 text-emerald-300 mb-1">
+              {language === 'ar' ? 'المسار الإلزامي الأول للمبتدئين' : 'Recommended Starting Point for Beginners'}
+            </div>
+            <h2 className="text-base sm:text-lg font-bold text-white">
+              {language === 'ar' ? 'مسار التأسيس خطوة بخطوة (10 محطات تعليمية)' : 'Foundations Step-by-Step Curriculum (10 Milestones)'}
+            </h2>
+            <p className="text-xs text-slate-400 max-w-xl mt-1 leading-relaxed">
+              {language === 'ar'
+                ? 'لا تمتلك خبرة سابقة؟ ابدأ من هنا. مسار مصمم بعناية يقودك من ثالوث الحماية الأساسي وشبكات الحاسوب حتى الميدان السيبراني.'
+                : 'No prior experience? Start here. Carefully crafted sequence guiding you from CIA Triad and networking to cyber range operations.'}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setActiveSimulation('lesson')}
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-950/50 transition-transform active:scale-95"
+        >
+          <span>{language === 'ar' ? 'بدء مسار المبتدئين الآن' : 'Start Beginner Track Now'}</span>
+          <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+        </button>
       </div>
 
       {/* Career Paths List */}

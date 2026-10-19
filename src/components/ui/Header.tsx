@@ -139,11 +139,12 @@ export const Header: React.FC = () => {
   ];
 
   const universeNav = [
-    { id: 'range' as SimulationId, labelAr: 'الميدان الشامل', labelEn: 'Cyber Range', icon: Compass },
-    { id: 'explorer' as SimulationId, labelAr: 'العوالم الـ 60', labelEn: '60 Worlds', icon: Globe },
-    { id: 'knowledge' as SimulationId, labelAr: 'خارطة المعرفة', labelEn: 'Knowledge Graph', icon: Compass },
-    { id: 'paths' as SimulationId, labelAr: 'المسارات المهنية', labelEn: 'Learning Paths', icon: Workflow },
-    { id: 'glossary' as SimulationId, labelAr: 'المعجم التقني', labelEn: 'Glossary', icon: BookOpen },
+    { id: 'lesson' as SimulationId, labelAr: 'ابدأ هنا (المبتدئون)', labelEn: 'Start Here', icon: Sparkles, isHighlight: true },
+    { id: 'range' as SimulationId, labelAr: 'الميدان الشامل', labelEn: 'Cyber Range', icon: Compass, isHighlight: false },
+    { id: 'explorer' as SimulationId, labelAr: 'العوالم الـ 60', labelEn: '60 Worlds', icon: Globe, isHighlight: false },
+    { id: 'knowledge' as SimulationId, labelAr: 'خارطة المعرفة', labelEn: 'Knowledge Graph', icon: Compass, isHighlight: false },
+    { id: 'paths' as SimulationId, labelAr: 'المسارات المهنية', labelEn: 'Learning Paths', icon: Workflow, isHighlight: false },
+    { id: 'glossary' as SimulationId, labelAr: 'المعجم التقني', labelEn: 'Glossary', icon: BookOpen, isHighlight: false },
   ];
 
   const isLabActive = labsList.some((l) => l.id === activeSimulationId) || 
@@ -222,13 +223,17 @@ export const Header: React.FC = () => {
                 <button
                   key={item.id}
                   onClick={() => setActiveSimulation(item.id)}
-                  className={`px-4 py-1.5 rounded-lg flex items-center gap-2 transition-all whitespace-nowrap text-[11px] font-bold uppercase tracking-wide ${
+                  className={`px-3 sm:px-4 py-1.5 rounded-lg flex items-center gap-1.5 transition-all whitespace-nowrap text-[11px] font-bold uppercase tracking-wide ${
                     isActive
-                      ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/10 shadow-sm'
+                      ? item.isHighlight
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                        : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/10 shadow-sm'
+                      : item.isHighlight
+                      ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 hover:bg-emerald-900/50 hover:text-emerald-300 animate-pulse'
                       : 'text-slate-500 hover:text-white hover:bg-slate-900/60'
                   }`}
                 >
-                  <NavIcon className="w-3.5 h-3.5" />
+                  <NavIcon className={`w-3.5 h-3.5 ${item.isHighlight ? 'text-emerald-400' : ''}`} />
                   <span>{language === 'ar' ? item.labelAr : item.labelEn}</span>
                 </button>
               );

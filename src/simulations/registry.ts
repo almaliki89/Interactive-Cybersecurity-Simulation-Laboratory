@@ -20,6 +20,9 @@ const GlossaryView = React.lazy(() =>
 const LearningPathsView = React.lazy(() =>
   import('../components/paths/LearningPathsView').then((m) => ({ default: m.LearningPathsView }))
 );
+const LessonView = React.lazy(() =>
+  import('../components/curriculum/LessonView').then((m) => ({ default: m.LessonView }))
+);
 
 // Interactive Simulation Labs (Lazy Loaded)
 const CiaTriadSimulation = React.lazy(() =>
@@ -140,6 +143,14 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
     nameEn: 'Living Digital Mesh',
     domain: 'overview',
     component: InteractiveEnterpriseHero,
+    category: 'view',
+  },
+  lesson: {
+    id: 'lesson',
+    nameAr: 'مسار المبتدئين خطوة بخطوة',
+    nameEn: 'Beginner Step-by-Step Track',
+    domain: 'curriculum',
+    component: LessonView,
     category: 'view',
   },
   explorer: {

@@ -14,6 +14,7 @@ import { globalSimulationRuntime } from '../engine/runtime/SimulationRuntime';
 
 export type SimulationId =
   | 'landing'
+  | 'lesson'
   | 'tcp'
   | 'dns'
   | 'firewall'
@@ -95,9 +96,15 @@ interface SimulationStoreState {
   completedChallenges: string[];
   activeChallengeId: string | null;
 
+  // Beginner-First Curriculum State
+  activeLessonId: string;
+  completedLessons: string[];
+
   // Actions
   setLanguage: (lang: Language) => void;
   setActiveSimulation: (id: SimulationId) => void;
+  setActiveLessonId: (id: string) => void;
+  completeLesson: (lessonId: string) => void;
   setSelectedMacroDomainId: (id: MacroDomainId | null) => void;
   setSelectedWorldId: (id: number | null) => void;
   setMode: (mode: SimulationMode) => void;
@@ -178,6 +185,19 @@ export const safeParseCompletedChallenges = (raw: string | null): string[] => {
   return [];
 };
 
+export const safeParseCompletedLessons = (raw: string | null): string[] => {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
+    }
+  } catch {
+    // Corrupted storage recovery - fallback gracefully
+  }
+  return [];
+};
+
 export const setStoredItem = (key: string, value: string): void => {
   try {
     if (typeof localStorage !== 'undefined') {
@@ -242,6 +262,9 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     selectedEntity: null,
     completedChallenges: safeParseCompletedChallenges(getStoredItem('omega_completed_challenges')),
     activeChallengeId: null,
+
+    activeLessonId: 'lesson-01-cia-triad',
+    completedLessons: safeParseCompletedLessons(getStoredItem('omega_completed_lessons')),
 
     setLanguage: (lang) => {
       setStoredItem('omega_language', lang);
@@ -386,9 +409,21 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     }
   },
   setActiveChallengeId: (activeChallengeId) => set({ activeChallengeId }),
+
+  setActiveLessonId: (activeLessonId) => set({ activeLessonId }),
+  completeLesson: (lessonId) => {
+    const existing = get().completedLessons;
+    if (!existing.includes(lessonId)) {
+      const updated = [...existing, lessonId];
+      setStoredItem('omega_completed_lessons', JSON.stringify(updated));
+      set({ completedLessons: updated });
+    }
+  },
+
   reloadFromStorage: () => {
     const lang = safeParseLanguage(getStoredItem('omega_language'));
     const completed = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
+    const completedLess = safeParseCompletedLessons(getStoredItem('omega_completed_lessons'));
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
       document.documentElement.lang = lang;
@@ -396,6 +431,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     set({
       language: lang,
       completedChallenges: completed,
+      completedLessons: completedLess,
     });
   },
 };

@@ -230,18 +230,26 @@ export const InteractiveEnterpriseHero: React.FC = () => {
         {/* Global Action CTAs */}
         <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
           <button
-            onClick={() => setActiveSimulation('range')}
-            className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-xl shadow-cyan-950/60 transition-transform active:scale-95"
+            onClick={() => setActiveSimulation('lesson')}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs flex items-center gap-2 shadow-xl shadow-emerald-950/50 transition-transform active:scale-95"
           >
-            <Compass className="w-4 h-4" />
+            <Sparkles className="w-4 h-4 fill-current" />
+            <span>{language === 'ar' ? 'ابدأ من الصفر (مسار المبتدئين خطوة بخطوة)' : 'Start from Scratch (Beginner Track)'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSimulation('range')}
+            className="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500/60 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-colors"
+          >
+            <Compass className="w-4 h-4 text-cyan-400" />
             <span>{language === 'ar' ? 'دخول الميدان السيبراني الشامل (World 60)' : 'Enter Cyber Range (World 60)'}</span>
           </button>
 
           <button
             onClick={() => setActiveSimulation('explorer')}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500/60 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-2 transition-colors"
           >
-            <Globe className="w-4 h-4 text-cyan-400" />
+            <Globe className="w-4 h-4 text-slate-400" />
             <span>{language === 'ar' ? 'استكشاف العوالم الـ 60 (Universe Map)' : 'Explore 60 Cyber Worlds'}</span>
           </button>
 
@@ -251,6 +259,32 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           >
             <Search className="w-3.5 h-3.5 text-cyan-400" />
             <span>{language === 'ar' ? 'بحث شامل (Cmd+K)' : 'Search (Cmd+K)'}</span>
+          </button>
+        </div>
+
+        {/* Beginner Orientation Ribbon */}
+        <div className="mt-5 p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-800/40 text-left rtl:text-right max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-950 border border-emerald-800 text-emerald-400 flex items-center justify-center shrink-0">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white">
+                {language === 'ar' ? 'جديد في الأمن السيبراني؟ لا تدع كثرة المختبرات تربكك.' : 'New to cybersecurity? Do not let 60 worlds overwhelm you.'}
+              </div>
+              <div className="text-[11px] text-emerald-300/80">
+                {language === 'ar'
+                  ? 'صممنا لك منهجاً من 10 محطات تأسيسية يرشدك خطوة بخطوة من ثالوث CIA إلى الميدان الواقعي.'
+                  : 'We built a 10-milestone foundational track guiding you step-by-step from CIA Triad to enterprise ranges.'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveSimulation('lesson')}
+            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0"
+          >
+            <span>{language === 'ar' ? 'دخول مسار التعلّم' : 'Enter Curriculum'}</span>
+            <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
           </button>
         </div>
       </div>
