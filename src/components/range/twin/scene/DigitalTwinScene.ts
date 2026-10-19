@@ -34,7 +34,7 @@ export class DigitalTwinScene {
 
   private lastRenderTime: number = 0;
   private animationFrameId: number | null = null;
-  private clock: THREE.Clock = new THREE.Clock();
+  private timer: THREE.Timer = new THREE.Timer();
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private pointer: THREE.Vector2 = new THREE.Vector2();
   private unsubscribeStore: (() => void) | null = null;
@@ -225,11 +225,12 @@ export class DigitalTwinScene {
   };
 
   private startLoop = (): void => {
-    const animate = () => {
+    const animate = (timestamp?: number) => {
       this.animationFrameId = requestAnimationFrame(animate);
 
-      const delta = this.clock.getDelta();
-      const elapsed = this.clock.getElapsedTime();
+      this.timer.update(timestamp);
+      const delta = this.timer.getDelta();
+      const elapsed = this.timer.getElapsed();
       const reduced = this.isReducedMotion();
 
       if (reduced) {
@@ -274,6 +275,7 @@ export class DigitalTwinScene {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
     }
+    this.timer.dispose();
     if (this.unsubscribeStore) {
       this.unsubscribeStore();
       this.unsubscribeStore = null;

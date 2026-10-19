@@ -41,18 +41,20 @@ Refer to technical specifications in the `docs/` directory:
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v20+) or [Bun](https://bun.sh/) (v1.1+)
+- [Bun](https://bun.sh/) (v1.1+ recommended as the canonical package manager)
+- [Node.js](https://nodejs.org/) (v20+)
 
 ### Installation
+
+Bun is the authoritative package manager for this repository, backed by `bun.lock` for deterministic, frozen-lockfile reproducibility:
 
 ```bash
 # Clone the repository
 git clone https://github.com/almaliki89/Interactive-Cybersecurity-Simulation-Laboratory.git
 cd Interactive-Cybersecurity-Simulation-Laboratory
 
-# Install dependencies (using Bun or npm)
-bun install
-# or: npm install
+# Install reproducible dependencies with frozen lockfile
+bun install --frozen-lockfile
 ```
 
 ### Running Locally
@@ -60,7 +62,6 @@ bun install
 ```bash
 # Start the development server on port 3000
 bun run dev
-# or: npm run dev
 ```
 
 Visit `http://localhost:3000` in your browser.
@@ -69,24 +70,20 @@ Visit `http://localhost:3000` in your browser.
 
 ## 🧪 Testing & Verification
 
-The repository enforces strict deterministic testing across unit, integration, and browser end-to-end (E2E) suites.
+The repository enforces strict deterministic testing across unit, integration, and browser end-to-end (E2E) suites using Bun:
 
 ```bash
 # Run TypeScript type check
 bun run lint
-# or: npm run lint
 
 # Run all unit and integration tests (Vitest)
 bun run test
-# or: npm test
 
 # Build application for production
 bun run build
-# or: npm run build
 
 # Run Playwright E2E browser test suites
 bun run test:e2e
-# or: npm run test:e2e
 ```
 
 ### E2E Test Suites (`tests/e2e/`)

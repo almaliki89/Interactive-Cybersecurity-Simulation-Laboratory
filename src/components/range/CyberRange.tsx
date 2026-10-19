@@ -3,16 +3,22 @@
  * Realistic 3D WebGL / 2D Accessible physical infrastructure synchronized with RealityEngine.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { useDigitalTwinStore } from '../../engine/reality/digitalTwinStore';
-import { DigitalTwinCanvas } from './twin/DigitalTwinCanvas';
 import { DeviceNavigator } from './twin/DeviceNavigator';
 import { DeviceInspector } from './twin/DeviceInspector';
 import { SchematicView2D } from './twin/SchematicView2D';
-import { VirtualMachineConsole } from './twin/VirtualMachineConsole';
 import { CameraViewMode } from '../../engine/reality/digitalTwinTypes';
 import { globalSoundRealityEngine } from '../../engine/reality/SoundRealityEngine';
+
+// Lazy-loaded heavy 3D WebGL and Windows VM console sub-trees
+const DigitalTwinCanvas = React.lazy(() =>
+  import('./twin/DigitalTwinCanvas').then((m) => ({ default: m.DigitalTwinCanvas }))
+);
+const VirtualMachineConsole = React.lazy(() =>
+  import('./twin/VirtualMachineConsole').then((m) => ({ default: m.VirtualMachineConsole }))
+);
 import {
   Building,
   Server,
@@ -195,9 +201,27 @@ export const CyberRange: React.FC = () => {
         {/* Center: 3D WebGL Canvas, VM Console (RDP), or 2D Accessible Schematic */}
         <div className="flex-1 h-full relative overflow-hidden bg-slate-950 z-0">
           {renderMode === '3d-webgl' ? (
-            <DigitalTwinCanvas />
+            <Suspense
+              fallback={
+                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3 select-none">
+                  <div className="w-7 h-7 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" />
+                  <span className="text-xs font-mono">{language === 'ar' ? 'جارٍ تهيئة المشهد ثلاثي الأبعاد...' : 'Initializing 3D Digital Twin...'}</span>
+                </div>
+              }
+            >
+              <DigitalTwinCanvas />
+            </Suspense>
           ) : renderMode === 'vm-console' ? (
-            <VirtualMachineConsole language={language} />
+            <Suspense
+              fallback={
+                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3 select-none">
+                  <div className="w-7 h-7 rounded-full border-2 border-purple-500/30 border-t-purple-400 animate-spin" />
+                  <span className="text-xs font-mono">{language === 'ar' ? 'جارٍ تحميل وحدة التحكم...' : 'Loading VM Console...'}</span>
+                </div>
+              }
+            >
+              <VirtualMachineConsole language={language} />
+            </Suspense>
           ) : (
             <SchematicView2D language={language} />
           )}
