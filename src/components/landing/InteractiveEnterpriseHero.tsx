@@ -234,7 +234,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
             className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs flex items-center gap-2 shadow-xl shadow-emerald-950/50 transition-transform active:scale-95"
           >
             <Sparkles className="w-4 h-4 fill-current" />
-            <span>{language === 'ar' ? 'ابدأ من الصفر (مسار المبتدئين خطوة بخطوة)' : 'Start from Scratch (Beginner Track)'}</span>
+            <span>{language === 'ar' ? 'ابدأ التعلّم من الصفر (مسار المبتدئين خطوة بخطوة)' : 'Start Learning from Scratch (Beginner Track)'}</span>
           </button>
 
           <button

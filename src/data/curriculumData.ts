@@ -155,6 +155,7 @@ export const CURRICULUM_LESSONS: Record<string, CurriculumLesson> = {
     estimatedMinutes: 12,
     simulationId: 'cia_triad',
     worldId: 1,
+    challengeId: 'cia-balance-challenge',
     objectives: [
       {
         textAr: 'فهم الأركان الثلاثة: السرية (Confidentiality)، السلامة (Integrity)، والتوافر (Availability).',
@@ -338,6 +339,7 @@ To organize security defenses, professionals use the CIA Triad:
     estimatedMinutes: 15,
     simulationId: 'system_internals',
     worldId: 2,
+    challengeId: 'internals-memory-challenge',
     objectives: [
       {
         textAr: 'فهم الفصل بين وضع المستخدم (User Mode) ووضع النواة (Kernel Mode).',
@@ -462,6 +464,7 @@ To prevent this, CPUs enforce strict rings of protection:
     estimatedMinutes: 15,
     simulationId: 'subnet_routing',
     worldId: 3,
+    challengeId: 'subnet-routing-challenge',
     objectives: [
       {
         textAr: 'فهم عنوان IP وبنية حزمة البيانات (Packet).',
@@ -588,6 +591,7 @@ The shipping box is the packet, the sender address is the source IP, the recipie
     estimatedMinutes: 15,
     simulationId: 'firewall',
     worldId: 4,
+    challengeId: 'firewall-rule-mastery',
     objectives: [
       {
         textAr: 'فهم مفهوم أرقام المنافذ (Ports) مثل منفذ 80 و443 و22.',
@@ -714,6 +718,7 @@ The officer inspects your ticket and boarding pass; if you have a valid pass you
     estimatedMinutes: 15,
     simulationId: 'crypto',
     worldId: 5,
+    challengeId: 'crypto-avalanche-challenge',
     objectives: [
       {
         textAr: 'التمييز الجوهري بين التشفير (ذو اتجاهين بمفتاح) والتجزئة (اتجاه واحد بدون استرجاع).',
@@ -915,7 +920,7 @@ You purchase a master wristband at the front gate (your TGT). Then, whenever you
       ],
       validationCriterionAr: 'إصدار تذكرة Kerberos والوصول بنجاح للمجلد المصرح به.',
       validationCriterionEn: 'Kerberos ticket issued and authorized file share accessed.',
-      checkType: 'interactive_simulation',
+      checkType: 'guided_confirmation',
     },
     resultExplanation: {
       whatHappenedAr: 'تأكد خادم النطاق من هوية سارة وأصدر تذكرة خدمة مشفرة، فسمح لها خادم الملفات بالقراءة والتعديل وفق صلاحياتها.',
@@ -1037,7 +1042,7 @@ Cameras record 24/7 (like raw system logs), and smart alarms ping the guard room
       ],
       validationCriterionAr: 'تحليل الحادثة وتطبيق إجراء الاحتواء الصحيح بنجاح.',
       validationCriterionEn: 'Incident investigated and containment action verified.',
-      checkType: 'interactive_simulation',
+      checkType: 'guided_confirmation',
     },
     resultExplanation: {
       whatHappenedAr: 'أكد تحليلك وجود نشاط خبيث، ونجح إجراء العزل في منع المهاجم من التسلل أعمق داخل شبكة الشركة.',
@@ -1161,7 +1166,7 @@ Investigators wear gloves to avoid contaminating evidence and photograph everyth
       ],
       validationCriterionAr: 'استخراج الدليل وتحديد الملف الخبيث وتوقيت تنفيذه.',
       validationCriterionEn: 'Malicious artifact identified and execution timestamp confirmed.',
-      checkType: 'interactive_simulation',
+      checkType: 'guided_confirmation',
     },
     resultExplanation: {
       whatHappenedAr: 'كشفت الأدلة الرقمية أن البرنامج الخبيث تم تنزيله من مرفق بريد احتيالي وفُتح في تمام الساعة 14:32:10.',
@@ -1289,7 +1294,7 @@ Rather than waiting for a car to crash on the highway to notice bad brakes, auto
       ],
       validationCriterionAr: 'معالجة السر المسرب ونجاح اجتياز بوابات الأمان في خط الإنتاج.',
       validationCriterionEn: 'Leaked secret remediated and pipeline security gate verified.',
-      checkType: 'interactive_simulation',
+      checkType: 'guided_confirmation',
     },
     resultExplanation: {
       whatHappenedAr: 'منعت بوابة الأمان خروج الكود المعيب، وتم تأمين السر السحابي دون أن يتعرض لخطر النشر العام.',
@@ -1419,7 +1424,7 @@ Just as a city has power plants, police stations, roads, and houses; an enterpri
       ],
       validationCriterionAr: 'إجراء فحص الشبكة وتجربة فصل وتوصيل الكابل ورؤية الأثر الواقعي.',
       validationCriterionEn: 'Network inspection performed and physical cable disconnect/reconnect verified.',
-      checkType: 'interactive_simulation',
+      checkType: 'guided_confirmation',
     },
     resultExplanation: {
       whatHappenedAr: 'عند فصل كابل خادم النطاق DC01، انقطعت خدمة DNS، فعجزت المحطة عن العثور على الخادم. وعند إعادة التوصيل، استعاد المبدل الاتصال فورًا.',

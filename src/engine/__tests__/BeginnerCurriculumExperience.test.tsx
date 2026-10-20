@@ -6,7 +6,7 @@ import { CURRICULUM_MILESTONES, CURRICULUM_LESSONS } from '../../data/curriculum
 import { LessonView } from '../../components/curriculum/LessonView';
 import { Header } from '../../components/ui/Header';
 import { InteractiveEnterpriseHero } from '../../components/landing/InteractiveEnterpriseHero';
-import { useSimulationStore } from '../../stores/simulationStore';
+import { useSimulationStore, safeParseActiveLessonId } from '../../stores/simulationStore';
 
 describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
   beforeEach(() => {
@@ -152,25 +152,109 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       }
     });
 
-    it('completes the lesson and advances to next milestone', () => {
+    it('prevents completing lesson when conditions are not met (strict gating)', () => {
       render(<LessonView />);
 
       // Jump to Next Step stage via tab
       const nextStepTab = screen.getByText(/7\. الخطوة التالية/i);
       fireEvent.click(nextStepTab);
 
-      // Verify golden takeaway
-      expect(screen.getByText(/الخلاصة والرسالة الذهبية للمحطة/i)).toBeDefined();
+      // Verify lock message is shown explaining requirements are pending
+      expect(screen.getByText(/متطلبات إكمال المحطة غير مستوفاة بعد/i)).toBeDefined();
+      expect(screen.getByText(/1\. اجتياز الفحص المعرفي:/i)).toBeDefined();
+      expect(screen.getByText(/2\. (استيفاء|إنجاز) المهمة العملية:/i)).toBeDefined();
 
-      // Complete button
+      // Complete button must NOT exist while conditions are unmet
+      expect(screen.queryByText(/إكمال والانتقال إلى المحطة التالية/i)).toBeNull();
+
+      // Store should remain incomplete
+      const state = useSimulationStore.getState();
+      expect(state.completedLessons).not.toContain('lesson-01-cia-triad');
+      expect(state.activeLessonId).toBe('lesson-01-cia-triad');
+    });
+
+    it('completes the lesson and advances only after quiz and task conditions are fulfilled', () => {
+      render(<LessonView />);
+
+      // 1. Complete Knowledge Check (all questions must be answered correctly)
+      const quizTab = screen.getByText(/6\. فحص المعرفة/i);
+      fireEvent.click(quizTab);
+      const options = screen.getAllByRole('button');
+      const q1Correct = options.find((btn) => btn.textContent?.includes('التوافر (Availability)'));
+      if (q1Correct) {
+        fireEvent.click(q1Correct);
+      }
+      const q2Correct = options.find((btn) => btn.textContent?.includes('ضمان السرية'));
+      if (q2Correct) {
+        fireEvent.click(q2Correct);
+      }
+
+      // 2. Complete practical task (linked simulation challenge for lesson 1)
+      useSimulationStore.getState().completeChallenge('cia-balance-challenge');
+
+      // 3. Jump to Next Step stage
+      const nextStepTab = screen.getByText(/7\. الخطوة التالية/i);
+      fireEvent.click(nextStepTab);
+
+      // Now the completion button MUST be unlocked and visible
       const completeBtn = screen.getByText(/إكمال والانتقال إلى المحطة التالية/i);
+      expect(completeBtn).toBeDefined();
+
       fireEvent.click(completeBtn);
 
-      // Verify that lesson 1 is recorded as completed
+      // Verify that lesson 1 is recorded as completed and state advances to lesson-02
       const state = useSimulationStore.getState();
       expect(state.completedLessons).toContain('lesson-01-cia-triad');
-      // And active lesson advanced to lesson-02
       expect(state.activeLessonId).toBe('lesson-02-system-internals');
+    });
+  });
+
+  describe('Lesson State Persistence, Reload & Safety', () => {
+    it('restores activeLessonId after reloadFromStorage using localStorage mechanism', () => {
+      localStorage.setItem('omega_active_lesson_id', 'lesson-04-firewall-rules');
+      useSimulationStore.getState().reloadFromStorage();
+
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-04-firewall-rules');
+    });
+
+    it('rejects invalid or corrupted lesson IDs and safely falls back to default lesson', () => {
+      // Direct parsing checks
+      expect(safeParseActiveLessonId('corrupted-non-existent-lesson')).toBe('lesson-01-cia-triad');
+      expect(safeParseActiveLessonId('')).toBe('lesson-01-cia-triad');
+      expect(safeParseActiveLessonId(null)).toBe('lesson-01-cia-triad');
+      expect(safeParseActiveLessonId('   ')).toBe('lesson-01-cia-triad');
+
+      // Store action protection checks
+      useSimulationStore.getState().setActiveLessonId('malicious-or-unknown-id');
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-01-cia-triad');
+
+      // Reload from corrupted storage
+      localStorage.setItem('omega_active_lesson_id', 'hacked-or-unknown-id');
+      useSimulationStore.getState().reloadFromStorage();
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-01-cia-triad');
+    });
+
+    it('preserves lesson context when navigating to a lab and returning', () => {
+      useSimulationStore.setState({
+        activeSimulationId: 'lesson',
+        activeLessonId: 'lesson-03-subnet-routing',
+      });
+
+      // User opens a lab simulation from the lesson
+      useSimulationStore.getState().setActiveSimulation('subnet_routing');
+      expect(useSimulationStore.getState().activeSimulationId).toBe('subnet_routing');
+      // Lesson context is preserved!
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-03-subnet-routing');
+
+      // Render Header while in lab simulation
+      render(<Header />);
+      const returnBtn = screen.getByTestId('return-to-lesson-btn');
+      expect(returnBtn).toBeDefined();
+
+      // Clicking Return to Lesson navigates back to lesson without losing active lesson ID
+      fireEvent.click(returnBtn);
+      expect(useSimulationStore.getState().activeSimulationId).toBe('lesson');
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-03-subnet-routing');
     });
   });
 
@@ -186,7 +270,7 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
 
     it('displays prominent Beginner-First CTA on the Enterprise Landing Hero', () => {
       render(<InteractiveEnterpriseHero />);
-      const beginnerHeroBtn = screen.getByText(/ابدأ من الصفر \(مسار المبتدئين خطوة بخطوة\)/i);
+      const beginnerHeroBtn = screen.getByText(/ابدأ (التعلّم )?من الصفر/i);
       expect(beginnerHeroBtn).toBeDefined();
 
       fireEvent.click(beginnerHeroBtn);

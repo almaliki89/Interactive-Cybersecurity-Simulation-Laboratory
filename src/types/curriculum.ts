@@ -83,6 +83,7 @@ export interface CurriculumLesson {
   estimatedMinutes: number;
   simulationId: SimulationId;
   worldId?: number;
+  challengeId?: string;
 
   // The 7 Pedagogical Stages
   objectives: CurriculumObjective[];

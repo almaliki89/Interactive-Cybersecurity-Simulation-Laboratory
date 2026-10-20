@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSimulationStore, SimulationId } from '../../stores/simulationStore';
 import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
+import { CURRICULUM_LESSONS } from '../../data/curriculumData';
 import { translations } from '../../i18n/translations';
 import {
   Compass,
@@ -74,8 +75,9 @@ export const Header: React.FC = () => {
   const setMode = useSimulationStore((s) => s.setMode);
   const setIsSearchOpen = useSimulationStore((s) => s.setIsSearchOpen);
   
-  // Real-time runtime subscription from store
   const clockStatus = useSimulationStore((s) => s.clockStatus);
+  const activeLessonId = useSimulationStore((s) => s.activeLessonId);
+  const activeLesson = CURRICULUM_LESSONS[activeLessonId] || CURRICULUM_LESSONS['lesson-01-cia-triad'];
 
   // DevSecOps Sub-navigation Store
   const devSecOpsTab = useDevSecOpsStore((s) => s.activeTab);
@@ -179,6 +181,15 @@ export const Header: React.FC = () => {
               title={language === 'ar' ? 'العودة للكون' : 'Back to Universe'}
             >
               <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+            </button>
+            <button
+              onClick={() => setActiveSimulation('lesson')}
+              data-testid="return-to-lesson-btn"
+              className="h-7 px-2 sm:px-2.5 rounded-lg bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60 hover:border-emerald-400 text-[10px] font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0"
+              title={language === 'ar' ? `العودة إلى الدرس الحالي: ${activeLesson?.titleAr || ''}` : `Return to Lesson: ${activeLesson?.titleEn || ''}`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>{language === 'ar' ? 'العودة للدرس' : 'Back to Lesson'}</span>
             </button>
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">

@@ -198,6 +198,30 @@ export const safeParseCompletedLessons = (raw: string | null): string[] => {
   return [];
 };
 
+export const VALID_CURRICULUM_LESSON_IDS = new Set([
+  'lesson-01-cia-triad',
+  'lesson-02-system-internals',
+  'lesson-03-subnet-routing',
+  'lesson-04-firewall-rules',
+  'lesson-05-cryptography',
+  'lesson-06-active-directory',
+  'lesson-07-soc-monitoring',
+  'lesson-08-forensics',
+  'lesson-09-devsecops',
+  'lesson-10-cyber-range',
+]);
+
+export const DEFAULT_LESSON_ID = 'lesson-01-cia-triad';
+
+export const safeParseActiveLessonId = (raw: string | null): string => {
+  if (!raw || typeof raw !== 'string') return DEFAULT_LESSON_ID;
+  const trimmed = raw.trim();
+  if (VALID_CURRICULUM_LESSON_IDS.has(trimmed)) {
+    return trimmed;
+  }
+  return DEFAULT_LESSON_ID;
+};
+
 export const setStoredItem = (key: string, value: string): void => {
   try {
     if (typeof localStorage !== 'undefined') {
@@ -263,7 +287,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     completedChallenges: safeParseCompletedChallenges(getStoredItem('omega_completed_challenges')),
     activeChallengeId: null,
 
-    activeLessonId: 'lesson-01-cia-triad',
+    activeLessonId: safeParseActiveLessonId(getStoredItem('omega_active_lesson_id')),
     completedLessons: safeParseCompletedLessons(getStoredItem('omega_completed_lessons')),
 
     setLanguage: (lang) => {
@@ -410,7 +434,11 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   },
   setActiveChallengeId: (activeChallengeId) => set({ activeChallengeId }),
 
-  setActiveLessonId: (activeLessonId) => set({ activeLessonId }),
+  setActiveLessonId: (activeLessonId) => {
+    const safeId = safeParseActiveLessonId(activeLessonId);
+    setStoredItem('omega_active_lesson_id', safeId);
+    set({ activeLessonId: safeId });
+  },
   completeLesson: (lessonId) => {
     const existing = get().completedLessons;
     if (!existing.includes(lessonId)) {
@@ -424,6 +452,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     const lang = safeParseLanguage(getStoredItem('omega_language'));
     const completed = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
     const completedLess = safeParseCompletedLessons(getStoredItem('omega_completed_lessons'));
+    const activeLesson = safeParseActiveLessonId(getStoredItem('omega_active_lesson_id'));
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
       document.documentElement.lang = lang;
@@ -432,6 +461,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       language: lang,
       completedChallenges: completed,
       completedLessons: completedLess,
+      activeLessonId: activeLesson,
     });
   },
 };
