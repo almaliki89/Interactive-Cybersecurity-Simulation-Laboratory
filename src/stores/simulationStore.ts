@@ -443,6 +443,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     set({ activeLessonId: safeId });
   },
   completeLesson: (lessonId) => {
+    console.log('Completing lesson:', lessonId, VALID_CURRICULUM_LESSON_IDS.has(lessonId));
     if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;
     const existing = get().completedLessons;
     if (!existing.includes(lessonId)) {
@@ -458,15 +459,15 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       if (stage > current.furthestUnlockedStage && stage !== current.furthestUnlockedStage + 1) {
         return state;
       }
-      return {
-        lessonProgress: {
-          ...state.lessonProgress,
-          [lessonId]: {
-            currentStage: stage,
-            furthestUnlockedStage: Math.max(current.furthestUnlockedStage, stage),
-          },
+      const updatedProgress = {
+        ...state.lessonProgress,
+        [lessonId]: {
+          currentStage: stage,
+          furthestUnlockedStage: Math.max(current.furthestUnlockedStage, stage),
         },
       };
+      setStoredItem('omega_lesson_progress', JSON.stringify(updatedProgress));
+      return { lessonProgress: updatedProgress };
     });
   },
 
@@ -475,6 +476,15 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     const completed = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
     const completedLess = safeParseCompletedLessons(getStoredItem('omega_completed_lessons')).filter(l => VALID_CURRICULUM_LESSON_IDS.has(l));
     const activeLesson = safeParseActiveLessonId(getStoredItem('omega_active_lesson_id'));
+    
+    let parsedProgress = {};
+    try {
+      const storedProgress = getStoredItem('omega_lesson_progress');
+      if (storedProgress) parsedProgress = JSON.parse(storedProgress);
+    } catch {
+      // ignore
+    }
+
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
       document.documentElement.lang = lang;
@@ -484,6 +494,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       completedChallenges: completed,
       completedLessons: completedLess,
       activeLessonId: activeLesson,
+      lessonProgress: parsedProgress,
     });
   },
 };
