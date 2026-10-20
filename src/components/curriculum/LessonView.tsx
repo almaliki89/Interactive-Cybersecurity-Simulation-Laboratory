@@ -45,9 +45,16 @@ export const LessonView: React.FC = () => {
   const completedChallenges = useSimulationStore((s) => s.completedChallenges) || [];
   const setActiveSimulation = useSimulationStore((s) => s.setActiveSimulation);
   const setSelectedWorldId = useSimulationStore((s) => s.setSelectedWorldId);
+  const lessonProgress = useSimulationStore((s) => s.lessonProgress);
+  const setLessonStage = useSimulationStore((s) => s.setLessonStage);
 
   // Active Stage tab (0: Objectives, 1: Concept, 2: Demo, 3: Task, 4: Impact, 5: Quiz, 6: Next Step)
-  const [activeStage, setActiveStage] = useState<number>(0);
+  const activeStage = lessonProgress[activeLessonId]?.currentStage || 0;
+  const furthestUnlockedStage = lessonProgress[activeLessonId]?.furthestUnlockedStage || 0;
+
+  const setActiveStage = (stage: number) => {
+    setLessonStage(activeLessonId, stage);
+  };
 
   // Quiz state: questionId -> selectedOptionId
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
@@ -119,7 +126,7 @@ export const LessonView: React.FC = () => {
   const isManualConfirmed = !!manualConfirmationChecked[currentLesson.id];
 
   const isTaskPassed = isInteractive
-    ? (hasLinkedChallenge ? isSimulationChallengeDone : isManualConfirmed)
+    ? (hasLinkedChallenge ? isSimulationChallengeDone : false)
     : isManualConfirmed;
 
   // 2. Knowledge check (Quiz) evaluation

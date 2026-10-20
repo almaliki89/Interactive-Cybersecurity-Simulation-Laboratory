@@ -99,12 +99,14 @@ interface SimulationStoreState {
   // Beginner-First Curriculum State
   activeLessonId: string;
   completedLessons: string[];
+  lessonProgress: Record<string, { currentStage: number; furthestUnlockedStage: number }>;
 
   // Actions
   setLanguage: (lang: Language) => void;
   setActiveSimulation: (id: SimulationId) => void;
   setActiveLessonId: (id: string) => void;
   completeLesson: (lessonId: string) => void;
+  setLessonStage: (lessonId: string, stage: number) => void;
   setSelectedMacroDomainId: (id: MacroDomainId | null) => void;
   setSelectedWorldId: (id: number | null) => void;
   setMode: (mode: SimulationMode) => void;
@@ -289,6 +291,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
 
     activeLessonId: safeParseActiveLessonId(getStoredItem('omega_active_lesson_id')),
     completedLessons: safeParseCompletedLessons(getStoredItem('omega_completed_lessons')),
+    lessonProgress: {},
 
     setLanguage: (lang) => {
       setStoredItem('omega_language', lang);
@@ -440,6 +443,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     set({ activeLessonId: safeId });
   },
   completeLesson: (lessonId) => {
+    if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;
     const existing = get().completedLessons;
     if (!existing.includes(lessonId)) {
       const updated = [...existing, lessonId];
@@ -447,11 +451,29 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       set({ completedLessons: updated });
     }
   },
+  setLessonStage: (lessonId, stage) => {
+    set((state) => {
+      const current = state.lessonProgress[lessonId] || { currentStage: 0, furthestUnlockedStage: 0 };
+      // Strict gating: can only jump to next stage or previous/same
+      if (stage > current.furthestUnlockedStage && stage !== current.furthestUnlockedStage + 1) {
+        return state;
+      }
+      return {
+        lessonProgress: {
+          ...state.lessonProgress,
+          [lessonId]: {
+            currentStage: stage,
+            furthestUnlockedStage: Math.max(current.furthestUnlockedStage, stage),
+          },
+        },
+      };
+    });
+  },
 
   reloadFromStorage: () => {
     const lang = safeParseLanguage(getStoredItem('omega_language'));
     const completed = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
-    const completedLess = safeParseCompletedLessons(getStoredItem('omega_completed_lessons'));
+    const completedLess = safeParseCompletedLessons(getStoredItem('omega_completed_lessons')).filter(l => VALID_CURRICULUM_LESSON_IDS.has(l));
     const activeLesson = safeParseActiveLessonId(getStoredItem('omega_active_lesson_id'));
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
