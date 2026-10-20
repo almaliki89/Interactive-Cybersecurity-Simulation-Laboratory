@@ -443,7 +443,6 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     set({ activeLessonId: safeId });
   },
   completeLesson: (lessonId) => {
-    console.log('Completing lesson:', lessonId, VALID_CURRICULUM_LESSON_IDS.has(lessonId));
     if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;
     const existing = get().completedLessons;
     if (!existing.includes(lessonId)) {
@@ -455,10 +454,6 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   setLessonStage: (lessonId, stage) => {
     set((state) => {
       const current = state.lessonProgress[lessonId] || { currentStage: 0, furthestUnlockedStage: 0 };
-      // Strict gating: can only jump to next stage or previous/same
-      if (stage > current.furthestUnlockedStage && stage !== current.furthestUnlockedStage + 1) {
-        return state;
-      }
       const updatedProgress = {
         ...state.lessonProgress,
         [lessonId]: {

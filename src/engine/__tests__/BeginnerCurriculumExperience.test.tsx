@@ -16,6 +16,8 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       activeSimulationId: 'lesson',
       activeLessonId: 'lesson-01-cia-triad',
       completedLessons: [],
+      completedChallenges: [],
+      lessonProgress: {},
       clockStatus: 'running',
     });
   });
@@ -134,7 +136,7 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
     it('interacts with the Knowledge Check quiz and provides immediate feedback', () => {
       render(<LessonView />);
 
-      // Jump directly to Quiz stage via tab
+      // Switch to Quiz stage via tab
       const quizTab = screen.getByText(/6\. فحص المعرفة/i);
       fireEvent.click(quizTab);
 
@@ -155,7 +157,7 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
     it('prevents completing lesson when conditions are not met (strict gating)', () => {
       render(<LessonView />);
 
-      // Jump to Next Step stage via tab
+      // Jump to Next Step stage via tab to inspect completion criteria
       const nextStepTab = screen.getByText(/7\. الخطوة التالية/i);
       fireEvent.click(nextStepTab);
 
@@ -164,8 +166,11 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       expect(screen.getByText(/1\. اجتياز الفحص المعرفي:/i)).toBeDefined();
       expect(screen.getByText(/2\. (استيفاء|إنجاز) المهمة العملية:/i)).toBeDefined();
 
-      // Complete button must NOT exist while conditions are unmet
+      // Active complete button must NOT exist while conditions are unmet
       expect(screen.queryByText(/إكمال والانتقال إلى المحطة التالية/i)).toBeNull();
+
+      // Lock indicator is rendered
+      expect(screen.getByText(/إكمال المحطة مقفل حتى استيفاء الشروط/i)).toBeDefined();
 
       // Store should remain incomplete
       const state = useSimulationStore.getState();
@@ -175,19 +180,24 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
 
     it('completes the lesson and advances only after quiz and task conditions are fulfilled', async () => {
       render(<LessonView />);
-      screen.debug();
 
-      // 1. Complete practical task (linked simulation challenge for lesson 1)
+      // 1. Advance sequentially to stage 3 (Hands-on task) and complete practical task
       act(() => {
-        useSimulationStore.getState().completeChallenge('cia-balance-challenge');
+        const store = useSimulationStore.getState();
+        store.setLessonStage('lesson-01-cia-triad', 1);
+        store.setLessonStage('lesson-01-cia-triad', 2);
+        store.setLessonStage('lesson-01-cia-triad', 3);
+        store.completeChallenge('cia-balance-challenge');
       });
 
-      // 2. Complete Knowledge Check
-      const quizTab = screen.getByText(/6\. فحص المعرفة/i);
+      // 2. Advance sequentially to stage 4 then stage 5 (Knowledge Check)
       act(() => {
-        fireEvent.click(quizTab);
+        const store = useSimulationStore.getState();
+        store.setLessonStage('lesson-01-cia-triad', 4);
+        store.setLessonStage('lesson-01-cia-triad', 5);
       });
 
+      // Complete Knowledge Check
       const options = screen.getAllByRole('button');
       const q1Correct = options.find((btn) => btn.textContent?.includes('التوافر (Availability)'));
       if (q1Correct) {
@@ -202,23 +212,14 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
         });
       }
 
-      // 3. Sequential progression to Next Steps stage
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // 3. Sequential progression to Next Steps stage (stage 6)
       act(() => {
         const store = useSimulationStore.getState();
-        // Impact stage (Stage 4)
-        store.setLessonStage('lesson-01-cia-triad', 4);
-        // Quiz stage (Stage 5)
-        store.setLessonStage('lesson-01-cia-triad', 5);
-        // Next step stage (Stage 6)
         store.setLessonStage('lesson-01-cia-triad', 6);
       });
 
-      console.log('Active Stage:', useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage);
-
       // Now the completion button MUST be unlocked and visible
-      screen.debug();
-      const completeBtn = screen.getByRole('button', { name: /إكمال/i });
+      const completeBtn = screen.getByRole('button', { name: /إكمال والانتقال إلى المحطة التالية/i });
       expect(completeBtn).toBeDefined();
 
       act(() => {
