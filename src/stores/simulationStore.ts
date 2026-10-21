@@ -11,6 +11,7 @@ import { Language } from '../i18n/translations';
 import { MacroDomainId, CyberRangeLayer, CyberTimelineEvent } from '../types/universe';
 import { globalEventBus } from '../engine/eventBus';
 import { globalSimulationRuntime } from '../engine/runtime/SimulationRuntime';
+import type { LessonProgressState } from '../types/curriculum';
 
 export type SimulationId =
   | 'landing'
@@ -99,7 +100,7 @@ interface SimulationStoreState {
   // Beginner-First Curriculum State
   activeLessonId: string;
   completedLessons: string[];
-  lessonProgress: Record<string, { currentStage: number; furthestUnlockedStage: number }>;
+  lessonProgress: Record<string, LessonProgressState>;
 
   // Actions
   setLanguage: (lang: Language) => void;
@@ -107,6 +108,7 @@ interface SimulationStoreState {
   setActiveLessonId: (id: string) => void;
   completeLesson: (lessonId: string) => void;
   setLessonStage: (lessonId: string, stage: number) => void;
+  updateLessonProgressState: (lessonId: string, updates: Partial<LessonProgressState>) => void;
   setSelectedMacroDomainId: (id: MacroDomainId | null) => void;
   setSelectedWorldId: (id: number | null) => void;
   setMode: (mode: SimulationMode) => void;
@@ -200,6 +202,95 @@ export const safeParseCompletedLessons = (raw: string | null): string[] => {
   return [];
 };
 
+export const safeParseLessonProgress = (
+  raw: string | null,
+  completedLessons: string[] = []
+): Record<string, LessonProgressState> => {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+
+    const validated: Record<string, LessonProgressState> = {};
+    for (const [lessonId, item] of Object.entries(parsed)) {
+      if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) continue;
+      if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+
+      const typedItem = item as Record<string, any>;
+      const isCompleted = completedLessons.includes(lessonId);
+
+      let furthest = typeof typedItem.furthestUnlockedStage === 'number'
+        ? Math.max(0, Math.min(6, Math.floor(typedItem.furthestUnlockedStage)))
+        : 0;
+
+      // Safety check: if not completed, do not allow restoring final stage 6 unless conditions are met
+      if (!isCompleted && furthest > 5) {
+        furthest = 5;
+      }
+
+      let current = typeof typedItem.currentStage === 'number'
+        ? Math.max(0, Math.min(6, Math.floor(typedItem.currentStage)))
+        : 0;
+
+      if (!isCompleted && current > furthest) {
+        current = furthest;
+      }
+
+      // Sanitize quizAnswers
+      let quizAnswers: Record<string, string> | undefined;
+      if (typedItem.quizAnswers && typeof typedItem.quizAnswers === 'object' && !Array.isArray(typedItem.quizAnswers)) {
+        quizAnswers = {};
+        for (const [qId, optId] of Object.entries(typedItem.quizAnswers)) {
+          if (typeof qId === 'string' && typeof optId === 'string') {
+            quizAnswers[qId] = optId;
+          }
+        }
+      }
+
+      // Sanitize quizSubmitted
+      let quizSubmitted: Record<string, boolean> | undefined;
+      if (typedItem.quizSubmitted && typeof typedItem.quizSubmitted === 'object' && !Array.isArray(typedItem.quizSubmitted)) {
+        quizSubmitted = {};
+        for (const [qId, sub] of Object.entries(typedItem.quizSubmitted)) {
+          if (typeof qId === 'string' && typeof sub === 'boolean') {
+            quizSubmitted[qId] = sub;
+          }
+        }
+      }
+
+      // Sanitize checkedTaskSteps
+      let checkedTaskSteps: Record<string, boolean> | undefined;
+      if (typedItem.checkedTaskSteps && typeof typedItem.checkedTaskSteps === 'object' && !Array.isArray(typedItem.checkedTaskSteps)) {
+        checkedTaskSteps = {};
+        for (const [stepKey, checked] of Object.entries(typedItem.checkedTaskSteps)) {
+          if (typeof stepKey === 'string' && typeof checked === 'boolean') {
+            checkedTaskSteps[stepKey] = checked;
+          }
+        }
+      }
+
+      const manualConfirmationChecked = typeof typedItem.manualConfirmationChecked === 'boolean'
+        ? typedItem.manualConfirmationChecked
+        : undefined;
+
+      validated[lessonId] = {
+        currentStage: current,
+        furthestUnlockedStage: isCompleted ? 6 : furthest,
+        quizAnswers,
+        quizSubmitted,
+        checkedTaskSteps,
+        manualConfirmationChecked,
+      };
+    }
+
+    return validated;
+  } catch {
+    return {};
+  }
+};
+
 export const VALID_CURRICULUM_LESSON_IDS = new Set([
   'lesson-01-cia-triad',
   'lesson-02-system-internals',
@@ -291,7 +382,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
 
     activeLessonId: safeParseActiveLessonId(getStoredItem('omega_active_lesson_id')),
     completedLessons: safeParseCompletedLessons(getStoredItem('omega_completed_lessons')),
-    lessonProgress: {},
+    lessonProgress: safeParseLessonProgress(getStoredItem('omega_lesson_progress'), safeParseCompletedLessons(getStoredItem('omega_completed_lessons'))),
 
     setLanguage: (lang) => {
       setStoredItem('omega_language', lang);
@@ -445,20 +536,62 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   completeLesson: (lessonId) => {
     if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;
     const existing = get().completedLessons;
-    if (!existing.includes(lessonId)) {
-      const updated = [...existing, lessonId];
-      setStoredItem('omega_completed_lessons', JSON.stringify(updated));
-      set({ completedLessons: updated });
-    }
+    const updated = existing.includes(lessonId) ? existing : [...existing, lessonId];
+    const currentProgress = get().lessonProgress[lessonId] || { currentStage: 6, furthestUnlockedStage: 6 };
+    const updatedProgress = {
+      ...get().lessonProgress,
+      [lessonId]: {
+        ...currentProgress,
+        currentStage: 6,
+        furthestUnlockedStage: 6,
+      },
+    };
+    setStoredItem('omega_completed_lessons', JSON.stringify(updated));
+    setStoredItem('omega_lesson_progress', JSON.stringify(updatedProgress));
+    set({
+      completedLessons: updated,
+      lessonProgress: updatedProgress,
+    });
   },
   setLessonStage: (lessonId, stage) => {
+    if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;
+    if (typeof stage !== 'number' || stage < 0 || stage > 6) return;
+
+    set((state) => {
+      const isCompleted = state.completedLessons.includes(lessonId);
+      const current = state.lessonProgress[lessonId] || { currentStage: 0, furthestUnlockedStage: 0 };
+      const currentFurthest = isCompleted ? 6 : (current.furthestUnlockedStage ?? 0);
+
+      // Strict gating:
+      // Can review any already unlocked stage (stage <= currentFurthest)
+      // Can advance only to the immediately next sequential stage (stage === currentFurthest + 1)
+      // Cannot jump beyond currentFurthest + 1
+      if (!isCompleted && stage > currentFurthest + 1) {
+        return state;
+      }
+
+      const newFurthest = isCompleted ? 6 : Math.max(currentFurthest, stage);
+      const updatedProgress = {
+        ...state.lessonProgress,
+        [lessonId]: {
+          ...current,
+          currentStage: stage,
+          furthestUnlockedStage: newFurthest,
+        },
+      };
+      setStoredItem('omega_lesson_progress', JSON.stringify(updatedProgress));
+      return { lessonProgress: updatedProgress };
+    });
+  },
+  updateLessonProgressState: (lessonId, updates) => {
+    if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;
     set((state) => {
       const current = state.lessonProgress[lessonId] || { currentStage: 0, furthestUnlockedStage: 0 };
       const updatedProgress = {
         ...state.lessonProgress,
         [lessonId]: {
-          currentStage: stage,
-          furthestUnlockedStage: Math.max(current.furthestUnlockedStage, stage),
+          ...current,
+          ...updates,
         },
       };
       setStoredItem('omega_lesson_progress', JSON.stringify(updatedProgress));
@@ -469,16 +602,9 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   reloadFromStorage: () => {
     const lang = safeParseLanguage(getStoredItem('omega_language'));
     const completed = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
-    const completedLess = safeParseCompletedLessons(getStoredItem('omega_completed_lessons')).filter(l => VALID_CURRICULUM_LESSON_IDS.has(l));
+    const completedLess = safeParseCompletedLessons(getStoredItem('omega_completed_lessons')).filter((l) => VALID_CURRICULUM_LESSON_IDS.has(l));
     const activeLesson = safeParseActiveLessonId(getStoredItem('omega_active_lesson_id'));
-    
-    let parsedProgress = {};
-    try {
-      const storedProgress = getStoredItem('omega_lesson_progress');
-      if (storedProgress) parsedProgress = JSON.parse(storedProgress);
-    } catch {
-      // ignore
-    }
+    const parsedProgress = safeParseLessonProgress(getStoredItem('omega_lesson_progress'), completedLess);
 
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';

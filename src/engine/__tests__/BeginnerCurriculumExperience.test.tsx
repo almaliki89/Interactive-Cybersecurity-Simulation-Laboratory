@@ -136,9 +136,21 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
     it('interacts with the Knowledge Check quiz and provides immediate feedback', () => {
       render(<LessonView />);
 
-      // Switch to Quiz stage via tab
+      // Attempting to jump directly from Stage 0 to Stage 5 (Quiz) is rejected
       const quizTab = screen.getByText(/6\. فحص المعرفة/i);
       fireEvent.click(quizTab);
+      // Still on Stage 0
+      expect(screen.getByText(/لماذا يعد هذا المفهوم حاسماً؟/i)).toBeDefined();
+
+      // Advance legitimately through stages to Stage 5 (Quiz)
+      act(() => {
+        const store = useSimulationStore.getState();
+        store.setLessonStage('lesson-01-cia-triad', 1);
+        store.setLessonStage('lesson-01-cia-triad', 2);
+        store.setLessonStage('lesson-01-cia-triad', 3);
+        store.setLessonStage('lesson-01-cia-triad', 4);
+        store.setLessonStage('lesson-01-cia-triad', 5);
+      });
 
       expect(screen.getByText(/الفحص المعرفي التفاعلي السريع/i)).toBeDefined();
 
@@ -148,7 +160,9 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       expect(correctOptionBtn).toBeDefined();
 
       if (correctOptionBtn) {
-        fireEvent.click(correctOptionBtn);
+        act(() => {
+          fireEvent.click(correctOptionBtn);
+        });
         // Instant feedback should appear
         expect(screen.getByText(/إجابة صحيحة ومتقنة!/i)).toBeDefined();
       }
@@ -157,9 +171,19 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
     it('prevents completing lesson when conditions are not met (strict gating)', () => {
       render(<LessonView />);
 
-      // Jump to Next Step stage via tab to inspect completion criteria
+      // Attempting to jump directly to Stage 7 from Stage 0 is blocked
       const nextStepTab = screen.getByText(/7\. الخطوة التالية/i);
       fireEvent.click(nextStepTab);
+      // Still on Stage 0
+      expect(screen.getByText(/لماذا يعد هذا المفهوم حاسماً؟/i)).toBeDefined();
+
+      // Advance sequentially to inspect completion criteria at Stage 6
+      act(() => {
+        const store = useSimulationStore.getState();
+        for (let i = 1; i <= 6; i++) {
+          store.setLessonStage('lesson-01-cia-triad', i);
+        }
+      });
 
       // Verify lock message is shown explaining requirements are pending
       expect(screen.getByText(/متطلبات إكمال المحطة غير مستوفاة بعد/i)).toBeDefined();
@@ -231,9 +255,73 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       expect(state.completedLessons).toContain('lesson-01-cia-triad');
       expect(state.activeLessonId).toBe('lesson-02-system-internals');
     });
+
+    it('rejects illegal stage skipping directly in store and keeps furthest unlocked progress', () => {
+      // Start at stage 0
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage ?? 0).toBe(0);
+
+      // Attempt illegal jump to stage 4 directly
+      useSimulationStore.getState().setLessonStage('lesson-01-cia-triad', 4);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage ?? 0).toBe(0);
+
+      // Advance sequentially
+      useSimulationStore.getState().setLessonStage('lesson-01-cia-triad', 1);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage).toBe(1);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.furthestUnlockedStage).toBe(1);
+
+      useSimulationStore.getState().setLessonStage('lesson-01-cia-triad', 2);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.furthestUnlockedStage).toBe(2);
+
+      // Review previous stage (Stage 0) - furthestUnlockedStage MUST NOT degrade
+      useSimulationStore.getState().setLessonStage('lesson-01-cia-triad', 0);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage).toBe(0);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.furthestUnlockedStage).toBe(2);
+
+      // Can navigate directly back to any unlocked stage (Stage 2)
+      useSimulationStore.getState().setLessonStage('lesson-01-cia-triad', 2);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage).toBe(2);
+    });
+
+    it('unlocks all stages for review once a lesson is marked completed', () => {
+      useSimulationStore.getState().completeLesson('lesson-01-cia-triad');
+
+      expect(useSimulationStore.getState().completedLessons).toContain('lesson-01-cia-triad');
+      // In completed lessons, furthest stage is 6 (all unlocked)
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.furthestUnlockedStage).toBe(6);
+
+      // Can jump to any stage freely for review
+      useSimulationStore.getState().setLessonStage('lesson-01-cia-triad', 4);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage).toBe(4);
+
+      useSimulationStore.getState().setLessonStage('lesson-01-cia-triad', 6);
+      expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage).toBe(6);
+    });
   });
 
   describe('Lesson State Persistence, Reload & Safety', () => {
+    it('persists and restores complete lesson state across reloads', () => {
+      const store = useSimulationStore.getState();
+
+      // Update quiz answers and task steps in lesson 1
+      store.setLessonStage('lesson-01-cia-triad', 1);
+      store.updateLessonProgressState('lesson-01-cia-triad', {
+        quizAnswers: { 'q1': 'opt-avail' },
+        quizSubmitted: { 'q1': true },
+        manualConfirmationChecked: true,
+      });
+
+      // Verify it was stored in localStorage
+      const stored = localStorage.getItem('omega_lesson_progress');
+      expect(stored).toBeTruthy();
+
+      // Trigger reloadFromStorage
+      store.reloadFromStorage();
+
+      const reloadedState = useSimulationStore.getState();
+      expect(reloadedState.lessonProgress['lesson-01-cia-triad']?.quizAnswers?.['q1']).toBe('opt-avail');
+      expect(reloadedState.lessonProgress['lesson-01-cia-triad']?.manualConfirmationChecked).toBe(true);
+    });
+
     it('restores activeLessonId after reloadFromStorage using localStorage mechanism', () => {
       localStorage.setItem('omega_active_lesson_id', 'lesson-04-firewall-rules');
       useSimulationStore.getState().reloadFromStorage();

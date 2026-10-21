@@ -67,11 +67,29 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     // Back in Lesson View
     await expect(curriculumHeading).toBeVisible();
 
-    // 5. Test Strict Completion Gating (Attempting Stage 7 Before Fulfilling Conditions)
+    // 5. Test Strict Completion Gating (Direct jump to Stage 7 from Task is blocked)
     const nextStepTab = page.getByRole('button', { name: /7\. الخطوة التالية/i });
-    await nextStepTab.click();
+    await expect(nextStepTab).toBeDisabled();
 
-    // Verify lock warning is shown and completion button is NOT available
+    // Advance sequentially through remaining stages:
+    // Move to Stage 5: Security Impact
+    const toStage5Btn = page.getByRole('button', { name: /المرحلة 5: شرح النتيجة/i });
+    await expect(toStage5Btn).toBeVisible();
+    await toStage5Btn.click();
+    await expect(page.getByText(/الأثر الأمني/i).first()).toBeVisible();
+
+    // Move to Stage 6: Knowledge Check
+    const toStage6Btn = page.getByRole('button', { name: /المرحلة 6: فحص المعرفة/i });
+    await expect(toStage6Btn).toBeVisible();
+    await toStage6Btn.click();
+    await expect(page.getByText(/الفحص المعرفي التفاعلي السريع/i)).toBeVisible();
+
+    // Move to Stage 7: Next Step
+    const toStage7Btn = page.getByRole('button', { name: /المرحلة 7: الخطوة التالية والانتقال/i });
+    await expect(toStage7Btn).toBeVisible();
+    await toStage7Btn.click();
+
+    // Verify lock warning is shown and completion button is NOT available while conditions are unmet
     await expect(page.getByText(/متطلبات إكمال المحطة غير مستوفاة بعد/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /إكمال والانتقال إلى المحطة التالية/i })).toHaveCount(0);
 
@@ -83,7 +101,7 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     const optAvailability = page.getByRole('button', { name: /التوافر \(Availability\)/i });
     await expect(optAvailability).toBeVisible();
     await optAvailability.click();
-    await expect(page.getByText(/إجابة صحيحة وممتازة!/i)).toBeVisible();
+    await expect(page.getByText(/إجابة صحيحة ومتقنة!/i)).toBeVisible();
 
     // Answer Question 2: Confidentiality
     const optConfidentiality = page.getByRole('button', { name: /ضمان السرية/i });
@@ -91,8 +109,25 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await optConfidentiality.click();
     await expect(page.getByText(/إجابة صحيحة! التشفير يحول البيانات/i)).toBeVisible();
 
-    // 7. Verify Exploratory Lesson with Honest Guided Manual Confirmation
-    // Jump to Lesson 6 (Active Directory & Kerberos)
+    // 7. Complete the Practical Task in Simulator
+    await page.evaluate(() => {
+      const store = (window as any).useSimulationStore?.getState();
+      if (store) {
+        store.completeChallenge('cia-balance-challenge');
+      }
+    });
+
+    // Return to Stage 7 (Next Step) - Both requirements now fulfilled!
+    await nextStepTab.click();
+    const completeLessonBtn = page.getByRole('button', { name: /إكمال والانتقال إلى المحطة التالية/i });
+    await expect(completeLessonBtn).toBeVisible();
+    await completeLessonBtn.click();
+
+    // Lesson 1 is completed and advances to Lesson 2 (System Internals)
+    await expect(page.getByText(/المحطة 2 من 10/i).first()).toBeVisible();
+
+    // 8. Verify Exploratory Lesson with Honest Guided Manual Confirmation (Lesson 6)
+    // Jump to Lesson 6 (Active Directory & Kerberos) from sidebar
     const milestone6Btn = page.getByText(/6\. الهوية والمصادقة/i).first();
     await expect(milestone6Btn).toBeVisible({ timeout: 15000 });
     await milestone6Btn.click();
@@ -100,9 +135,13 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     // Verify Lesson 6 is now active
     await expect(page.getByText(/إدارة الهويات والمصادقة/i).first()).toBeVisible({ timeout: 15000 });
 
-    // Navigate to Lesson 6 Stage 4 (Hands-on Task) using top stage tab
-    const stage4Tab = page.getByRole('button', { name: /4\. المهمة العملية/i });
-    await stage4Tab.click();
+    // Advance sequentially through Lesson 6 to Stage 4 (Hands-on Task)
+    const toL6Stage2Btn = page.getByRole('button', { name: /المرحلة 2: المفهوم والتشبيه الحياتي/i });
+    await toL6Stage2Btn.click();
+    const toL6Stage3Btn = page.getByRole('button', { name: /المرحلة 3: المعاينة الحية/i });
+    await toL6Stage3Btn.click();
+    const toL6Stage4Btn = page.getByRole('button', { name: /المرحلة 4: المهمة العملية/i });
+    await toL6Stage4Btn.click();
 
     // Click guided confirmation toggle
     const confirmToggleBtn = page.getByTestId('guided-confirmation-toggle-btn');
@@ -110,26 +149,25 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await confirmToggleBtn.click();
     await expect(confirmToggleBtn).toContainText(/أؤكد أنني نفذت الخطوات الموجهة/i);
 
-    // Answer Lesson 6 Quiz
-    const quizTabLesson6 = page.getByRole('button', { name: /6\. فحص المعرفة/i });
-    await quizTabLesson6.click();
-    const kerberosTicketOpt = page.getByRole('button', { name: /تذكرة TGT/i }).first();
-    if (await kerberosTicketOpt.isVisible()) {
-      await kerberosTicketOpt.click();
-    }
+    // 9. Test Lab Navigation & Reload Persistence of Lesson 6
+    const openLabL6Btn = page.getByRole('button', { name: /الانتقال إلى المحاكي والتطبيق/i });
+    await openLabL6Btn.click();
 
-    // 8. Test Reload Persistence of activeLessonId
-    await page.evaluate(() => {
-      localStorage.setItem('omega_active_lesson_id', 'lesson-06-active-directory');
-    });
+    const returnBtnL6 = page.getByTestId('return-to-lesson-btn');
+    await expect(returnBtnL6).toBeVisible({ timeout: 20000 });
+    await returnBtnL6.click();
+
+    // Confirmation must remain checked after returning from lab
+    await expect(page.getByTestId('guided-confirmation-toggle-btn')).toContainText(/أؤكد أنني نفذت الخطوات الموجهة/i);
+
+    // Reload page and verify state persistence
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
 
-    // After reload, Lesson 6 must remain active
-    const activeLessonId = await page.evaluate(() => {
-      return localStorage.getItem('omega_active_lesson_id');
-    });
-    expect(activeLessonId).toBe('lesson-06-active-directory');
+    // After reload, Lesson 6 must remain active and confirmation persists
+    await expect(page.getByText(/إدارة الهويات والمصادقة/i).first()).toBeVisible({ timeout: 15000 });
+    const storedLessonId = await page.evaluate(() => localStorage.getItem('omega_active_lesson_id'));
+    expect(storedLessonId).toBe('lesson-06-active-directory');
   });
 
   test('validates direct navigation from Header "Start Here" button', async ({ page }) => {

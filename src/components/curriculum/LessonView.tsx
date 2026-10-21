@@ -47,22 +47,28 @@ export const LessonView: React.FC = () => {
   const setSelectedWorldId = useSimulationStore((s) => s.setSelectedWorldId);
   const lessonProgress = useSimulationStore((s) => s.lessonProgress);
   const setLessonStage = useSimulationStore((s) => s.setLessonStage);
+  const updateLessonProgressState = useSimulationStore((s) => s.updateLessonProgressState);
+
+  // Is current lesson already completed in store
+  const isLessonAlreadyCompleted = completedLessons.includes(activeLessonId);
 
   // Active Stage tab (0: Objectives, 1: Concept, 2: Demo, 3: Task, 4: Impact, 5: Quiz, 6: Next Step)
-  const activeStage = lessonProgress[activeLessonId]?.currentStage || 0;
-  const furthestUnlockedStage = lessonProgress[activeLessonId]?.furthestUnlockedStage || 0;
+  const currentProgress = lessonProgress[activeLessonId];
+  const activeStage = currentProgress?.currentStage || 0;
+  const furthestUnlockedStage = isLessonAlreadyCompleted
+    ? 6
+    : (currentProgress?.furthestUnlockedStage || 0);
 
   const setActiveStage = (stage: number) => {
     setLessonStage(activeLessonId, stage);
   };
 
-  // Quiz state: questionId -> selectedOptionId
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
-  const [quizSubmitted, setQuizSubmitted] = useState<Record<string, boolean>>({});
+  // Persistent lesson state from store
+  const quizAnswers = currentProgress?.quizAnswers || {};
+  const quizSubmitted = currentProgress?.quizSubmitted || {};
+  const checkedTaskSteps = currentProgress?.checkedTaskSteps || {};
+  const isManualConfirmed = !!currentProgress?.manualConfirmationChecked;
 
-  // Guided task states
-  const [checkedTaskSteps, setCheckedTaskSteps] = useState<Record<string, boolean>>({});
-  const [manualConfirmationChecked, setManualConfirmationChecked] = useState<Record<string, boolean>>({});
   const [simStatusFeedback, setSimStatusFeedback] = useState<string | null>(null);
   const [showHints, setShowHints] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -113,17 +119,12 @@ export const LessonView: React.FC = () => {
   const completedCount = completedLessons.length;
   const progressPercent = Math.round((completedCount / (totalLessonsCount || 1)) * 100);
 
-  // Is current lesson already completed in store
-  const isLessonAlreadyCompleted = completedLessons.includes(currentLesson.id);
-
   // 1. Task verification evaluation
   const isInteractive = currentLesson.guidedTask.checkType === 'interactive_simulation';
   const hasLinkedChallenge = isInteractive && !!currentLesson.challengeId;
   const isSimulationChallengeDone = hasLinkedChallenge
     ? completedChallenges.includes(currentLesson.challengeId!)
     : false;
-
-  const isManualConfirmed = !!manualConfirmationChecked[currentLesson.id];
 
   const isTaskPassed = isInteractive
     ? (hasLinkedChallenge ? isSimulationChallengeDone : false)
@@ -144,8 +145,27 @@ export const LessonView: React.FC = () => {
 
   // Handle Quiz Option Selection
   const handleSelectOption = (questionId: string, optionId: string) => {
-    setQuizAnswers((prev) => ({ ...prev, [questionId]: optionId }));
-    setQuizSubmitted((prev) => ({ ...prev, [questionId]: true }));
+    const updatedAnswers = { ...quizAnswers, [questionId]: optionId };
+    const updatedSubmitted = { ...quizSubmitted, [questionId]: true };
+    updateLessonProgressState(activeLessonId, {
+      quizAnswers: updatedAnswers,
+      quizSubmitted: updatedSubmitted,
+    });
+  };
+
+  // Toggle guided task step checkbox (persisted per lesson)
+  const handleToggleTaskStep = (stepKey: string) => {
+    const updated = { ...checkedTaskSteps, [stepKey]: !checkedTaskSteps[stepKey] };
+    updateLessonProgressState(activeLessonId, {
+      checkedTaskSteps: updated,
+    });
+  };
+
+  // Toggle guided task manual confirmation (persisted per lesson)
+  const handleToggleManualConfirmation = () => {
+    updateLessonProgressState(activeLessonId, {
+      manualConfirmationChecked: !isManualConfirmed,
+    });
   };
 
   // Launch the corresponding interactive simulation while preserving activeLessonId
@@ -183,10 +203,6 @@ export const LessonView: React.FC = () => {
     completeLesson(currentLesson.id);
     if (currentLesson.nextStep.nextLessonId && CURRICULUM_LESSONS[currentLesson.nextStep.nextLessonId]) {
       setActiveLessonId(currentLesson.nextStep.nextLessonId);
-      setActiveStage(0);
-      setQuizAnswers({});
-      setQuizSubmitted({});
-      setCheckedTaskSteps({});
       setShowHints(false);
       setSimStatusFeedback(null);
     }
@@ -195,10 +211,6 @@ export const LessonView: React.FC = () => {
   // Handle changing lesson
   const handleChangeLesson = (lessonId: string) => {
     setActiveLessonId(lessonId);
-    setActiveStage(0);
-    setQuizAnswers({});
-    setQuizSubmitted({});
-    setCheckedTaskSteps({});
     setShowHints(false);
     setSimStatusFeedback(null);
     setIsSidebarOpen(false);
@@ -400,18 +412,29 @@ export const LessonView: React.FC = () => {
             <div className="flex items-center gap-1.5 min-w-max border-b border-slate-800/80 pb-1">
               {stagesList.map((stage) => {
                 const isActive = activeStage === stage.id;
+                const isUnlocked = isLessonAlreadyCompleted || stage.id <= furthestUnlockedStage;
+
                 return (
                   <button
                     key={stage.id}
-                    onClick={() => setActiveStage(stage.id)}
+                    disabled={!isUnlocked}
+                    onClick={() => {
+                      if (isUnlocked) {
+                        setActiveStage(stage.id);
+                      }
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                       isActive
                         ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-xs'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                        : isUnlocked
+                        ? 'text-slate-400 hover:text-white hover:bg-slate-800/40 cursor-pointer'
+                        : 'text-slate-600 border border-transparent opacity-50 cursor-not-allowed'
                     }`}
+                    title={!isUnlocked ? (isAr ? 'هذه المرحلة مقفلة حالياً حتى إكمال المراحل السابقة' : 'Stage locked until previous stages completed') : undefined}
                   >
                     <span>{isAr ? stage.labelAr : stage.labelEn}</span>
-                    {stage.isMet && stage.id >= 3 && (
+                    {!isUnlocked && <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />}
+                    {isUnlocked && stage.isMet && stage.id >= 3 && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                     )}
                   </button>
@@ -699,9 +722,7 @@ export const LessonView: React.FC = () => {
                       <button
                         key={idx}
                         type="button"
-                        onClick={() =>
-                          setCheckedTaskSteps((prev) => ({ ...prev, [stepKey]: !isChecked }))
-                        }
+                        onClick={() => handleToggleTaskStep(stepKey)}
                         className={`w-full p-3.5 rounded-xl border text-left rtl:text-right flex items-start gap-3 transition-colors ${
                           isChecked
                             ? 'bg-slate-900/60 border-slate-700/60 text-slate-400'
@@ -841,12 +862,7 @@ export const LessonView: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() =>
-                        setManualConfirmationChecked((prev) => ({
-                          ...prev,
-                          [currentLesson.id]: !prev[currentLesson.id],
-                        }))
-                      }
+                      onClick={handleToggleManualConfirmation}
                       data-testid="guided-confirmation-toggle-btn"
                       className={`w-full p-3 rounded-xl border text-left rtl:text-right flex items-center gap-3 transition-all ${
                         isManualConfirmed

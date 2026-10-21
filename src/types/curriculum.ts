@@ -109,3 +109,12 @@ export interface CurriculumMilestone {
   primarySimulationId: SimulationId;
   lessonIds: string[];
 }
+
+export interface LessonProgressState {
+  currentStage: number;
+  furthestUnlockedStage: number;
+  quizAnswers?: Record<string, string>;
+  quizSubmitted?: Record<string, boolean>;
+  checkedTaskSteps?: Record<string, boolean>;
+  manualConfirmationChecked?: boolean;
+}
