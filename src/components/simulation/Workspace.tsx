@@ -330,7 +330,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               className="fixed inset-0 bg-black/60 z-10 lg:hidden" 
               onClick={() => setRightOpen(false)} 
             />
-            <div className="absolute right-0 rtl:right-auto rtl:left-0 lg:relative z-20 h-full bg-slate-950 lg:bg-transparent border-l rtl:border-l-0 rtl:border-r border-slate-900 shadow-2xl lg:shadow-none w-80 max-w-[calc(100vw-3rem)] shrink-0 animate-in slide-in-from-right rtl:slide-in-from-left duration-150">
+            <div className="absolute right-0 rtl:right-auto rtl:left-0 lg:static z-20 h-full bg-slate-950 lg:bg-transparent border-l rtl:border-l-0 rtl:border-r border-slate-900 shadow-2xl lg:shadow-none w-80 max-w-[calc(100vw-3rem)] shrink-0 animate-in slide-in-from-right rtl:slide-in-from-left duration-150">
               <div className="flex items-center justify-between p-2.5 border-b border-slate-900 lg:hidden bg-slate-950">
                 <span className="text-xs font-bold text-white uppercase tracking-wider">
                   {language === 'ar' ? 'فاحص المكونات' : 'Object Inspector'}
