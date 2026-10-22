@@ -117,4 +117,7 @@ export interface LessonProgressState {
   quizSubmitted?: Record<string, boolean>;
   checkedTaskSteps?: Record<string, boolean>;
   manualConfirmationChecked?: boolean;
+  isQuizPassed?: boolean;
+  isTaskPassed?: boolean;
 }
+

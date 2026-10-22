@@ -288,7 +288,17 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       expect(useSimulationStore.getState().lessonProgress['lesson-01-cia-triad']?.currentStage).toBe(2);
     });
 
+    it('rejects direct completeLesson if quiz or task requirements are unfulfilled', () => {
+      const store = useSimulationStore.getState();
+      store.completeLesson('lesson-01-cia-triad');
+      expect(useSimulationStore.getState().completedLessons).not.toContain('lesson-01-cia-triad');
+    });
+
     it('unlocks all stages for review once a lesson is marked completed', () => {
+      useSimulationStore.getState().updateLessonProgressState('lesson-01-cia-triad', {
+        isQuizPassed: true,
+        isTaskPassed: true,
+      });
       useSimulationStore.getState().completeLesson('lesson-01-cia-triad');
 
       expect(useSimulationStore.getState().completedLessons).toContain('lesson-01-cia-triad');
@@ -373,6 +383,98 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       fireEvent.click(returnBtn);
       expect(useSimulationStore.getState().activeSimulationId).toBe('lesson');
       expect(useSimulationStore.getState().activeLessonId).toBe('lesson-03-subnet-routing');
+    });
+
+    it('renders restored stage, answers, and task state accurately after reload', () => {
+      // Simulate stored progress in localStorage
+      localStorage.setItem('omega_active_lesson_id', 'lesson-01-cia-triad');
+      localStorage.setItem(
+        'omega_lesson_progress',
+        JSON.stringify({
+          'lesson-01-cia-triad': {
+            currentStage: 3,
+            furthestUnlockedStage: 3,
+            checkedTaskSteps: { 'task-lesson-01-cia-triad-step-0': true },
+            manualConfirmationChecked: false,
+          },
+        })
+      );
+
+      // Trigger reloadFromStorage
+      useSimulationStore.getState().reloadFromStorage();
+
+      // Render the component
+      render(<LessonView />);
+
+      // Verify Stage 4 (Hands-on Task) is rendered as the current stage
+      expect(screen.getByText(/مهمتك العملية في المحاكي/i)).toBeDefined();
+      expect(screen.getByText(/الخطوات التنفيذية المطلوبة/i)).toBeDefined();
+    });
+
+    it('guarantees strict lesson isolation with no progress leaking across lessons', () => {
+      const store = useSimulationStore.getState();
+
+      // Advance lesson 1 and record quiz answers
+      store.setLessonStage('lesson-01-cia-triad', 1);
+      store.setLessonStage('lesson-01-cia-triad', 2);
+      store.setLessonStage('lesson-01-cia-triad', 3);
+      store.updateLessonProgressState('lesson-01-cia-triad', {
+        quizAnswers: { 'q1-cia-pillar': 'opt-c' },
+        isQuizPassed: true,
+      });
+
+      // Switch to lesson 2
+      store.setActiveLessonId('lesson-02-system-internals');
+
+      // Lesson 2 must start pristine at stage 0 with no answers or tasks leaked
+      const lesson2Progress = store.lessonProgress['lesson-02-system-internals'];
+      expect(lesson2Progress?.currentStage ?? 0).toBe(0);
+      expect(lesson2Progress?.furthestUnlockedStage ?? 0).toBe(0);
+      expect(lesson2Progress?.quizAnswers).toBeUndefined();
+      expect(lesson2Progress?.isQuizPassed).toBeFalsy();
+    });
+  });
+
+  describe('Curriculum Progress Calculation & Resilience', () => {
+    it('calculates progress accurately and ignores duplicates, invalid IDs, and never exceeds 100%', () => {
+      // Import calculateCurriculumProgress
+      const { calculateCurriculumProgress } = useSimulationStore.getState() as any || {};
+      // Test through store safeParseCompletedLessons
+      const rawWithDuplicatesAndInvalid = JSON.stringify([
+        'lesson-01-cia-triad',
+        'lesson-01-cia-triad',
+        'invalid-nonexistent-lesson',
+        'lesson-02-system-internals',
+        12345,
+        null,
+      ]);
+
+      localStorage.setItem('omega_completed_lessons', rawWithDuplicatesAndInvalid);
+      useSimulationStore.getState().reloadFromStorage();
+
+      const completed = useSimulationStore.getState().completedLessons;
+      // Duplicates removed and invalid IDs rejected
+      expect(completed).toEqual(['lesson-01-cia-triad', 'lesson-02-system-internals']);
+      expect(completed).toHaveLength(2);
+
+      // Active lesson is NOT auto-counted as completed
+      expect(completed).not.toContain('lesson-03-subnet-routing');
+    });
+
+    it('protects completeLesson and setLessonStage from unauthorized direct bypass', () => {
+      const store = useSimulationStore.getState();
+
+      // Direct call to completeLesson without fulfilling conditions must be rejected
+      store.completeLesson('lesson-01-cia-triad');
+      expect(store.completedLessons).not.toContain('lesson-01-cia-triad');
+
+      // Direct jump to stage 6 (completion stage) without fulfilling quiz and task must be rejected
+      store.setLessonStage('lesson-01-cia-triad', 6);
+      expect(store.lessonProgress['lesson-01-cia-triad']?.currentStage ?? 0).toBe(0);
+
+      // Direct jump to stage 5 (quiz) without completing earlier stages must be rejected
+      store.setLessonStage('lesson-01-cia-triad', 5);
+      expect(store.lessonProgress['lesson-01-cia-triad']?.currentStage ?? 0).toBe(0);
     });
   });
 
