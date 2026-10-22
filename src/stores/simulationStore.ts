@@ -583,6 +583,13 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   completeLesson: (lessonId) => {
     if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;
     
+    // Integrity Check: Cannot complete if quiz or task are not fulfilled
+    const progress = get().lessonProgress[lessonId];
+    if (!progress?.isQuizPassed || !progress?.isTaskPassed) {
+      console.warn(`[Integrity] Cannot complete lesson ${lessonId}: Quiz or Task unfulfilled.`);
+      return;
+    }
+
     // Integrity Check: Cannot complete if previous lesson is not completed
     const lessonIdx = LESSON_SEQUENCE.indexOf(lessonId);
     if (lessonIdx > 0) {

@@ -57,10 +57,12 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       const store = useSimulationStore.getState();
       
       // Complete Lesson 1
+      store.updateLessonProgressState('lesson-01-cia-triad', { isQuizPassed: true, isTaskPassed: true });
       store.completeLesson('lesson-01-cia-triad');
       expect(useSimulationStore.getState().completedLessons).toContain('lesson-01-cia-triad');
 
       // Now Lesson 2 should work
+      store.updateLessonProgressState('lesson-02-system-internals', { isQuizPassed: true, isTaskPassed: true });
       store.completeLesson('lesson-02-system-internals');
       expect(useSimulationStore.getState().completedLessons).toContain('lesson-02-system-internals');
     });

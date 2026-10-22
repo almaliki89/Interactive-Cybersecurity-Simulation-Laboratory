@@ -183,9 +183,19 @@ export const LessonView: React.FC = () => {
   const handleSelectOption = (questionId: string, optionId: string) => {
     const updatedAnswers = { ...quizAnswers, [questionId]: optionId };
     const updatedSubmitted = { ...quizSubmitted, [questionId]: true };
+    const totalQ = currentLesson.knowledgeCheck.length;
+    const correctCount = currentLesson.knowledgeCheck.filter((q) => {
+      const selected = q.id === questionId ? optionId : updatedAnswers[q.id];
+      if (!selected) return false;
+      return q.options.find((o) => o.id === selected)?.isCorrect === true;
+    }).length;
+    const isQuizNowPassed = totalQ > 0 && correctCount === totalQ;
+
     updateLessonProgressState(activeLessonId, {
       quizAnswers: updatedAnswers,
       quizSubmitted: updatedSubmitted,
+      isQuizPassed: isQuizNowPassed,
+      isTaskPassed,
     });
   };
 
@@ -199,8 +209,10 @@ export const LessonView: React.FC = () => {
 
   // Toggle guided task manual confirmation (persisted per lesson)
   const handleToggleManualConfirmation = () => {
+    const nextManual = !isManualConfirmed;
     updateLessonProgressState(activeLessonId, {
-      manualConfirmationChecked: !isManualConfirmed,
+      manualConfirmationChecked: nextManual,
+      isTaskPassed: !isInteractive ? nextManual : isTaskPassed,
     });
   };
 
@@ -217,6 +229,7 @@ export const LessonView: React.FC = () => {
     if (!currentLesson.challengeId) return;
     const done = useSimulationStore.getState().completedChallenges.includes(currentLesson.challengeId);
     if (done) {
+      updateLessonProgressState(activeLessonId, { isTaskPassed: true });
       setSimStatusFeedback(
         isAr
           ? '✓ تم التحقق بنجاح! التحدي مكتمل داخل المحاكي الفعلي.'
@@ -236,6 +249,10 @@ export const LessonView: React.FC = () => {
     if (!isLessonReadyToComplete && !isLessonAlreadyCompleted) {
       return;
     }
+    updateLessonProgressState(currentLesson.id, {
+      isQuizPassed: true,
+      isTaskPassed: true,
+    });
     completeLesson(currentLesson.id);
     if (currentLesson.nextStep.nextLessonId && CURRICULUM_LESSONS[currentLesson.nextStep.nextLessonId]) {
       setActiveLessonId(currentLesson.nextStep.nextLessonId);
