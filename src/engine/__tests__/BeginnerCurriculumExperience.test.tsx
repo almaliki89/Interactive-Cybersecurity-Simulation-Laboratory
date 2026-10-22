@@ -214,6 +214,9 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
         store.setLessonStage('lesson-01-cia-triad', 1);
         store.setLessonStage('lesson-01-cia-triad', 2);
         store.setLessonStage('lesson-01-cia-triad', 3);
+        
+        // Context required for OMEGA MAX integrity
+        store.setActiveSimulation('cia_triad');
         store.completeChallenge('cia-balance-challenge');
       });
 
@@ -452,9 +455,12 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
 
       expect(useSimulationStore.getState().completedChallenges.length).toBe(initialCount);
 
-      // Valid ID registers cleanly
-      store.completeChallenge('valid-challenge-test');
-      expect(useSimulationStore.getState().completedChallenges).toContain('valid-challenge-test');
+      // Valid ID registers cleanly if context is correct
+      act(() => {
+        useSimulationStore.getState().setActiveSimulation('cia_triad');
+      });
+      store.completeChallenge('cia-balance-challenge');
+      expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
     });
   });
 

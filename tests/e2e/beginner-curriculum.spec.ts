@@ -158,6 +158,21 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await expect(page.getByText(/المحطة 2 من 10/i).first()).toBeVisible();
 
     // 8. Verify Exploratory Lesson with Honest Guided Manual Confirmation (Lesson 6)
+    // NOTE: To jump to Lesson 6, we MUST fulfill prerequisites because of OMEGA MAX integrity rules
+    await page.evaluate(() => {
+      localStorage.setItem('omega_completed_lessons', JSON.stringify([
+        'lesson-01-cia-triad',
+        'lesson-02-system-internals',
+        'lesson-03-subnet-routing',
+        'lesson-04-firewall-rules',
+        'lesson-05-cryptography'
+      ]));
+    });
+    await page.reload();
+
+    // Re-verify we are in lesson mode
+    await expect(page.getByText(/10 محطات تأسيسية متسلسلة/i).first()).toBeVisible({ timeout: 15000 });
+
     // Jump to Lesson 6 (Active Directory & Kerberos) from sidebar
     const milestone6Btn = page.getByText(/6\. الهوية والمصادقة/i).first();
     await expect(milestone6Btn).toBeVisible({ timeout: 15000 });

@@ -126,6 +126,29 @@ export const LessonView: React.FC = () => {
     return set;
   }, [completedLessons, validCurriculumLessonIds]);
 
+  // NEW: Predecessor check for sequence integrity feedback
+  const predecessorLessonId = useMemo(() => {
+    const LESSON_SEQUENCE = [
+      'lesson-01-cia-triad',
+      'lesson-02-system-internals',
+      'lesson-03-subnet-routing',
+      'lesson-04-firewall-rules',
+      'lesson-05-cryptography',
+      'lesson-06-active-directory',
+      'lesson-07-soc-monitoring',
+      'lesson-08-forensics',
+      'lesson-09-devsecops',
+      'lesson-10-cyber-range',
+    ];
+    const idx = LESSON_SEQUENCE.indexOf(activeLessonId);
+    return idx > 0 ? LESSON_SEQUENCE[idx - 1] : null;
+  }, [activeLessonId]);
+
+  const isPredecessorCompleted = useMemo(() => {
+    if (!predecessorLessonId) return true;
+    return completedLessons.includes(predecessorLessonId);
+  }, [predecessorLessonId, completedLessons]);
+
   const totalLessonsCount = validCurriculumLessonIds.size;
   const completedCount = validCompletedLessonIds.size;
   const progressPercent = totalLessonsCount > 0
@@ -425,7 +448,7 @@ export const LessonView: React.FC = () => {
             <div className="flex items-center gap-1.5 min-w-max border-b border-slate-800/80 pb-1">
               {stagesList.map((stage) => {
                 const isActive = activeStage === stage.id;
-                const isUnlocked = isLessonAlreadyCompleted || stage.id <= furthestUnlockedStage;
+                const isUnlocked = isLessonAlreadyCompleted || (stage.id <= furthestUnlockedStage && (stage.id === 0 || isPredecessorCompleted));
 
                 return (
                   <button
@@ -459,6 +482,22 @@ export const LessonView: React.FC = () => {
 
         {/* Stage Content Container */}
         <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6">
+          {/* Integrity Warning: Predecessor Not Done */}
+          {!isPredecessorCompleted && (
+            <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-600/50 flex items-start gap-3 animate-in slide-in-from-top-2 duration-300">
+              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-xs sm:text-sm">
+                <h4 className="font-bold text-amber-200 mb-1">
+                  {isAr ? 'التسلسل التعليمي مقفل' : 'Learning Sequence Locked'}
+                </h4>
+                <p className="text-amber-100/80 leading-relaxed">
+                  {isAr 
+                    ? 'يجب إكمال المحطات السابقة بالترتيب قبل التمكن من التقدم في هذه المحطة. يمكنك فقط قراءة الأهداف والمدخل حالياً.'
+                    : 'Previous milestones must be completed in order before you can advance in this one. You can only view the objectives and overview for now.'}
+                </p>
+              </div>
+            </div>
+          )}
           {/* STAGE 0: Objectives & Why It Matters */}
           {activeStage === 0 && (
             <div className="space-y-6 animate-in fade-in duration-200">

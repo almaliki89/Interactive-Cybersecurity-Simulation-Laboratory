@@ -304,6 +304,36 @@ export const VALID_CURRICULUM_LESSON_IDS = new Set([
   'lesson-10-cyber-range',
 ]);
 
+export const LESSON_SEQUENCE = [
+  'lesson-01-cia-triad',
+  'lesson-02-system-internals',
+  'lesson-03-subnet-routing',
+  'lesson-04-firewall-rules',
+  'lesson-05-cryptography',
+  'lesson-06-active-directory',
+  'lesson-07-soc-monitoring',
+  'lesson-08-forensics',
+  'lesson-09-devsecops',
+  'lesson-10-cyber-range',
+];
+
+export const VALID_CHALLENGE_IDS = new Set([
+  'cia-balance-challenge',
+  'internals-memory-challenge',
+  'subnet-routing-challenge',
+  'firewall-rule-mastery',
+  'crypto-avalanche-challenge',
+]);
+
+// Map challengeId to the simulationId that must be active to complete it
+export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
+  'cia-balance-challenge': 'cia_triad',
+  'internals-memory-challenge': 'system_internals',
+  'subnet-routing-challenge': 'subnet_routing',
+  'firewall-rule-mastery': 'firewall',
+  'crypto-avalanche-challenge': 'crypto',
+};
+
 export const DEFAULT_LESSON_ID = 'lesson-01-cia-triad';
 
 export const safeParseActiveLessonId = (raw: string | null): string => {
@@ -521,6 +551,21 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   completeChallenge: (challengeId) => {
     if (typeof challengeId !== 'string' || !challengeId.trim()) return;
     const cleanId = challengeId.trim();
+    
+    // 1. Whitelist Verification
+    if (!VALID_CHALLENGE_IDS.has(cleanId)) {
+      console.warn(`[Integrity] Attempted to complete unregistered challenge: ${cleanId}`);
+      return;
+    }
+
+    // 2. Context Verification: Only allow completion if the relevant simulation is active
+    const requiredSim = CHALLENGE_TO_SIMULATION_MAP[cleanId];
+    const activeSim = get().activeSimulationId;
+    if (requiredSim && activeSim !== requiredSim) {
+      console.warn(`[Integrity] Challenge ${cleanId} cannot be completed in simulation ${activeSim}. Required: ${requiredSim}`);
+      return;
+    }
+
     const existing = get().completedChallenges;
     if (!existing.includes(cleanId)) {
       const updated = [...existing, cleanId];
@@ -537,6 +582,17 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   },
   completeLesson: (lessonId) => {
     if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;
+    
+    // Integrity Check: Cannot complete if previous lesson is not completed
+    const lessonIdx = LESSON_SEQUENCE.indexOf(lessonId);
+    if (lessonIdx > 0) {
+      const prevLessonId = LESSON_SEQUENCE[lessonIdx - 1];
+      if (!get().completedLessons.includes(prevLessonId)) {
+        console.warn(`[Integrity] Cannot complete lesson ${lessonId} before ${prevLessonId}`);
+        return;
+      }
+    }
+
     const existing = get().completedLessons;
     const updated = existing.includes(lessonId) ? existing : [...existing, lessonId];
     const currentProgress = get().lessonProgress[lessonId] || { currentStage: 6, furthestUnlockedStage: 6 };
@@ -567,9 +623,18 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       // Strict gating:
       // Can review any already unlocked stage (stage <= currentFurthest)
       // Can advance only to the immediately next sequential stage (stage === currentFurthest + 1)
-      // Cannot jump beyond currentFurthest + 1
       if (!isCompleted && stage > currentFurthest + 1) {
         return state;
+      }
+
+      // Check if trying to advance in a lesson while previous lesson is not done
+      const lessonIdx = LESSON_SEQUENCE.indexOf(lessonId);
+      if (lessonIdx > 0 && stage > 0) {
+        const prevLessonId = LESSON_SEQUENCE[lessonIdx - 1];
+        if (!state.completedLessons.includes(prevLessonId)) {
+          // Allow only stage 0 (Intro) if predecessor not done
+          if (stage > 0) return state;
+        }
       }
 
       const newFurthest = isCompleted ? 6 : Math.max(currentFurthest, stage);
@@ -603,8 +668,24 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
 
   reloadFromStorage: () => {
     const lang = safeParseLanguage(getStoredItem('omega_language'));
-    const completed = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
-    const completedLess = safeParseCompletedLessons(getStoredItem('omega_completed_lessons')).filter((l) => VALID_CURRICULUM_LESSON_IDS.has(l));
+    const rawCompleted = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
+    
+    // Whitelist filter for challenges
+    const completed = rawCompleted.filter(id => VALID_CHALLENGE_IDS.has(id));
+
+    const rawCompletedLessons = safeParseCompletedLessons(getStoredItem('omega_completed_lessons')).filter((l) => VALID_CURRICULUM_LESSON_IDS.has(l));
+    
+    // Sanitize completed lessons sequence
+    const completedLess: string[] = [];
+    for (const lId of LESSON_SEQUENCE) {
+      if (rawCompletedLessons.includes(lId)) {
+        completedLess.push(lId);
+      } else {
+        // If one is missing, break to prevent "jumping"
+        break;
+      }
+    }
+
     const activeLesson = safeParseActiveLessonId(getStoredItem('omega_active_lesson_id'));
     const parsedProgress = safeParseLessonProgress(getStoredItem('omega_lesson_progress'), completedLess);
 

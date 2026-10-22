@@ -102,14 +102,15 @@ describe('LocalStorage Safety & Storage Recovery Engine Suite', () => {
     it('correctly loads sanitized challenges into the Zustand store from valid localStorage payloads', () => {
       localStorage.setItem(
         'omega_completed_challenges',
-        JSON.stringify(['threat-hunt-01', 555, 'forensics-mem-02'])
+        JSON.stringify(['cia-balance-challenge', 555, 'firewall-rule-mastery', 'unknown-id'])
       );
       localStorage.setItem('omega_language', 'en');
 
       useSimulationStore.getState().reloadFromStorage();
 
       const state = useSimulationStore.getState();
-      expect(state.completedChallenges).toEqual(['threat-hunt-01', 'forensics-mem-02']);
+      // 'unknown-id' and 555 should be filtered out by the new whitelist logic in reloadFromStorage
+      expect(state.completedChallenges).toEqual(['cia-balance-challenge', 'firewall-rule-mastery']);
       expect(state.language).toBe('en');
     });
   });
@@ -123,6 +124,8 @@ describe('LocalStorage Safety & Storage Recovery Engine Suite', () => {
         });
 
         const store = useSimulationStore.getState();
+        // Set correct context for whitelist check
+        store.setActiveSimulation('cia_triad');
 
         // setLanguage should update in-memory state and catch storage error
         expect(() => {
@@ -132,9 +135,9 @@ describe('LocalStorage Safety & Storage Recovery Engine Suite', () => {
 
         // completeChallenge should update in-memory state and catch storage error
         expect(() => {
-          store.completeChallenge('mission-containment-alpha');
+          store.completeChallenge('cia-balance-challenge');
         }).not.toThrow();
-        expect(useSimulationStore.getState().completedChallenges).toContain('mission-containment-alpha');
+        expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
       } finally {
         localStorage.setItem = originalSetItem;
       }
