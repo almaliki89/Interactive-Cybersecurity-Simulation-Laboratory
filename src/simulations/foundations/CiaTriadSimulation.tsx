@@ -144,33 +144,45 @@ export const CiaTriadSimulation: React.FC = () => {
 
           {/* Defense Controls */}
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
               <input
+                id="toggle-encryption"
                 type="checkbox"
+                data-testid="toggle-encryption"
                 checked={encryptionEnabled}
                 onChange={(e) => setEncryptionEnabled(e.target.checked)}
-                className="rounded border-slate-700 text-cyan-500"
+                className="rounded border-slate-700 text-cyan-500 cursor-pointer"
               />
-              <span>{language === 'ar' ? 'التشفير (AES-256)' : 'AES Encryption'}</span>
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+              <label htmlFor="toggle-encryption" className="cursor-pointer select-none">
+                {language === 'ar' ? 'التشفير (AES-256)' : 'AES Encryption'}
+              </label>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
               <input
+                id="toggle-signing"
                 type="checkbox"
+                data-testid="toggle-signing"
                 checked={signingEnabled}
                 onChange={(e) => setSigningEnabled(e.target.checked)}
-                className="rounded border-slate-700 text-cyan-500"
+                className="rounded border-slate-700 text-cyan-500 cursor-pointer"
               />
-              <span>{language === 'ar' ? 'التوقيع (SHA-256)' : 'HMAC Signing'}</span>
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+              <label htmlFor="toggle-signing" className="cursor-pointer select-none">
+                {language === 'ar' ? 'التوقيع (SHA-256)' : 'HMAC Signing'}
+              </label>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
               <input
+                id="toggle-redundancy"
                 type="checkbox"
+                data-testid="toggle-redundancy"
                 checked={redundancyEnabled}
                 onChange={(e) => setRedundancyEnabled(e.target.checked)}
-                className="rounded border-slate-700 text-cyan-500"
+                className="rounded border-slate-700 text-cyan-500 cursor-pointer"
               />
-              <span>{language === 'ar' ? 'تكرار الخوادم (HA)' : 'HA Redundancy'}</span>
-            </label>
+              <label htmlFor="toggle-redundancy" className="cursor-pointer select-none">
+                {language === 'ar' ? 'تكرار الخوادم (HA)' : 'HA Redundancy'}
+              </label>
+            </div>
           </div>
         </div>
       }

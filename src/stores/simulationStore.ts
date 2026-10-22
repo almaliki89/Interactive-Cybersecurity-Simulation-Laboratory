@@ -519,9 +519,11 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   clearSelection: () => set({ selectedEntity: null }),
 
   completeChallenge: (challengeId) => {
+    if (typeof challengeId !== 'string' || !challengeId.trim()) return;
+    const cleanId = challengeId.trim();
     const existing = get().completedChallenges;
-    if (!existing.includes(challengeId)) {
-      const updated = [...existing, challengeId];
+    if (!existing.includes(cleanId)) {
+      const updated = [...existing, cleanId];
       setStoredItem('omega_completed_challenges', JSON.stringify(updated));
       set({ completedChallenges: updated });
     }

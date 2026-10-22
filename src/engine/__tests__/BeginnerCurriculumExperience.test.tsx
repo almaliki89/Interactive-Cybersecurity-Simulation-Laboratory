@@ -11,6 +11,9 @@ import { useSimulationStore, safeParseActiveLessonId } from '../../stores/simula
 describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
   beforeEach(() => {
     cleanup();
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
     useSimulationStore.setState({
       language: 'ar',
       activeSimulationId: 'lesson',
@@ -367,6 +370,91 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       fireEvent.click(returnBtn);
       expect(useSimulationStore.getState().activeSimulationId).toBe('lesson');
       expect(useSimulationStore.getState().activeLessonId).toBe('lesson-03-subnet-routing');
+    });
+  });
+
+  describe('Curriculum Progress Calculation & Data Sanitation Audit', () => {
+    it('accurately calculates progress percentage without duplicate counting or unknown IDs', () => {
+      // 1. With duplicate IDs and unknown fake IDs
+      useSimulationStore.setState({
+        completedLessons: [
+          'lesson-01-cia-triad',
+          'lesson-01-cia-triad',
+          'fake-unknown-lesson-id',
+          'another-hacked-id',
+        ],
+      });
+
+      render(<LessonView />);
+
+      // Exactly 1 valid lesson out of 10 should be 10%
+      expect(screen.getByText(/10% \(1\/10\)/i)).toBeDefined();
+    });
+
+    it('does not count active lesson as completed until it is actually finished', () => {
+      useSimulationStore.setState({
+        activeLessonId: 'lesson-01-cia-triad',
+        completedLessons: [],
+      });
+
+      render(<LessonView />);
+      expect(screen.getByText(/0% \(0\/10\)/i)).toBeDefined();
+    });
+
+    it('never exceeds 100% even if extra valid/duplicate lessons are reported', () => {
+      const allLessons = Object.keys(CURRICULUM_LESSONS);
+      useSimulationStore.setState({
+        completedLessons: [...allLessons, ...allLessons, 'extra-invalid-id'],
+      });
+
+      render(<LessonView />);
+      expect(screen.getByText(/100% \(10\/10\)/i)).toBeDefined();
+    });
+
+    it('safely handles corrupted lessonProgress storage and bounds stages', () => {
+      const store = useSimulationStore.getState();
+
+      // Corrupted non-JSON string
+      localStorage.setItem('omega_lesson_progress', '{not-valid-json');
+      store.reloadFromStorage();
+      expect(useSimulationStore.getState().lessonProgress).toEqual({});
+
+      // Malicious attempt to inject stage 6 into an uncompleted lesson
+      localStorage.setItem(
+        'omega_lesson_progress',
+        JSON.stringify({
+          'lesson-01-cia-triad': {
+            currentStage: 6,
+            furthestUnlockedStage: 6,
+          },
+        })
+      );
+      store.reloadFromStorage();
+      // Must be capped back to stage 5 because lesson is not completed
+      const restored = useSimulationStore.getState().lessonProgress['lesson-01-cia-triad'];
+      expect(restored.furthestUnlockedStage).toBeLessThanOrEqual(5);
+      expect(restored.currentStage).toBeLessThanOrEqual(5);
+    });
+
+    it('validates completeChallenge inputs and protects against empty or non-string IDs', () => {
+      const store = useSimulationStore.getState();
+      const initialCount = store.completedChallenges.length;
+
+      // Reject empty or whitespace
+      store.completeChallenge('');
+      store.completeChallenge('   ');
+      // @ts-ignore
+      store.completeChallenge(null);
+      // @ts-ignore
+      store.completeChallenge(undefined);
+      // @ts-ignore
+      store.completeChallenge(123);
+
+      expect(useSimulationStore.getState().completedChallenges.length).toBe(initialCount);
+
+      // Valid ID registers cleanly
+      store.completeChallenge('valid-challenge-test');
+      expect(useSimulationStore.getState().completedChallenges).toContain('valid-challenge-test');
     });
   });
 

@@ -54,18 +54,52 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await toStage4Btn.click();
     await expect(page.getByText(/المهمة العملية/i).first()).toBeVisible();
 
-    // 4. Test Simulation Lab Launch & Context-Preserved Return
+    // 4. Test Simulation Lab Launch & Real Interactive Validation Journey
     const openLabBtn = page.getByRole('button', { name: /الانتقال إلى المحاكي والتطبيق/i });
     await expect(openLabBtn).toBeVisible();
     await openLabBtn.click();
 
-    // Inside the simulation lab, Header displays "العودة للدرس" with preserved context
+    // Verify inside CIA Triad Simulation Workspace
     const returnToLessonBtn = page.getByTestId('return-to-lesson-btn');
     await expect(returnToLessonBtn).toBeVisible({ timeout: 20000 });
+    const validateBtn = page.getByTestId('challenge-validate-btn');
+    await expect(validateBtn).toBeVisible();
+
+    // 4a. Negative test: Intentionally uncheck Encryption to fail verification
+    const toggleEncryption = page.getByTestId('toggle-encryption');
+    await expect(toggleEncryption).toBeVisible();
+    await toggleEncryption.uncheck();
+
+    // Run validation while condition is broken
+    await validateBtn.click();
+
+    // Expect failure banner and verify challenge remains uncompleted
+    const resultBanner = page.getByTestId('challenge-result-banner');
+    await expect(resultBanner).toBeVisible();
+    await expect(resultBanner).toContainText(/فشل التحقق|ما زالت هناك ثغرات/i);
+    // Button must still show validate action, NOT retest/mastered
+    await expect(validateBtn).toContainText(/التحقق من صحة الحل الأمني/i);
+
+    // 4b. Positive test: Fulfill all real CIA Triad conditions (re-enable encryption)
+    await toggleEncryption.check();
+    await expect(page.getByTestId('toggle-signing')).toBeChecked();
+    await expect(page.getByTestId('toggle-redundancy')).toBeChecked();
+
+    // Run validation with all requirements fulfilled
+    await validateBtn.click();
+
+    // Expect success banner and verified challenge status
+    await expect(resultBanner).toBeVisible();
+    await expect(resultBanner).toContainText(/تم التحقق بنجاح|ممتاز! تم تحصين ثالوث CIA/i);
+    await expect(validateBtn).toContainText(/إعادة الاختبار والتحقق/i);
+
+    // 4c. Return to lesson with verified challenge state
     await returnToLessonBtn.click();
 
     // Back in Lesson View
     await expect(curriculumHeading).toBeVisible();
+    // Verify task status reflects engine confirmation
+    await expect(page.getByText(/تم تأكيد حل التحدي \(cia-balance-challenge\) برمجياً من المحرك بنجاح/i)).toBeVisible();
 
     // 5. Test Strict Completion Gating (Direct jump to Stage 7 from Task is blocked)
     const nextStepTab = page.getByRole('button', { name: /7\. الخطوة التالية/i });
@@ -84,12 +118,12 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await toStage6Btn.click();
     await expect(page.getByText(/الفحص المعرفي التفاعلي السريع/i)).toBeVisible();
 
-    // Move to Stage 7: Next Step
+    // Move to Stage 7: Next Step (before solving quiz)
     const toStage7Btn = page.getByRole('button', { name: /المرحلة 7: الخطوة التالية والانتقال/i });
     await expect(toStage7Btn).toBeVisible();
     await toStage7Btn.click();
 
-    // Verify lock warning is shown and completion button is NOT available while conditions are unmet
+    // Verify lock warning is shown because quiz is not yet solved
     await expect(page.getByText(/متطلبات إكمال المحطة غير مستوفاة بعد/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /إكمال والانتقال إلى المحطة التالية/i })).toHaveCount(0);
 
@@ -109,21 +143,18 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await optConfidentiality.click();
     await expect(page.getByText(/إجابة صحيحة! التشفير يحول البيانات/i)).toBeVisible();
 
-    // 7. Complete the Practical Task in Simulator
-    await page.evaluate(() => {
-      const store = (window as any).useSimulationStore?.getState();
-      if (store) {
-        store.completeChallenge('cia-balance-challenge');
-      }
-    });
-
-    // Return to Stage 7 (Next Step) - Both requirements now fulfilled!
+    // Return to Stage 7 (Next Step) - Both requirements now fulfilled via real UI interactions!
     await nextStepTab.click();
     const completeLessonBtn = page.getByRole('button', { name: /إكمال والانتقال إلى المحطة التالية/i });
     await expect(completeLessonBtn).toBeVisible();
     await completeLessonBtn.click();
 
     // Lesson 1 is completed and advances to Lesson 2 (System Internals)
+    await expect(page.getByText(/المحطة 2 من 10/i).first()).toBeVisible();
+
+    // Verify reload persistence after lesson completion
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText(/المحطة 2 من 10/i).first()).toBeVisible();
 
     // 8. Verify Exploratory Lesson with Honest Guided Manual Confirmation (Lesson 6)

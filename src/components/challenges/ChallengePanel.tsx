@@ -137,6 +137,7 @@ export const ChallengePanel: React.FC<ChallengePanelProps> = ({
         {/* Validation Result Banner */}
         {validationResult && (
           <div
+            data-testid="challenge-result-banner"
             className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
               validationResult.success
                 ? 'bg-emerald-950/40 border-emerald-700 text-emerald-200'
@@ -187,6 +188,7 @@ export const ChallengePanel: React.FC<ChallengePanelProps> = ({
       <div className="p-3 border-t border-slate-800 bg-slate-900/40 shrink-0">
         <button
           onClick={handleRunValidation}
+          data-testid="challenge-validate-btn"
           className={`w-full py-2.5 px-3 rounded-lg font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-sm ${
             isMastered
               ? 'bg-emerald-600 hover:bg-emerald-500 text-white'

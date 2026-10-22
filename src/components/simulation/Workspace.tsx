@@ -289,7 +289,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               className="fixed inset-0 bg-black/60 z-10 lg:hidden" 
               onClick={() => setLeftOpen(false)} 
             />
-            <div className="absolute left-0 rtl:left-auto rtl:right-0 lg:relative z-20 h-full bg-slate-950 lg:bg-transparent border-r rtl:border-r-0 rtl:border-l border-slate-900 shadow-2xl lg:shadow-none w-80 max-w-[calc(100vw-3rem)] shrink-0 animate-in slide-in-from-left rtl:slide-in-from-right duration-150">
+            <div className="absolute left-0 rtl:left-auto rtl:right-0 lg:static lg:inset-auto z-20 h-full bg-slate-950 lg:bg-transparent border-r rtl:border-r-0 rtl:border-l border-slate-900 shadow-2xl lg:shadow-none w-80 max-w-[calc(100vw-3rem)] shrink-0 animate-in slide-in-from-left rtl:slide-in-from-right duration-150">
               <div className="flex items-center justify-between p-2.5 border-b border-slate-900 lg:hidden bg-slate-950">
                 <span className="text-xs font-bold text-white uppercase tracking-wider">
                   {language === 'ar' ? 'الأهداف والمتطلبات' : 'Challenge Objectives'}
@@ -317,7 +317,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           </div>
 
           {controlDeck && (
-            <div className="border-t border-slate-900 bg-slate-950 p-2.5 shrink-0">
+            <div className="border-t border-slate-900 bg-slate-950 p-2.5 shrink-0 relative z-30">
               {controlDeck}
             </div>
           )}

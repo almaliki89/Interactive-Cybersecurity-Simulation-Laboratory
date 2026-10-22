@@ -114,10 +114,23 @@ export const LessonView: React.FC = () => {
 
   const MilestoneIcon = getMilestoneIcon(currentMilestone.iconName);
 
-  // Overall progress calculation
-  const totalLessonsCount = Object.keys(CURRICULUM_LESSONS).length;
-  const completedCount = completedLessons.length;
-  const progressPercent = Math.round((completedCount / (totalLessonsCount || 1)) * 100);
+  // Overall progress calculation strictly audited against valid curriculum lessons
+  const validCurriculumLessonIds = useMemo(() => new Set(Object.keys(CURRICULUM_LESSONS)), []);
+  const validCompletedLessonIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const id of completedLessons) {
+      if (typeof id === 'string' && validCurriculumLessonIds.has(id.trim())) {
+        set.add(id.trim());
+      }
+    }
+    return set;
+  }, [completedLessons, validCurriculumLessonIds]);
+
+  const totalLessonsCount = validCurriculumLessonIds.size;
+  const completedCount = validCompletedLessonIds.size;
+  const progressPercent = totalLessonsCount > 0
+    ? Math.min(100, Math.max(0, Math.round((completedCount / totalLessonsCount) * 100)))
+    : 0;
 
   // 1. Task verification evaluation
   const isInteractive = currentLesson.guidedTask.checkType === 'interactive_simulation';
