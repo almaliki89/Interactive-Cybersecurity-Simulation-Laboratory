@@ -154,8 +154,59 @@ export const CURRICULUM_LESSONS: Record<string, CurriculumLesson> = {
     whyItMattersEn: 'Every security control in the world, from your phone PIN to protecting critical infrastructure, is built on these three pillars.',
     estimatedMinutes: 12,
     simulationId: 'cia_triad',
-    worldId: 1,
     challengeId: 'cia-balance-challenge',
+    prerequisites: [
+      {
+        textAr: 'معرفة أساسية بأساسيات الحاسوب واستخدام المتصفح.',
+        textEn: 'Basic familiarity with computer operations and web browser navigation.',
+      },
+      {
+        textAr: 'لا يتطلب هذا الدرس أي خبرة برمجية مسبقة.',
+        textEn: 'No prior programming or cybersecurity experience required.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي توضيحي: تأمين نظام التحويل المالي',
+      titleEn: 'Worked Example: Securing a Wire Transfer System',
+      scenarioAr: 'تخيّل بنكًا يتعامل مع طلبات تحويل الأموال الإلكترونية بقيمة ملايين الريالات يوميًا:',
+      scenarioEn: 'Imagine a bank processing electronic funds transfer requests worth millions daily:',
+      stepsAr: [
+        'الخطوة 1 (السرية): يقوم البنك بتشفير بيانات العميل ببروتوكول TLS 1.3 لمنع المشغلين في أجهزة الموجهات من رؤية رقم الحساب.',
+        'الخطوة 2 (السلامة): يتم توليد بصمة حسابية (HMAC-SHA256) لكل طلب تحويل؛ إن حاول أحد تعديل قيمة المبلغ من 1000 إلى 100,000، تفشل عملية التحقق فورًا.',
+        'الخطوة 3 (التوافر): يتوزع نظام البنك على مركزَي بيانات مستقلين مع موازن أحمال (Load Balancer)، فإذا تعطل خادم يستلم خادم آخر الخدمة خلال 100 ميلي ثانية.',
+      ],
+      stepsEn: [
+        'Step 1 (Confidentiality): The bank encrypts customer payload using TLS 1.3 so routers along the way cannot inspect account numbers.',
+        'Step 2 (Integrity): An HMAC-SHA256 cryptographic digest is computed for the transfer payload; changing $1,000 to $100,000 breaks the digest check instantly.',
+        'Step 3 (Availability): Bank servers replicate active states across dual redundant data centers with automated load balancing to survive hardware failure in <100ms.',
+      ],
+      takeawayAr: 'أي ثغرة في أحد هذه الجوانب الثلاثة تؤدي لكسر الحماية البنكية بالكامل.',
+      takeawayEn: 'A failure in any single pillar compromises the security of the entire financial application.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: موازنة الحماية والمخاطر',
+      titleEn: 'Independent Challenge: Balancing Protection & Risk',
+      scenarioAr: 'أنت الآن المستشار الأمني لمنشأة حيوية تعرضت لإنذارات أمنية متكررة:',
+      scenarioEn: 'You are acting as the Chief Information Security Officer (CISO) for a critical utility provider:',
+      targetOutcomeAr: 'شغّل جميع ضوابط الحماية الثلاثة (التشفير، التوقيع الرقمي، التكرار) لتخفيض الخطر الكلي إلى أقل من 20%.',
+      targetOutcomeEn: 'Activate all three control vectors (Encryption, Digital Signatures, Redundancy) to reduce overall risk below 20%.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن تفعيل التشفير وحده يكفي لحماية النظام بالكامل.',
+      commonMisconceptionEn: 'Mistakenly believing that encryption alone secures the entire application.',
+      guidanceAr: 'التشفير يحمي السرية فقط، لكنه لا يمنع المهاجم من تعطيل الخادم (التوافر) أو حشو بيانات مزورة إذا لم توجد آليات للسلامة.',
+      guidanceEn: 'Encryption secures confidentiality only. It cannot prevent Denial-of-Service or data tampering unless paired with Integrity signatures and High-Availability infrastructure.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'ثالوث CIA هو الأساس النظري والعملي لمعايير الأمن السيبراني العالمية (NIST / ISO 27001).',
+        textEn: 'The CIA Triad forms the foundational baseline for global cybersecurity standards (NIST / ISO 27001).',
+      },
+      {
+        textAr: 'الحماية المتكاملة تتطلب الدفاع بالعمق (Defense-in-Depth) بجميع المحاور دون إهمال أي جزء.',
+        textEn: 'Comprehensive protection demands a defense-in-depth posture across all three core vectors.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم الأركان الثلاثة: السرية (Confidentiality)، السلامة (Integrity)، والتوافر (Availability).',

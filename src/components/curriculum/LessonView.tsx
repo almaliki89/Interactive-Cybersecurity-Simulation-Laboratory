@@ -553,6 +553,24 @@ export const LessonView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Prerequisites & Assumptions */}
+              {currentLesson.prerequisites && currentLesson.prerequisites.length > 0 && (
+                <div className="p-5 rounded-2xl bg-indigo-950/20 border border-indigo-800/40">
+                  <h3 className="text-sm font-bold text-indigo-300 mb-3 flex items-center gap-2">
+                    <Info className="w-4 h-4 text-indigo-400" />
+                    <span>{isAr ? 'المتطلبات المسبقة والافتراضات' : 'Prerequisites & Assumptions'}</span>
+                  </h3>
+                  <ul className="space-y-2">
+                    {currentLesson.prerequisites.map((pre, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-xs text-indigo-100/80">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0 mt-1.5" />
+                        <span>{isAr ? pre.textAr : pre.textEn}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Milestone Big Picture Description */}
               <div className="p-5 rounded-2xl bg-slate-900/30 border border-slate-800/60">
                 <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-2">
@@ -601,6 +619,32 @@ export const LessonView: React.FC = () => {
                   {isAr ? currentLesson.concept.analogyAr : currentLesson.concept.analogyEn}
                 </p>
               </div>
+
+              {/* Step-by-Step Worked Example */}
+              {currentLesson.workedExample && (
+                <div className="p-5 rounded-2xl bg-emerald-950/20 border border-emerald-800/40">
+                  <div className="flex items-center gap-2.5 text-emerald-400 mb-3">
+                    <Workflow className="w-5 h-5 shrink-0" />
+                    <h3 className="text-sm font-bold tracking-wide uppercase font-mono">
+                      {isAr ? currentLesson.workedExample.titleAr : currentLesson.workedExample.titleEn}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-emerald-200/90 mb-3 font-medium">
+                    {isAr ? currentLesson.workedExample.scenarioAr : currentLesson.workedExample.scenarioEn}
+                  </p>
+                  <div className="space-y-2 mb-3">
+                    {(isAr ? currentLesson.workedExample.stepsAr : currentLesson.workedExample.stepsEn).map((step, idx) => (
+                      <div key={idx} className="p-3 rounded-xl bg-slate-950/60 border border-emerald-900/40 text-xs text-slate-200 leading-relaxed">
+                        {step}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-900/30 text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>{isAr ? currentLesson.workedExample.takeawayAr : currentLesson.workedExample.takeawayEn}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Bilingual Key Terms Dictionary */}
               <div className="space-y-3">
@@ -1101,6 +1145,29 @@ export const LessonView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Conceptual Remediation Guidance */}
+              {currentLesson.remediationGuidance && (
+                <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-800/40 space-y-2">
+                  <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                    <HelpCircle className="w-4 h-4" />
+                    <span>{isAr ? 'إرشاد المعالجة والتصحيح المفهومي' : 'Conceptual Remediation & Guidance'}</span>
+                  </div>
+                  <div className="text-xs text-amber-200/90 leading-relaxed space-y-1">
+                    <div className="font-semibold text-amber-300">
+                      {isAr ? 'مفهوم خاطئ شائع:' : 'Common Misconception:'}{' '}
+                      {isAr
+                        ? currentLesson.remediationGuidance.commonMisconceptionAr
+                        : currentLesson.remediationGuidance.commonMisconceptionEn}
+                    </div>
+                    <div>
+                      {isAr
+                        ? currentLesson.remediationGuidance.guidanceAr
+                        : currentLesson.remediationGuidance.guidanceEn}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Quiz Questions */}
               <div className="space-y-6">
                 {currentLesson.knowledgeCheck.map((question, qIdx) => {
@@ -1235,6 +1302,27 @@ export const LessonView: React.FC = () => {
                   "{isAr ? currentLesson.nextStep.takeawayAr : currentLesson.nextStep.takeawayEn}"
                 </p>
               </div>
+
+              {/* Core Key Takeaways List */}
+              {currentLesson.keyTakeaways && currentLesson.keyTakeaways.length > 0 && (
+                <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                  <h4 className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>{isAr ? 'الركائز والنقاط الجوهرية' : 'Core Takeaway Principles'}</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {currentLesson.keyTakeaways.map((takeaway, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 rounded-xl bg-slate-950/50 border border-slate-800 text-xs text-slate-200 flex items-start gap-2.5"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0 mt-1.5" />
+                        <span>{isAr ? takeaway.textAr : takeaway.textEn}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Strict Completion Checklist Gating */}
               {!isLessonReadyToComplete && !isLessonAlreadyCompleted ? (

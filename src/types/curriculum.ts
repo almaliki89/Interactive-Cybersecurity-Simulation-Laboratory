@@ -85,7 +85,35 @@ export interface CurriculumLesson {
   worldId?: number;
   challengeId?: string;
 
-  // The 7 Pedagogical Stages
+  // The 13-Part Pedagogical Framework Properties
+  prerequisites?: { textAr: string; textEn: string }[];
+  workedExample?: {
+    titleAr: string;
+    titleEn: string;
+    scenarioAr: string;
+    scenarioEn: string;
+    stepsAr: string[];
+    stepsEn: string[];
+    takeawayAr: string;
+    takeawayEn: string;
+  };
+  independentChallengeDetail?: {
+    titleAr: string;
+    titleEn: string;
+    scenarioAr: string;
+    scenarioEn: string;
+    targetOutcomeAr: string;
+    targetOutcomeEn: string;
+  };
+  remediationGuidance?: {
+    commonMisconceptionAr: string;
+    commonMisconceptionEn: string;
+    guidanceAr: string;
+    guidanceEn: string;
+  };
+  keyTakeaways?: { textAr: string; textEn: string }[];
+
+  // The 7 Primary Stage Groupings
   objectives: CurriculumObjective[];
   concept: CurriculumConcept;
   demonstration: CurriculumDemonstration;

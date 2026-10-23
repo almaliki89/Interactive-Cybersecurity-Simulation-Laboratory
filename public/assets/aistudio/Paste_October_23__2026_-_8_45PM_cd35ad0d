@@ -1,0 +1,685 @@
+# OMEGA MAX — MASTER TRANSFORMATION
+## From Absolute Beginner to Professional Cybersecurity Practitioner
+### Curriculum Architecture + Realistic Interactive Simulations + 3D Learning Environments
+
+## 1. YOUR NEW ROLE
+
+You are now the Principal Cybersecurity Curriculum Architect, Senior Cybersecurity Educator, Simulation Systems Engineer, and Learning Experience Architect responsible for the existing OMEGA MAX platform.
+
+Work to the standards expected of a multidisciplinary team experienced in:
+
+- Designing comprehensive cybersecurity education from beginner to advanced professional practice.
+- Networking, operating systems, Linux, Windows, identity, cryptography, and security architecture.
+- Defensive security, SOC operations, threat detection, incident response, digital forensics, and threat intelligence.
+- Authorized penetration-testing education, web and API security, vulnerability management, and secure development.
+- Cloud security, containers, DevSecOps, identity governance, and infrastructure security.
+- Interactive browser-based laboratory design.
+- Three-dimensional environments, network topology visualization, event-driven simulations, and realistic system-state modeling.
+- Competency-based learning, practical assessments, progressive prerequisites, and professional capstone projects.
+- Accessible Arabic-first educational interfaces and technically accurate bilingual terminology.
+
+Your assignment is not to make the platform merely look more professional.
+
+Your assignment is to transform it into a coherent cybersecurity learning environment in which learners progress from having no prior knowledge to demonstrating increasingly advanced, measurable practical competencies.
+
+**The curriculum, simulation behavior, learning sequence, assessment system, and interface must function as one integrated product.**
+
+---
+
+## 2. THE EXISTING APPLICATION IS THE SOURCE OF TRUTH
+
+Work inside the currently open Google AI Studio project.
+
+Before editing:
+
+1. Inspect the actual source tree and identify the framework, application entry points, routes, current curriculum, lesson components, simulation registry, state management, persistence, tests, and rendering technology.
+2. Inspect the existing live Preview.
+3. Inventory the actual lessons, learning topics, simulations, and interactive capabilities already implemented.
+4. Determine which features are genuinely functional, which are only visual demonstrations, and which are placeholders.
+5. Identify the existing implementation of 3D simulations, including whether Three.js or another rendering engine is already present.
+6. Preserve valuable functionality and working architecture.
+7. If GitHub is connected, inspect the actual repository, branch, current commit, and pending changes before making modifications.
+
+The previously reported project baseline was:
+
+`285bb9a8736d3911b3acb419feaa0a70bb43a5ac`
+
+This is only a known historical reference. Verify the actual current baseline.
+
+Do not assume that a claimed number of courses, lessons, simulations, or tests proves their quality or completeness. Count and inspect what really exists.
+
+Do not generate a replacement application, static mockups, or a second disconnected curriculum.
+
+---
+
+## 3. BUILD A REAL LEARNING PROGRESSION
+
+Replace fragmented, shallow, or disconnected educational content with a structured learning progression.
+
+The exact organization may follow existing project constraints, but it must include the following broad knowledge areas.
+
+### LEVEL 0 — Orientation and Digital Foundations
+
+Target learner: someone with little or no cybersecurity knowledge.
+
+Teach:
+
+- What cybersecurity is and what it protects.
+- Computer hardware, operating systems, applications, files, processes, and memory at an introductory level.
+- Basic digital identity, accounts, permissions, and authentication.
+- The difference between a threat, vulnerability, exploit, risk, and security control.
+- How a cybersecurity laboratory works.
+- The difference between a simulated environment and a real production system.
+- Responsible learning, authorization, lab boundaries, and basic operational safety.
+- How to use the platform, inspect an environment, complete a task, and interpret feedback.
+
+Practical experience:
+
+- Explore a simulated computer system.
+- Identify assets and potential security risks.
+- Inspect a simplified security environment.
+- Complete a guided first mission without assuming prior technical knowledge.
+
+A learner must not be required to understand unexplained acronyms or command-line syntax to complete the first lesson.
+
+### LEVEL 1 — Computer Systems, Linux, Windows, and Command-Line Fundamentals
+
+Teach:
+
+- Files, directories, paths, file permissions, users, groups, and processes.
+- Operating-system concepts and basic system administration.
+- Linux shell fundamentals.
+- Windows command-line and PowerShell fundamentals at an appropriate introductory level.
+- Software installation and package-management concepts.
+- Virtual machines and isolated laboratory environments.
+- Environment variables, services, logs, and resource monitoring.
+- Basic scripting and automation concepts.
+- Git and the fundamentals of reproducible technical work.
+
+Provide guided tasks in which students inspect synthetic systems, change permissions, identify processes, inspect logs, and observe the consequences of their actions.
+
+Do not dump unexplained terminal commands into lessons. Explain each command, its inputs, its output, and its practical purpose.
+
+### LEVEL 2 — Networking from First Principles to Practical Analysis
+
+Teach progressively:
+
+- Binary representation and the purpose of IP addressing.
+- IPv4, IPv6, subnetting, and CIDR.
+- Ethernet, MAC addresses, and ARP.
+- Switching, routing, VLANs, NAT, and network segmentation.
+- TCP, UDP, ports, and connection states.
+- DNS, DHCP, and common network services.
+- HTTP, HTTPS, TLS, certificates, and encryption in transit.
+- Proxies, VPNs, gateways, and firewalls.
+- Packet captures and protocol analysis.
+- Routing failures, DNS failures, firewall rules, and connectivity troubleshooting.
+
+Create an interactive networking laboratory in which students can observe devices, links, network segments, packets, routing decisions, and rule enforcement.
+
+The learner should be able to perform an action and see its consequences:
+
+- Generate a simulated request.
+- Observe the packet or request moving through the network.
+- Inspect relevant protocol metadata.
+- Change an appropriate firewall or routing rule.
+- Observe allowed, denied, or failed communication.
+- Examine the resulting event logs.
+- Diagnose and correct an intentionally introduced configuration problem.
+
+Network behavior must follow consistent simulation rules, not arbitrary animations.
+
+### LEVEL 3 — Security Fundamentals and Core Principles
+
+Teach:
+
+- Confidentiality, integrity, and availability.
+- Authentication, authorization, and accountability.
+- Least privilege, defense in depth, and separation of duties.
+- Security policies and access-control concepts.
+- Risk assessment and threat modeling fundamentals.
+- Symmetric and asymmetric cryptography.
+- Hashing, password storage concepts, salting, and key management.
+- Digital signatures, PKI, certificates, and trust relationships.
+- Secure configuration, patching, backup, and recovery.
+- Vulnerability assessment and remediation prioritization.
+- Security monitoring and asset inventory.
+
+The learner must observe why a security control exists and how it changes system behavior.
+
+For example, compare weak and stronger access policies using simulated users, resources, and permission checks rather than relying exclusively on prose.
+
+### LEVEL 4 — Web, API, and Application Security
+
+Build from normal application behavior toward security analysis.
+
+Teach:
+
+- Client-server architecture.
+- URLs, requests, responses, headers, methods, and status codes.
+- Cookies, sessions, tokens, authentication, and authorization.
+- Databases and the purpose of queries.
+- Input validation, output encoding, and secure error handling.
+- Access-control failures and object-level authorization problems.
+- Injection vulnerabilities, including SQL injection, in an isolated educational application.
+- Cross-site scripting and browser security concepts.
+- Cross-site request forgery.
+- File-upload risks and path traversal.
+- Server-side request forgery concepts and appropriate defensive controls.
+- API security, rate limiting, secrets management, and session protection.
+- Secure design, testing, and remediation.
+- Security testing and verification using controlled laboratory targets.
+
+Build interactive scenarios that show the application, simulated browser, server, database, security boundary, request flow, and relevant logs.
+
+Let learners compare a vulnerable training configuration with a corrected configuration and see the difference in outcomes.
+
+Use sandboxed educational examples only. Never target an external website or execute unapproved operations against real systems.
+
+Connect the material to relevant OWASP guidance and other appropriate primary documentation. Verify references instead of inventing citations.
+
+### LEVEL 5 — Defensive Security and SOC Operations
+
+Teach:
+
+- Logging fundamentals and event interpretation.
+- Endpoint and network telemetry.
+- Detection logic and alert generation.
+- SIEM concepts and event correlation.
+- Indicators of compromise and detection limitations.
+- Alert triage, severity, false positives, and false negatives.
+- Identity, endpoint, firewall, DNS, and network investigations.
+- Threat intelligence and MITRE ATT&CK as a behavioral knowledge framework.
+- Incident escalation and communication.
+- Detection engineering and basic response automation.
+
+Create an interactive Security Operations Center learning environment.
+
+Students should receive realistic synthetic events, examine related records, develop hypotheses, investigate alerts, distinguish benign activity from suspicious behavior, and determine an appropriate response.
+
+Events should have timestamps, sources, structured fields, relationships, and consistent outcomes.
+
+The training environment should support repeatable scenarios and allow students to inspect why a detection succeeded or failed.
+
+### LEVEL 6 — Vulnerability Assessment and Authorized Offensive Security
+
+Teach the methodology and reasoning used in authorized security assessments:
+
+- Scope definition and rules of engagement.
+- Asset discovery and attack-surface mapping.
+- Service identification and enumeration.
+- Vulnerability identification and verification.
+- Risk prioritization and false-positive handling.
+- Controlled exploitation concepts within intentionally vulnerable training targets.
+- Authentication and authorization testing.
+- Understanding privilege boundaries.
+- Remediation verification.
+- Evidence collection and professional reporting.
+
+All practical exercises must use an explicitly isolated simulated target or an approved local training environment.
+
+Every exercise must specify the authorized scope and expected outcome.
+
+Do not build functionality that targets public systems or performs uncontrolled attacks. The educational goal is to teach methodology, evidence-based verification, risk interpretation, and remediation.
+
+Include both the assessment perspective and the defender's explanation of the same event.
+
+### LEVEL 7 — Digital Forensics and Incident Response
+
+Teach:
+
+- Incident triage and evidence preservation.
+- Timelines and event correlation.
+- Log and file-system artifact interpretation.
+- Hashes and integrity verification.
+- Evidence handling and chain-of-custody concepts.
+- Basic network-forensics reasoning.
+- Disk and memory-forensics concepts at an appropriate level.
+- Incident containment, eradication, recovery, and lessons learned.
+- Malware behavior analysis using safe, synthetic samples.
+- Ransomware incident response through a non-destructive tabletop or simulation.
+- Report writing and evidence-based conclusions.
+
+Create a forensic investigation workspace containing synthetic evidence, event timelines, logs, file metadata, and related artifacts.
+
+Students should form and test hypotheses rather than simply click through a predetermined sequence without reasoning.
+
+Use harmless educational artifacts and never execute real malware as part of browser-based learning.
+
+### LEVEL 8 — Cloud, Identity, Containers, and DevSecOps
+
+Teach:
+
+- Cloud shared-responsibility models.
+- Identity and access management.
+- Resource permissions and service identities.
+- Cloud network segmentation.
+- Public exposure and misconfiguration risks.
+- Secrets and credential handling.
+- Containers and container security fundamentals.
+- Kubernetes security concepts where appropriate.
+- Infrastructure-as-code risks.
+- CI/CD security and dependency risk.
+- Security testing within development workflows.
+- Policy enforcement, monitoring, and remediation.
+
+Create a visual cloud environment with simulated accounts, identities, resources, permissions, network boundaries, and event history.
+
+Students should be able to detect misconfigurations, understand their consequences, apply a corrected policy, and verify the resulting access behavior.
+
+Use a consistent simulated infrastructure model instead of pretending the browser is operating a real cloud account.
+
+### LEVEL 9 — Advanced Security Engineering and Architecture
+
+Teach progressively:
+
+- Threat modeling and system trust boundaries.
+- Secure architecture and design reviews.
+- Security control selection and trade-offs.
+- Advanced detection and incident investigation.
+- Security automation and integration.
+- Purple-team exercises combining adversary behavior with defensive telemetry.
+- Risk-informed architecture decisions.
+- Security requirements and verification.
+- Resilience, recovery, and operational preparedness.
+- Reading technical documentation and documenting defensible engineering decisions.
+
+Include specialized learning tracks instead of implying that all cybersecurity professionals require identical depth in every subdiscipline.
+
+### LEVEL 10 — Professional Capstones and Specialization
+
+Create advanced, assessed projects for applicable tracks:
+
+- SOC Analyst and Detection Engineer.
+- Junior Authorized Penetration Tester.
+- Application Security Engineer.
+- Cloud Security Engineer.
+- Digital Forensics and Incident Response Analyst.
+- Security Engineer and Architect.
+
+Each capstone should involve a realistic scenario, explicit constraints, an evidence trail, practical tasks, decision points, remediation or response, and a final report.
+
+Require students to explain their reasoning, identify limitations, and justify their conclusions.
+
+Provide a scoring rubric tied to demonstrated competencies, not merely navigation, time spent, or clicking a completion button.
+
+Do not represent completion of this web platform as professional certification unless a separate authorized certification program genuinely exists.
+
+---
+
+## 4. EVERY LESSON MUST HAVE SUBSTANTIVE TEACHING
+
+A lesson is incomplete if it only contains a title, a short generic paragraph, a few buttons, or a decorative visualization.
+
+For each lesson, create a consistent instructional structure appropriate to its level:
+
+1. **Learning objective:** What the student will be able to do.
+2. **Prerequisites:** What must already be understood.
+3. **Why it matters:** A practical use case.
+4. **Concept explanation:** Accurate teaching from fundamentals to the level required.
+5. **Terminology:** Clear definitions of new technical terms and acronyms.
+6. **Worked example:** A concrete explanation with observable inputs and outputs.
+7. **Visual explanation:** A diagram or simulation when it helps understanding.
+8. **Guided practical activity:** A controlled task with hints and immediate feedback.
+9. **Independent challenge:** A task that requires applying the concept.
+10. **Assessment:** Questions, troubleshooting, or task validation that tests understanding.
+11. **Remediation:** Explanations of common mistakes and how to correct them.
+12. **Summary:** The essential ideas to retain.
+13. **Prerequisite-aware progression:** An explicit explanation of what the student should learn next.
+
+Use enough detail to teach the topic. Do not force every lesson to have the same word count, but ensure the actual coverage is substantive and appropriate to its complexity.
+
+Write the instructional content in clear Arabic, preserving essential English technical terms where useful. Support correct RTL rendering and mixed Arabic-English terminology.
+
+Never fabricate standards, technical facts, references, command outputs, or testing results.
+
+---
+
+## 5. THREE-DIMENSIONAL SIMULATIONS MUST BE FUNCTIONAL
+
+Do not treat a 3D scene as a successful cybersecurity simulation merely because it contains animated objects, glowing devices, particles, or rotating models.
+
+A meaningful simulation must connect what the learner sees to a defined underlying state and a set of rules.
+
+Where 3D provides real educational value, implement:
+
+- Meaningful objects with identifiable roles.
+- Relationships between objects.
+- Interactive inspection.
+- Contextual actions.
+- State transitions.
+- Observable consequences.
+- Event logs.
+- Task objectives.
+- Failure and recovery.
+- Reset and replay.
+- Assessment based on actual outcomes.
+
+For networking, appropriate 3D elements may include devices, links, subnets, routers, firewalls, servers, and observable packet movement.
+
+For a SOC, appropriate elements may include an event timeline, alert relationships, endpoint representations, and investigation context; do not force the entire interface into an immersive scene when conventional panels communicate the information better.
+
+For cloud security, visualize identities, resources, policy boundaries, and permission relationships.
+
+For forensics, emphasize evidence relationships, timelines, artifacts, and investigative reasoning. Use 3D only when it provides a genuine advantage.
+
+### Simulation behavior requirements
+
+Every substantive lab must have:
+
+- A declared starting state.
+- A defined set of permitted actions.
+- Consistent simulation rules.
+- Observable state transitions.
+- An event or evidence history when appropriate.
+- Clearly defined success conditions.
+- Clearly defined failure conditions.
+- Useful hints.
+- A way to recover or reset.
+- A technical validator for its learning objectives.
+- Tests covering both successful and unsuccessful actions.
+
+Actions that appear identical under the same conditions should not produce contradictory outcomes.
+
+A completion indicator must depend on actual task outcomes, not on clicking a button labelled "Complete."
+
+Where practical, make scenarios deterministic or seedable so that tests can reproduce the same situation.
+
+Do not claim that the simulated environment is equivalent to a real operating system, cloud service, or enterprise network. Describe precisely what is emulated and what is not.
+
+Provide a readable 2D or text-based alternative where essential information would otherwise be accessible only through a 3D scene.
+
+Honor accessibility, reduced-motion preferences, and device-performance constraints.
+
+---
+
+## 6. BUILD A REUSABLE SIMULATION ENGINE
+
+Inspect the existing simulation architecture before adding a new one.
+
+If the current architecture can be extended safely, preserve and improve it.
+
+Where justified, establish reusable concepts such as:
+
+- Simulation definition and metadata.
+- Scenario initialization.
+- Simulated entities and relationships.
+- Action validation.
+- State transitions.
+- Event generation and event history.
+- Objectives and acceptance conditions.
+- Hint and remediation delivery.
+- Progress and assessment integration.
+- Reset and recovery.
+- Automated behavioral tests.
+- Visualization adapters for 2D, 3D, or accessible text representations.
+
+Keep learning content separate from rendering logic and simulation rules where that improves maintainability.
+
+Do not build an overly abstract engine before proving it works with a real lesson. First implement one complete representative simulation end to end, validate the architecture, and then extend it to additional domains.
+
+Do not rewrite working simulations purely to make them conform to an unnecessarily complicated abstraction.
+
+---
+
+## 7. CURRICULUM GRAPH AND MASTERY SYSTEM
+
+Create or improve the relationship between modules, lessons, practical exercises, assessments, and required skills.
+
+The system should support:
+
+- Explicit prerequisites.
+- Recommended learning sequences.
+- A clear next action.
+- A learner's current level.
+- Skills acquired and skills not yet demonstrated.
+- Diagnostic assessments.
+- Review of prerequisite knowledge.
+- Remedial explanations.
+- Progression based on meaningful evidence of competence.
+- Opportunities to repeat a task after remediation.
+
+Do not artificially lock every topic behind a rigid sequence. Allow appropriate exploration while clearly explaining prerequisite requirements.
+
+Distinguish lesson completion from demonstrated mastery.
+
+Progress data stored only in the browser must not be represented as tamper-proof evidence or official certification.
+
+Build the curriculum as a navigable learning map that makes the path from fundamentals to advanced specializations understandable.
+
+Avoid presenting a large collection of unrelated simulation worlds as if it constituted a complete curriculum.
+
+---
+
+## 8. TEACH THROUGH COHERENT REAL-WORLD SCENARIOS
+
+Use scenarios that connect multiple concepts.
+
+Examples include:
+
+**Scenario A — The Broken Enterprise Network**
+
+A learner starts with devices that cannot communicate. They inspect addressing, identify a routing error, analyze packet flow, review firewall policy, correct the issue, and explain why connectivity now works.
+
+**Scenario B — The Compromised Training Web Application**
+
+A learner inspects a sandboxed application, investigates a controlled security weakness, observes the resulting evidence, applies a defense, and verifies the corrected behavior.
+
+**Scenario C — The Suspicious SOC Alert**
+
+A learner correlates synthetic endpoint, identity, DNS, and network events; forms a hypothesis; checks the evidence; and selects an appropriate containment and escalation action.
+
+**Scenario D — The Misconfigured Cloud Environment**
+
+A learner investigates simulated identities and resource permissions, identifies an unintended access path, modifies a policy, and verifies the security improvement.
+
+**Scenario E — The Incident Investigation**
+
+A learner organizes evidence into a timeline, distinguishes confirmed facts from assumptions, develops a conclusion, and produces a report with supporting evidence and identified limitations.
+
+Each scenario should incorporate prerequisite skills, practical decisions, meaningful consequences, feedback, and assessment.
+
+Do not implement scenarios as fixed animations with no meaningful learner agency.
+
+---
+
+## 9. EVIDENCE-BASED TECHNICAL CONTENT
+
+Use authoritative technical references where applicable, including official standards, vendor documentation, protocol specifications, OWASP material, NIST publications, and MITRE resources.
+
+For each reference:
+
+- Verify that it exists.
+- Link to the relevant page or document.
+- Use the source that actually supports the statement.
+- Distinguish mandatory requirements from recommendations.
+- Record relevant versions or publication dates when they matter.
+- Avoid inventing quotations or reference links.
+
+Explain disagreements, limitations, and uncertainty where appropriate.
+
+Do not copy large amounts of external material. Teach concepts in original language and cite supporting references.
+
+Keep laboratory behavior aligned with the actual technical concept being taught.
+
+---
+
+## 10. TESTING REQUIREMENTS
+
+Use the project's existing testing tools and conventions.
+
+Test both educational correctness and software behavior.
+
+Examples include:
+
+- A packet must not cross a simulated firewall when an applicable deny rule blocks it.
+- A permitted packet should pass when the policy allows the traffic and the other required conditions are satisfied.
+- A simulated DNS failure should produce meaningful, consistent downstream behavior.
+- A corrected application configuration should prevent the previously demonstrated training failure.
+- A detection scenario should generate the expected event and provide the intended evidence.
+- An invalid action must not accidentally mark an objective complete.
+- An incorrect answer should produce useful feedback and preserve recoverability.
+- Resetting a lab should restore its defined initial state.
+- Repeated actions must not generate contradictory or duplicated completion evidence.
+- Reloading a page must handle the persisted learning state safely.
+- Learners must not unlock mastery merely by manipulating local browser storage.
+
+Use unit tests for simulation rules, integration tests for learning-state transitions, and browser tests for actual learner journeys where available.
+
+Never weaken an assertion merely to make a test pass.
+
+Do not claim tests were run if the environment did not execute them.
+
+---
+
+## 11. CONTROLLED IMPLEMENTATION WORKFLOW
+
+Do not attempt an uncontrolled rewrite of the entire application.
+
+Work through these deliverable stages:
+
+### Stage A — Curriculum and Simulation Audit
+
+Produce an inventory of the existing topics, prerequisites, lessons, and functional simulations.
+
+Identify:
+- Missing prerequisite knowledge.
+- Content that is too shallow.
+- Topics presented out of sequence.
+- Simulations that are decorative rather than functional.
+- Concepts taught without a practical example.
+- Assessments that do not measure the lesson objective.
+- Missing remediation, feedback, or continuation paths.
+
+Clearly distinguish verified findings from recommendations.
+
+### Stage B — Complete Curriculum Blueprint
+
+Create a maintained curriculum map that specifies, for each module:
+
+- The target skill level.
+- Required prerequisites.
+- Learning objectives.
+- Subtopics.
+- Practical exercises.
+- Relevant simulation.
+- Assessment requirements.
+- Expected evidence of mastery.
+- Recommended next module.
+- Technical references.
+
+Store it in the repository using the existing architectural conventions, or the smallest suitable documented structure.
+
+Do not generate empty placeholder lessons to make the curriculum look complete.
+
+### Stage C — Complete One Representative Learning Journey
+
+Implement one coherent vertical slice, selected after inspecting the current platform.
+
+It must include:
+
+- Substantive instruction.
+- A relevant interactive simulation.
+- A successful and an unsuccessful path.
+- Real task validation.
+- Useful feedback and recovery.
+- An assessment.
+- Correct progression and state restoration.
+- Automated tests.
+- Verification in the live Preview where available.
+
+A fully functioning networking or foundational security learning journey is a suitable candidate if it addresses the most important verified gap.
+
+### Stage D — Extend the Architecture
+
+Apply the proven structure to the remaining modules in a controlled sequence.
+
+Prioritize prerequisite foundations, core networking, fundamental security concepts, application security, defensive security, incident response, cloud security, and advanced specialization.
+
+Build substantive modules incrementally instead of creating superficial descriptions for dozens of topics in one pass.
+
+### Stage E — Full Curriculum and Simulation Validation
+
+Measure actual topic coverage and identify remaining gaps.
+
+Verify that all advertised modules correspond to real instructional content and functional or clearly scoped learning activities.
+
+Ensure the learning map, navigation, simulation registry, progress calculations, and tests remain consistent.
+
+### Stage F — Release Assessment
+
+Produce a final evidence-based assessment that separates:
+- Implemented and tested.
+- Implemented but incompletely tested.
+- Planned but not implemented.
+- Dependent on manual verification.
+- Outside the project's current scope.
+
+Do not declare the entire platform professionally complete just because one vertical slice succeeds.
+
+---
+
+## 12. SAFETY, STATE PRESERVATION, AND PROJECT INTEGRITY
+
+- Preserve existing work and uncommitted changes.
+- Never use destructive Git commands to force a clean baseline.
+- Do not remove functional simulations without a justified migration plan.
+- Do not introduce new dependencies unnecessarily.
+- Do not embed secrets in the frontend.
+- Do not connect training actions to real external targets without explicit authorization and a suitable isolated design.
+- Keep attack scenarios within intentionally simulated or authorized training environments.
+- Do not execute real malware or destructive commands as an instructional shortcut.
+- Do not claim that local browser persistence provides server-grade integrity.
+- Do not push, merge, deploy, or publish changes without explicit authorization.
+- Do not invent the number of modules, simulations, tests, or verified outcomes.
+
+If an essential resource is unavailable, document the limitation and continue with work that can safely be completed.
+
+Do not stop after a plan if implementation is possible and authorized.
+
+Do not silently replace the existing application with a new scaffold.
+
+---
+
+## 13. REQUIRED FINAL REPORT
+
+When reporting progress, include:
+
+1. Actual repository baseline.
+2. Existing curriculum inventory and identified gaps.
+3. Curriculum blueprint created or updated.
+4. Topics and modules genuinely implemented.
+5. Simulations genuinely functional.
+6. Which simulations use 3D, and why.
+7. Which scenarios use a different visualization because it better serves the learning objective.
+8. Tests executed and their actual outcomes.
+9. Live Preview or browser checks actually performed.
+10. Files changed.
+11. Remaining curriculum and simulation gaps.
+12. Known limitations and unverified claims.
+13. The next highest-impact implementation stage.
+
+Use explicit statuses:
+- `IMPLEMENTED AND TESTED`
+- `IMPLEMENTED, TESTING INCOMPLETE`
+- `PLANNED`
+- `NOT IMPLEMENTED`
+- `NOT VERIFIED`
+
+Never label planned or placeholder content as implemented.
+
+---
+
+## 14. START NOW
+
+Inspect the existing application and determine why the learner experience still feels fragmented or shallow.
+
+Map the actual curriculum and simulation capabilities. Identify the biggest gaps between the current product and the intended beginner-to-professional learning journey.
+
+Then begin implementing the most important complete learning journey directly in the current project.
+
+Do not merely change typography, add cards, increase the number of modules, or improve the landing page.
+
+The learner must be able to understand a concept, see its behavior, perform a meaningful task, observe the outcome, correct mistakes, demonstrate competence, and progress to the next concept.
+
+**Final mission: Build a coherent cybersecurity learning system in which technical knowledge, practical simulations, 3D visualization, assessment, and progression reinforce one another. Every feature must teach something real, behave consistently, and be verified against explicit learning objectives.**
