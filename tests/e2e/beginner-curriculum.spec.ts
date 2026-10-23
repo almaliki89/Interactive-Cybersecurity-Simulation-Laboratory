@@ -226,4 +226,92 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
 
     await expect(page.getByText(/10 محطات تأسيسية متسلسلة/i).first()).toBeVisible({ timeout: 10000 });
   });
+
+  test('executes real browser UI onboarding flow: negative checks, step progression, completion evidence, and reload persistence', async ({ page }) => {
+    // 1. Visit landing page
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Verify initial onboarding strip is on Step 1
+    const step1Prompt = page.getByText(/خطوة 1: انقر على جدار الحماية/i);
+    await expect(step1Prompt).toBeVisible({ timeout: 10000 });
+
+    // 2. NEGATIVE CHECK: Attempting to click "Block All" before inspecting the firewall node
+    // Must NOT advance the onboarding step and must NOT mark the challenge completed
+    const blockAllBtn = page.getByRole('button', { name: /حظر شامل/i });
+    await expect(blockAllBtn).toBeVisible();
+    await blockAllBtn.click();
+
+    // Verify step remains at 1
+    await expect(step1Prompt).toBeVisible();
+    const completedChallengesInitial = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('omega_completed_challenges') || '[]')
+    );
+    expect(completedChallengesInitial).not.toContain('orientation-guided-challenge');
+
+    // Reset policy back to strict for legitimate test
+    const strictBtn = page.getByRole('button', { name: /صارم \(443\/53\)/i });
+    await strictBtn.click();
+
+    // 3. POSITIVE STEP 1: Click the Edge Firewall Node
+    const firewallNode = page.getByTestId('hero-node-firewall');
+    await expect(firewallNode).toBeVisible();
+    await firewallNode.click();
+
+    // Step should advance to Step 2
+    const step2Prompt = page.getByText(/خطوة 2: غير سياسة الجدار/i);
+    await expect(step2Prompt).toBeVisible({ timeout: 5000 });
+
+    // Verify entity inspector strip is visible
+    await expect(page.getByText(/جدار الحماية المحيطي/i).first()).toBeVisible();
+
+    // 4. POSITIVE STEP 2: Alter policy to "Block All"
+    await blockAllBtn.click();
+
+    // Step should advance to Step 3 and display the success prompt
+    const step3Prompt = page.getByText(/رائع! لقد غيرت سلوك الدفاع المحيطي/i);
+    await expect(step3Prompt).toBeVisible({ timeout: 5000 });
+
+    const enterUniverseBtn = page.getByRole('button', { name: /ابدأ رحلة التعلم في العوالم/i });
+    await expect(enterUniverseBtn).toBeVisible();
+
+    // 5. Verify challenge completion recorded in localStorage with valid activity evidence
+    const completedAfterStep = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('omega_completed_challenges') || '[]')
+    );
+    expect(completedAfterStep).toContain('orientation-guided-challenge');
+
+    const progressEvidence = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('omega_onboarding_progress') || '{}')
+    );
+    expect(progressEvidence.firewallInspected).toBe(true);
+    expect(progressEvidence.policyAltered).toBe(true);
+
+    // 6. RELOAD PERSISTENCE: Reload the page and verify state remains at Step 3 with completed challenge
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+
+    await expect(page.getByText(/رائع! لقد غيرت سلوك الدفاع المحيطي/i)).toBeVisible({ timeout: 10000 });
+    const completedAfterReload = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('omega_completed_challenges') || '[]')
+    );
+    expect(completedAfterReload).toContain('orientation-guided-challenge');
+
+    // 7. ANTI-TAMPERING SANITIZATION CHECK:
+    // If a user maliciously injects orientation-guided-challenge into localStorage but removes onboarding progress
+    await page.evaluate(() => {
+      localStorage.setItem('omega_completed_challenges', JSON.stringify(['orientation-guided-challenge']));
+      localStorage.removeItem('omega_onboarding_progress');
+    });
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+
+    // After reload, forged challenge must be sanitized from store state and step reset to 1
+    await expect(page.getByText(/خطوة 1: انقر على جدار الحماية/i)).toBeVisible({ timeout: 10000 });
+    const completedAfterTamper = await page.evaluate(() =>
+      (window as any).useSimulationStore?.getState().completedChallenges || []
+    );
+    expect(completedAfterTamper).not.toContain('orientation-guided-challenge');
+  });
 });
+

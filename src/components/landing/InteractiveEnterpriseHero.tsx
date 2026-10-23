@@ -446,6 +446,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
 
           {/* Node 2: Perimeter Firewall (World 04) */}
           <div
+            data-testid="hero-node-firewall"
             onClick={() => {
               selectEntity('node', 'fw-01', {
                 name: language === 'ar' ? 'جدار الحماية المحيطي (Edge Firewall)' : 'Perimeter Firewall',
