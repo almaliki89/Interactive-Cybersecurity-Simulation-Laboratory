@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -120,6 +124,24 @@ export const WindowsHardeningChallenge: React.FC<WindowsHardeningChallengeProps>
     setAuditResult(result);
   }, [users, groups, resources, services, firewall, auditPolicies]);
 
+  useEffect(() => {
+    registerChallengeValidator('windows_hardening', () => {
+      const currentState: WindowsHardeningState = {
+        users,
+        groups,
+        ntfsResources: resources,
+        services,
+        firewallState: firewall,
+        auditPolicies,
+      };
+      const result = validateWindowsHardeningState(currentState);
+      return { success: result.success, score: result.score, details: result };
+    });
+    return () => {
+      unregisterChallengeValidator('windows_hardening');
+    };
+  }, [users, groups, resources, services, firewall, auditPolicies]);
+
   // Run Manual Audit & record challenge completion
   const handleRunAudit = () => {
     const currentState: WindowsHardeningState = {
@@ -134,7 +156,11 @@ export const WindowsHardeningChallenge: React.FC<WindowsHardeningChallengeProps>
     setAuditResult(result);
 
     if (result.success) {
-      completeChallenge('windows_hardening');
+      completeChallenge('windows_hardening', {
+        success: true,
+        score: result.score,
+        details: result,
+      });
       addLog({
         level: 'INFO',
         source: 'AUDIT',

@@ -217,7 +217,7 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
         
         // Context required for OMEGA MAX integrity
         store.setActiveSimulation('cia_triad');
-        store.completeChallenge('cia-balance-challenge');
+        store.completeChallenge('cia-balance-challenge', { success: true });
       });
 
       // 2. Advance sequentially to stage 4 then stage 5 (Knowledge Check)
@@ -546,7 +546,9 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       const initialCount = store.completedChallenges.length;
 
       // Reject empty or whitespace
+      // @ts-ignore
       store.completeChallenge('');
+      // @ts-ignore
       store.completeChallenge('   ');
       // @ts-ignore
       store.completeChallenge(null);
@@ -561,7 +563,7 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       act(() => {
         useSimulationStore.getState().setActiveSimulation('cia_triad');
       });
-      store.completeChallenge('cia-balance-challenge');
+      store.completeChallenge('cia-balance-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
     });
   });

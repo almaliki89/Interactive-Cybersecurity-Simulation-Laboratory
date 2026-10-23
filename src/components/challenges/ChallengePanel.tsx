@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { Challenge, ChallengeObjective } from '../../types/simulation';
-import { useSimulationStore } from '../../stores/simulationStore';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { translations } from '../../i18n/translations';
 import {
   CheckCircle2,
@@ -38,6 +42,15 @@ export const ChallengePanel: React.FC<ChallengePanelProps> = ({
   } | null>(null);
 
   const isMastered = completedChallenges.includes(challenge.id);
+
+  React.useEffect(() => {
+    if (onValidate) {
+      registerChallengeValidator(challenge.id, onValidate);
+      return () => {
+        unregisterChallengeValidator(challenge.id);
+      };
+    }
+  }, [challenge.id, onValidate]);
 
   const handleRunValidation = () => {
     if (onValidate) {

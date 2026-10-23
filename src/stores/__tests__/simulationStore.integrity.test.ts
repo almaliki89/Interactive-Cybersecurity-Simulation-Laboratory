@@ -8,6 +8,7 @@ import {
   VALID_CURRICULUM_LESSON_IDS,
   safeParseCompletedChallenges,
   safeParseLessonProgress,
+  clearChallengeValidators,
 } from '../simulationStore';
 import {
   validateCiaControls,
@@ -17,6 +18,7 @@ import {
 describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
   beforeEach(() => {
     cleanup();
+    clearChallengeValidators();
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
     }
@@ -106,25 +108,71 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
   describe('Challenge Completion Integrity', () => {
     it('NEGATIVE: Rejects empty, whitespace, null, or non-string challenge IDs', () => {
       const store = useSimulationStore.getState();
-      store.completeChallenge('');
-      store.completeChallenge('    ');
+      useSimulationStore.setState({ activeSimulationId: 'cia_triad' });
+
       // @ts-ignore
-      store.completeChallenge(null);
+      store.completeChallenge('', { success: true });
       // @ts-ignore
-      store.completeChallenge(undefined);
+      store.completeChallenge('    ', { success: true });
       // @ts-ignore
-      store.completeChallenge(12345);
+      store.completeChallenge(null, { success: true });
+      // @ts-ignore
+      store.completeChallenge(undefined, { success: true });
+      // @ts-ignore
+      store.completeChallenge(12345, { success: true });
 
       expect(useSimulationStore.getState().completedChallenges).toHaveLength(0);
     });
 
     it('NEGATIVE: Rejects arbitrary/unknown challenge IDs not registered in the project', () => {
       const store = useSimulationStore.getState();
-      store.completeChallenge('hacker-exploit-999');
-      store.completeChallenge('random-fake-id');
+      useSimulationStore.setState({ activeSimulationId: 'cia_triad' });
+
+      store.completeChallenge('hacker-exploit-999', { success: true });
+      store.completeChallenge('random-fake-id', { success: true });
 
       expect(useSimulationStore.getState().completedChallenges).not.toContain('hacker-exploit-999');
       expect(useSimulationStore.getState().completedChallenges).not.toContain('random-fake-id');
+      expect(useSimulationStore.getState().completedChallenges).toHaveLength(0);
+    });
+
+    it('NEGATIVE: Rejects completion when verificationResult is completely omitted', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'cia_triad' });
+
+      // Omitted verification outcome must be rejected
+      // @ts-ignore
+      store.completeChallenge('cia-balance-challenge');
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('cia-balance-challenge');
+      expect(useSimulationStore.getState().completedChallenges).toHaveLength(0);
+    });
+
+    it('NEGATIVE: Rejects completion when verificationResult is null, undefined, or empty object', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'cia_triad' });
+
+      // @ts-ignore
+      store.completeChallenge('cia-balance-challenge', null);
+      // @ts-ignore
+      store.completeChallenge('cia-balance-challenge', undefined);
+      // @ts-ignore
+      store.completeChallenge('cia-balance-challenge', {});
+
+      expect(useSimulationStore.getState().completedChallenges).toHaveLength(0);
+    });
+
+    it('NEGATIVE: Rejects completion when verificationResult.success is not strictly boolean true', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'cia_triad' });
+
+      // Truthy strings, numbers, or non-boolean primitives must not bypass validation
+      // @ts-ignore
+      store.completeChallenge('cia-balance-challenge', { success: 'true' });
+      // @ts-ignore
+      store.completeChallenge('cia-balance-challenge', { success: 1 });
+      // @ts-ignore
+      store.completeChallenge('cia-balance-challenge', { success: 'yes' });
+
       expect(useSimulationStore.getState().completedChallenges).toHaveLength(0);
     });
 
@@ -141,8 +189,46 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       // 'cia-balance-challenge' requires 'cia_triad' simulation
       useSimulationStore.setState({ activeSimulationId: 'firewall' });
 
-      store.completeChallenge('cia-balance-challenge');
+      store.completeChallenge('cia-balance-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).not.toContain('cia-balance-challenge');
+    });
+
+    it('ANTI-FABRICATION: Rejects fabricated { success: true } when registered live validator fails', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'cia_triad' });
+
+      // Register a live simulation validator that reports unmet controls
+      let controlsSatisfied = false;
+      store.registerChallengeValidator('cia-balance-challenge', () => ({
+        success: controlsSatisfied,
+        message: controlsSatisfied ? 'Controls verified' : 'Incomplete controls',
+      }));
+
+      // Caller attempts to fabricate success without fulfilling simulation controls
+      store.completeChallenge('cia-balance-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('cia-balance-challenge');
+
+      // Now satisfy the simulation controls in live state
+      controlsSatisfied = true;
+      store.completeChallenge('cia-balance-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
+    });
+
+    it('NEGATIVE: Rejects master hardening challenge completion if audit score is below 100%', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'soc' });
+
+      // Partial score attempt (e.g. 80%) must be rejected for master challenges
+      store.completeChallenge('soc_master', { success: true, score: 80 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+    });
+
+    it('POSITIVE: Accepts master hardening challenge completion when score is 100% and context is valid', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'soc' });
+
+      store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).toContain('soc_master');
     });
 
     it('POSITIVE: Accepts completion of valid challenge when simulation context and verification are correct', () => {
@@ -288,6 +374,94 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       expect(progress.quizSubmitted?.['q-cia-1']).toBe(true);
       expect(progress.checkedTaskSteps?.['step-1']).toBe(true);
       expect(progress.manualConfirmationChecked).toBe(true);
+    });
+
+    it('NEGATIVE: Filters out fake/unregistered lesson IDs from localStorage', () => {
+      localStorage.setItem(
+        'omega_completed_lessons',
+        JSON.stringify(['fake-lesson-x', 'lesson-01-cia-triad', 'evil-lesson-99'])
+      );
+
+      const store = useSimulationStore.getState();
+      store.reloadFromStorage();
+
+      // Only valid lesson-01 should be retained; invalid IDs discarded
+      expect(useSimulationStore.getState().completedLessons).toEqual(['lesson-01-cia-triad']);
+    });
+
+    it('NEGATIVE: Resilient against severely malformed storage entries without crashing', () => {
+      localStorage.setItem('omega_completed_challenges', 'not-valid-json{{{');
+      localStorage.setItem('omega_completed_lessons', '{"bad": true}');
+      localStorage.setItem('omega_lesson_progress', '[1, 2, 3]');
+      localStorage.setItem('omega_language', 'invalid_lang');
+
+      const store = useSimulationStore.getState();
+      expect(() => store.reloadFromStorage()).not.toThrow();
+
+      expect(useSimulationStore.getState().completedChallenges).toEqual([]);
+      expect(useSimulationStore.getState().completedLessons).toEqual([]);
+      expect(useSimulationStore.getState().lessonProgress).toEqual({});
+      expect(useSimulationStore.getState().language).toBe('ar');
+    });
+
+    it('NEGATIVE: Rejects completing a lesson when quiz or task completion state is missing or false', () => {
+      const store = useSimulationStore.getState();
+
+      // 1. Neither quiz nor task fulfilled
+      store.completeLesson('lesson-01-cia-triad');
+      expect(useSimulationStore.getState().completedLessons).not.toContain('lesson-01-cia-triad');
+
+      // 2. Quiz passed but task missing
+      store.updateLessonProgressState('lesson-01-cia-triad', { isQuizPassed: true, isTaskPassed: false });
+      store.completeLesson('lesson-01-cia-triad');
+      expect(useSimulationStore.getState().completedLessons).not.toContain('lesson-01-cia-triad');
+
+      // 3. Task passed but quiz missing
+      store.updateLessonProgressState('lesson-01-cia-triad', { isQuizPassed: false, isTaskPassed: true });
+      store.completeLesson('lesson-01-cia-triad');
+      expect(useSimulationStore.getState().completedLessons).not.toContain('lesson-01-cia-triad');
+
+      // 4. Both passed -> completion succeeds
+      store.updateLessonProgressState('lesson-01-cia-triad', { isQuizPassed: true, isTaskPassed: true });
+      store.completeLesson('lesson-01-cia-triad');
+      expect(useSimulationStore.getState().completedLessons).toContain('lesson-01-cia-triad');
+    });
+
+    it('NEGATIVE: safeParseLessonProgress sanitizes malformed nested types and clamps stages', () => {
+      const malformedRaw = JSON.stringify({
+        'lesson-01-cia-triad': {
+          currentStage: 'invalid-stage-type',
+          furthestUnlockedStage: -99,
+          quizAnswers: ['not-an-object'],
+          quizSubmitted: 'invalid-boolean-map',
+          checkedTaskSteps: 12345,
+          manualConfirmationChecked: 'not-a-bool',
+          isQuizPassed: 'true', // string instead of boolean
+          isTaskPassed: 1,      // number instead of boolean
+        },
+      });
+
+      const parsed = safeParseLessonProgress(malformedRaw, []);
+      const item = parsed['lesson-01-cia-triad'];
+      expect(item).toBeDefined();
+      expect(item.currentStage).toBe(0);
+      expect(item.furthestUnlockedStage).toBe(0);
+      expect(item.quizAnswers).toBeUndefined();
+      expect(item.quizSubmitted).toBeUndefined();
+      expect(item.checkedTaskSteps).toBeUndefined();
+      expect(item.manualConfirmationChecked).toBeUndefined();
+      expect(item.isQuizPassed).toBeUndefined();
+      expect(item.isTaskPassed).toBeUndefined();
+    });
+
+    it('POSITIVE: Reconstructed completed lessons in safeParseLessonProgress have stage 6 and verified flags', () => {
+      // When storage has completed lesson but empty/null lesson progress
+      const parsed = safeParseLessonProgress(null, ['lesson-01-cia-triad']);
+      expect(parsed['lesson-01-cia-triad']).toBeDefined();
+      expect(parsed['lesson-01-cia-triad'].currentStage).toBe(6);
+      expect(parsed['lesson-01-cia-triad'].furthestUnlockedStage).toBe(6);
+      expect(parsed['lesson-01-cia-triad'].isQuizPassed).toBe(true);
+      expect(parsed['lesson-01-cia-triad'].isTaskPassed).toBe(true);
     });
   });
 });

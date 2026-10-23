@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import {
   AppSecChallengeState,
   getInitialChallengeState,
@@ -47,13 +51,27 @@ export const AppSecMasterChallenge: React.FC<AppSecMasterChallengeProps> = ({
 
   const [state, setState] = useState<AppSecChallengeState>(getInitialChallengeState);
 
+  useEffect(() => {
+    registerChallengeValidator('appsec_master', () => {
+      const res = validateAppSecurityState(state);
+      return { success: res.success && res.score === 100, score: res.score, details: res };
+    });
+    return () => {
+      unregisterChallengeValidator('appsec_master');
+    };
+  }, [state]);
+
   const validation: MasterValidationResult = validateAppSecurityState(state);
 
   const handleRunAudit = () => {
     const result = validateAppSecurityState(state);
     if (result.success && result.score === 100) {
       if (completeChallenge) {
-        completeChallenge('appsec_master');
+        completeChallenge('appsec_master', {
+          success: true,
+          score: result.score,
+          details: result,
+        });
       }
 
       if (addEvent) {

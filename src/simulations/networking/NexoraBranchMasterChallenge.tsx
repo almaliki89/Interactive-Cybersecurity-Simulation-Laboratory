@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
-import { useSimulationStore } from '../../stores/simulationStore';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { Award, ShieldCheck, ShieldAlert, Play, CheckCircle2, Network, Layers, Lock, Cpu, Server } from 'lucide-react';
 import { validateNexoraBranchConfiguration } from './logic/nexoraValidator';
 
@@ -24,6 +28,23 @@ export const NexoraBranchMasterChallenge: React.FC = () => {
   const [guestIsolation, setGuestIsolation] = useState<boolean>(true);
   const [sshMgmtOnly, setSshMgmtOnly] = useState<boolean>(true);
   const [httpsServerPermitted, setHttpsServerPermitted] = useState<boolean>(true);
+
+  useEffect(() => {
+    registerChallengeValidator('nexora_master', () => {
+      const valResult = validateNexoraBranchConfiguration({
+        financeSubnet,
+        hrSubnet,
+        guestSubnet,
+        guestIsolation,
+        sshMgmtOnly,
+        httpsServerPermitted,
+      });
+      return { success: valResult.success, score: valResult.score, details: valResult };
+    });
+    return () => {
+      unregisterChallengeValidator('nexora_master');
+    };
+  }, [financeSubnet, hrSubnet, guestSubnet, guestIsolation, sshMgmtOnly, httpsServerPermitted]);
 
   const [overallScore, setOverallScore] = useState<number | null>(null);
 
@@ -86,7 +107,11 @@ export const NexoraBranchMasterChallenge: React.FC = () => {
     setOverallScore(valResult.score);
 
     if (valResult.success) {
-      completeChallenge('nexora_master');
+      completeChallenge('nexora_master', {
+        success: true,
+        score: valResult.score,
+        details: valResult,
+      });
       globalSimulationRuntime.dispatch({
         type: 'ALERT_CREATED',
         source: 'NEXORA_SECURITY_AUDITOR',

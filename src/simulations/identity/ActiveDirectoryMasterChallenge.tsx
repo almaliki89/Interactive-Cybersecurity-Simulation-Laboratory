@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import {
   ActiveDirectoryChallengeState,
   getInitialChallengeState,
@@ -48,6 +52,17 @@ export const ActiveDirectoryMasterChallenge: React.FC<ActiveDirectoryMasterChall
   const addEvent = useSimulationStore((s) => s.addEvent);
 
   const [state, setState] = useState<ActiveDirectoryChallengeState>(getInitialChallengeState());
+
+  useEffect(() => {
+    registerChallengeValidator('ad_nexora_migration_master', () => {
+      const res = validateActiveDirectoryState(state);
+      return { success: res.success, score: res.score, details: res };
+    });
+    return () => {
+      unregisterChallengeValidator('ad_nexora_migration_master');
+    };
+  }, [state]);
+
   const [validation, setValidation] = useState<HardeningValidationResult>(
     validateActiveDirectoryState(getInitialChallengeState())
   );
@@ -66,7 +81,11 @@ export const ActiveDirectoryMasterChallenge: React.FC<ActiveDirectoryMasterChall
     setHasValidated(true);
 
     if (res.success) {
-      completeChallenge('ad_nexora_migration_master');
+      completeChallenge('ad_nexora_migration_master', {
+        success: true,
+        score: res.score,
+        details: res,
+      });
       addEvent({
         id: `evt-comp-ad-hard-${virtualTime}`,
         type: 'status_change',

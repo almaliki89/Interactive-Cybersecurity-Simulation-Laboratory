@@ -151,10 +151,55 @@ interface SimulationStoreState {
   selectEntity: (type: SelectedEntity['type'], id: string, data: any) => void;
   clearSelection: () => void;
 
-  completeChallenge: (challengeId: string, verificationResult?: { success: boolean }) => void;
+  completeChallenge: (challengeId: string, verificationResult: ChallengeVerificationResult) => void;
   setActiveChallengeId: (challengeId: string | null) => void;
+  registerChallengeValidator: (challengeId: string, validator: ChallengeValidatorFn) => void;
+  unregisterChallengeValidator: (challengeId: string) => void;
   reloadFromStorage: () => void;
 }
+
+export interface ChallengeVerificationResult {
+  success: boolean;
+  score?: number;
+  message?: string;
+  details?: any;
+  validatorProof?: string | Record<string, any>;
+  [key: string]: any;
+}
+
+export type ChallengeValidatorFn = () => ChallengeVerificationResult;
+
+/**
+ * ARCHITECTURAL NOTICE — Client-Side Verification vs. Authoritative Attestation:
+ *
+ * The integrity protections in this store (whitelist filtering, active simulation context
+ * validation, live validator binding, sequential curriculum gating, and local storage
+ * sanitization) prevent accidental state corruption, malformed inputs, skipped learning
+ * phases, and casual client manipulation in the browser.
+ *
+ * However, in any client-only web application (SPA), code running in the user's browser
+ * sandbox is inherently accessible to determined inspection and manipulation (e.g., via
+ * browser DevTools, localStorage tampering, or memory modification).
+ *
+ * For high-stakes certification, competitive rankings, or authoritative compliance
+ * achievements, a server-authoritative backend with cryptographic attestation, session tokens,
+ * and server-side challenge evaluation is recommended.
+ */
+
+// Active validator registry binding challenge validation directly to live simulation state
+const activeChallengeValidators = new Map<string, ChallengeValidatorFn>();
+
+export const registerChallengeValidator = (challengeId: string, validator: ChallengeValidatorFn): void => {
+  activeChallengeValidators.set(challengeId, validator);
+};
+
+export const unregisterChallengeValidator = (challengeId: string): void => {
+  activeChallengeValidators.delete(challengeId);
+};
+
+export const clearChallengeValidators = (): void => {
+  activeChallengeValidators.clear();
+};
 
 export const getStoredItem = (key: string): string | null => {
   try {
@@ -216,6 +261,15 @@ export const VALID_CHALLENGE_IDS = new Set([
   'ad_nexora_migration_master',
 ]);
 
+export const MASTER_HARDENING_CHALLENGE_IDS = new Set([
+  'linux-hardening',
+  'windows_hardening',
+  'soc_master',
+  'appsec_master',
+  'nexora_master',
+  'ad_nexora_migration_master',
+]);
+
 // Map challengeId to the simulationId that must be active to complete it
 export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
   'cia-balance-challenge': 'cia_triad',
@@ -237,7 +291,23 @@ export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
   'ad_nexora_migration_master': 'active_directory',
 };
 
-export const safeParseCompletedChallenges = (raw: string | null): string[] => {
+export const sanitizeCompletedLessonsSequence = (rawLessons: string[]): string[] => {
+  const completed: string[] = [];
+  for (const lId of LESSON_SEQUENCE) {
+    if (rawLessons.includes(lId)) {
+      completed.push(lId);
+    } else {
+      // If a predecessor in the sequence is missing, stop to prevent jumped sequence tampering
+      break;
+    }
+  }
+  return completed;
+};
+
+export const safeParseCompletedChallenges = (
+  raw: string | null,
+  whitelist?: Set<string>
+): string[] => {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -253,19 +323,27 @@ export const safeParseCompletedChallenges = (raw: string | null): string[] => {
           .map(([key]) => key);
       }
     }
-    return items.map((s) => s.trim()).filter((s) => s.length > 0);
+    const clean = items.map((s) => s.trim()).filter((s) => s.length > 0);
+    return whitelist ? clean.filter((s) => whitelist.has(s)) : clean;
   } catch {
     // Corrupted storage recovery - fallback gracefully without crashing
   }
   return [];
 };
 
-export const safeParseCompletedLessons = (raw: string | null): string[] => {
+export const safeParseCompletedLessons = (
+  raw: string | null,
+  whitelist?: Set<string>
+): string[] => {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
+      const clean = parsed
+        .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      return whitelist ? clean.filter((s) => whitelist.has(s)) : clean;
     }
   } catch {
     // Corrupted storage recovery - fallback gracefully
@@ -277,11 +355,35 @@ export const safeParseLessonProgress = (
   raw: string | null,
   completedLessons: string[] = []
 ): Record<string, LessonProgressState> => {
-  if (!raw) return {};
+  if (!raw) {
+    const validated: Record<string, LessonProgressState> = {};
+    for (const cId of completedLessons) {
+      if (VALID_CURRICULUM_LESSON_IDS.has(cId)) {
+        validated[cId] = {
+          currentStage: 6,
+          furthestUnlockedStage: 6,
+          isQuizPassed: true,
+          isTaskPassed: true,
+        };
+      }
+    }
+    return validated;
+  }
   try {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return {};
+      const validated: Record<string, LessonProgressState> = {};
+      for (const cId of completedLessons) {
+        if (VALID_CURRICULUM_LESSON_IDS.has(cId)) {
+          validated[cId] = {
+            currentStage: 6,
+            furthestUnlockedStage: 6,
+            isQuizPassed: true,
+            isTaskPassed: true,
+          };
+        }
+      }
+      return validated;
     }
 
     const validated: Record<string, LessonProgressState> = {};
@@ -346,19 +448,52 @@ export const safeParseLessonProgress = (
         ? typedItem.manualConfirmationChecked
         : undefined;
 
+      const isQuizPassed = typeof typedItem.isQuizPassed === 'boolean'
+        ? typedItem.isQuizPassed
+        : undefined;
+
+      const isTaskPassed = typeof typedItem.isTaskPassed === 'boolean'
+        ? typedItem.isTaskPassed
+        : undefined;
+
       validated[lessonId] = {
-        currentStage: current,
+        currentStage: isCompleted ? 6 : current,
         furthestUnlockedStage: isCompleted ? 6 : furthest,
         quizAnswers,
         quizSubmitted,
         checkedTaskSteps,
         manualConfirmationChecked,
+        isQuizPassed: isCompleted ? true : isQuizPassed,
+        isTaskPassed: isCompleted ? true : isTaskPassed,
       };
+    }
+
+    // Ensure all completedLessons have valid progress representations
+    for (const cId of completedLessons) {
+      if (VALID_CURRICULUM_LESSON_IDS.has(cId) && !validated[cId]) {
+        validated[cId] = {
+          currentStage: 6,
+          furthestUnlockedStage: 6,
+          isQuizPassed: true,
+          isTaskPassed: true,
+        };
+      }
     }
 
     return validated;
   } catch {
-    return {};
+    const validated: Record<string, LessonProgressState> = {};
+    for (const cId of completedLessons) {
+      if (VALID_CURRICULUM_LESSON_IDS.has(cId)) {
+        validated[cId] = {
+          currentStage: 6,
+          furthestUnlockedStage: 6,
+          isQuizPassed: true,
+          isTaskPassed: true,
+        };
+      }
+    }
+    return validated;
   }
 };
 
@@ -435,12 +570,28 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     onboardingStep: 0,
 
     selectedEntity: null,
-    completedChallenges: safeParseCompletedChallenges(getStoredItem('omega_completed_challenges')).filter((id) => VALID_CHALLENGE_IDS.has(id)),
+    completedChallenges: safeParseCompletedChallenges(
+      getStoredItem('omega_completed_challenges'),
+      VALID_CHALLENGE_IDS
+    ),
     activeChallengeId: null,
 
     activeLessonId: safeParseActiveLessonId(getStoredItem('omega_active_lesson_id')),
-    completedLessons: safeParseCompletedLessons(getStoredItem('omega_completed_lessons')),
-    lessonProgress: safeParseLessonProgress(getStoredItem('omega_lesson_progress'), safeParseCompletedLessons(getStoredItem('omega_completed_lessons'))),
+    completedLessons: sanitizeCompletedLessonsSequence(
+      safeParseCompletedLessons(
+        getStoredItem('omega_completed_lessons'),
+        VALID_CURRICULUM_LESSON_IDS
+      )
+    ),
+    lessonProgress: safeParseLessonProgress(
+      getStoredItem('omega_lesson_progress'),
+      sanitizeCompletedLessonsSequence(
+        safeParseCompletedLessons(
+          getStoredItem('omega_completed_lessons'),
+          VALID_CURRICULUM_LESSON_IDS
+        )
+      )
+    ),
 
     setLanguage: (lang) => {
       setStoredItem('omega_language', lang);
@@ -577,15 +728,24 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   clearSelection: () => set({ selectedEntity: null }),
 
   completeChallenge: (challengeId, verificationResult) => {
-    if (typeof challengeId !== 'string' || !challengeId.trim()) return;
-    const cleanId = challengeId.trim();
-
-    // 1. Result verification: if an explicit verification result is provided, reject if failed
-    if (verificationResult && !verificationResult.success) {
-      console.warn(`[Integrity] Challenge ${cleanId} rejected because validation criteria were not met.`);
+    if (typeof challengeId !== 'string' || !challengeId.trim()) {
+      console.warn('[Integrity] Challenge rejected: invalid challenge ID format.');
       return;
     }
-    
+    const cleanId = challengeId.trim();
+
+    // 1. Explicit verification result required (must be an object with success === true)
+    if (
+      !verificationResult ||
+      typeof verificationResult !== 'object' ||
+      verificationResult.success !== true
+    ) {
+      console.warn(
+        `[Integrity] Challenge ${cleanId} rejected because validation criteria were not met or verification outcome was omitted.`
+      );
+      return;
+    }
+
     // 2. Whitelist Verification
     if (!VALID_CHALLENGE_IDS.has(cleanId)) {
       console.warn(`[Integrity] Attempted to complete unregistered challenge: ${cleanId}`);
@@ -600,6 +760,33 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       return;
     }
 
+    // 4. Live Simulation Validator Binding: If a live validator is registered for this challenge,
+    // evaluate it directly against the live simulation state to prevent fabricated success tokens
+    const registeredValidator = activeChallengeValidators.get(cleanId);
+    if (registeredValidator) {
+      try {
+        const liveOutcome = registeredValidator();
+        if (!liveOutcome || typeof liveOutcome !== 'object' || liveOutcome.success !== true) {
+          console.warn(
+            `[Integrity] Challenge ${cleanId} rejected: live simulation state does not satisfy verification criteria.`
+          );
+          return;
+        }
+      } catch (err) {
+        console.error(`[Integrity] Error during live verification for challenge ${cleanId}:`, err);
+        return;
+      }
+    }
+
+    // 5. Master Challenge Score Verification:
+    // Master hardening challenges require a verified audit outcome with score >= 100
+    if (MASTER_HARDENING_CHALLENGE_IDS.has(cleanId)) {
+      if (typeof verificationResult.score === 'number' && verificationResult.score < 100) {
+        console.warn(`[Integrity] Master challenge ${cleanId} rejected: score ${verificationResult.score} is below the required 100%.`);
+        return;
+      }
+    }
+
     const existing = get().completedChallenges;
     if (!existing.includes(cleanId)) {
       const updated = [...existing, cleanId];
@@ -608,6 +795,12 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     }
   },
   setActiveChallengeId: (activeChallengeId) => set({ activeChallengeId }),
+  registerChallengeValidator: (challengeId, validator) => {
+    activeChallengeValidators.set(challengeId, validator);
+  },
+  unregisterChallengeValidator: (challengeId) => {
+    activeChallengeValidators.delete(challengeId);
+  },
 
   setActiveLessonId: (activeLessonId) => {
     const safeId = safeParseActiveLessonId(activeLessonId);
@@ -709,24 +902,15 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
 
   reloadFromStorage: () => {
     const lang = safeParseLanguage(getStoredItem('omega_language'));
-    const rawCompleted = safeParseCompletedChallenges(getStoredItem('omega_completed_challenges'));
-    
-    // Whitelist filter for challenges
-    const completed = rawCompleted.filter(id => VALID_CHALLENGE_IDS.has(id));
-
-    const rawCompletedLessons = safeParseCompletedLessons(getStoredItem('omega_completed_lessons')).filter((l) => VALID_CURRICULUM_LESSON_IDS.has(l));
-    
-    // Sanitize completed lessons sequence
-    const completedLess: string[] = [];
-    for (const lId of LESSON_SEQUENCE) {
-      if (rawCompletedLessons.includes(lId)) {
-        completedLess.push(lId);
-      } else {
-        // If one is missing, break to prevent "jumping"
-        break;
-      }
-    }
-
+    const completed = safeParseCompletedChallenges(
+      getStoredItem('omega_completed_challenges'),
+      VALID_CHALLENGE_IDS
+    );
+    const rawCompletedLessons = safeParseCompletedLessons(
+      getStoredItem('omega_completed_lessons'),
+      VALID_CURRICULUM_LESSON_IDS
+    );
+    const completedLess = sanitizeCompletedLessonsSequence(rawCompletedLessons);
     const activeLesson = safeParseActiveLessonId(getStoredItem('omega_active_lesson_id'));
     const parsedProgress = safeParseLessonProgress(getStoredItem('omega_lesson_progress'), completedLess);
 

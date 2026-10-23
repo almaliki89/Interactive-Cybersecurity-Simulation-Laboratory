@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import {
   SocChallengeState,
   getInitialSocChallengeState,
@@ -52,13 +56,27 @@ export const SocMasterChallenge: React.FC<SocMasterChallengeProps> = ({
 
   const [state, setState] = useState<SocChallengeState>(getInitialSocChallengeState);
 
+  useEffect(() => {
+    registerChallengeValidator('soc_master', () => {
+      const res = validateSocInvestigationState(state);
+      return { success: res.success && res.score === 100, score: res.score, details: res };
+    });
+    return () => {
+      unregisterChallengeValidator('soc_master');
+    };
+  }, [state]);
+
   const validation: SocMasterValidationResult = validateSocInvestigationState(state);
 
   const handleRunAudit = () => {
     const result = validateSocInvestigationState(state);
     if (result.success && result.score === 100) {
       if (completeChallenge) {
-        completeChallenge('soc_master');
+        completeChallenge('soc_master', {
+          success: true,
+          score: result.score,
+          details: result,
+        });
       }
 
       if (addEvent) {

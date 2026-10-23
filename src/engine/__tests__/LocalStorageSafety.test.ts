@@ -135,7 +135,7 @@ describe('LocalStorage Safety & Storage Recovery Engine Suite', () => {
 
         // completeChallenge should update in-memory state and catch storage error
         expect(() => {
-          store.completeChallenge('cia-balance-challenge');
+          store.completeChallenge('cia-balance-challenge', { success: true });
         }).not.toThrow();
         expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
       } finally {

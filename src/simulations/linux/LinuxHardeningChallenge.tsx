@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -79,6 +83,22 @@ export const LinuxHardeningChallenge: React.FC<LinuxHardeningChallengeProps> = (
 
   const [auditResult, setAuditResult] = useState<LinuxHardeningValidationResult | null>(null);
 
+  useEffect(() => {
+    registerChallengeValidator('linux-hardening', () => {
+      const currentState: LinuxHardeningState = {
+        files,
+        processes,
+        services,
+        sudoPolicies,
+      };
+      const res = validateLinuxHardeningState(currentState);
+      return { success: res.success, score: res.score, details: res };
+    });
+    return () => {
+      unregisterChallengeValidator('linux-hardening');
+    };
+  }, [files, processes, services, sudoPolicies]);
+
   const handleRunAudit = () => {
     const currentState: LinuxHardeningState = {
       files,
@@ -98,7 +118,11 @@ export const LinuxHardeningChallenge: React.FC<LinuxHardeningChallengeProps> = (
     });
 
     if (res.success) {
-      completeChallenge('linux-hardening');
+      completeChallenge('linux-hardening', {
+        success: true,
+        score: res.score,
+        details: res,
+      });
       addEvent({
         type: 'SECURITY_LOG_CREATED',
         description: 'Server WEB-SRV-01 successfully passed 100% Linux Security Hardening Audit!',
