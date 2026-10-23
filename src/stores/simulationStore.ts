@@ -763,6 +763,8 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     // 4. Live Simulation Validator Binding: If a live validator is registered for this challenge,
     // evaluate it directly against the live simulation state to prevent fabricated success tokens
     const registeredValidator = activeChallengeValidators.get(cleanId);
+    let authoritativeOutcome = verificationResult;
+
     if (registeredValidator) {
       try {
         const liveOutcome = registeredValidator();
@@ -772,17 +774,24 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
           );
           return;
         }
+        authoritativeOutcome = liveOutcome;
       } catch (err) {
         console.error(`[Integrity] Error during live verification for challenge ${cleanId}:`, err);
         return;
       }
+    } else if (MASTER_HARDENING_CHALLENGE_IDS.has(cleanId)) {
+      console.warn(`[Integrity] Master challenge ${cleanId} rejected: missing active registered validator.`);
+      return;
     }
 
     // 5. Master Challenge Score Verification:
-    // Master hardening challenges require a verified audit outcome with score >= 100
+    // Master hardening challenges require a verified audit outcome with a finite score >= 100 from the authoritative validator
     if (MASTER_HARDENING_CHALLENGE_IDS.has(cleanId)) {
-      if (typeof verificationResult.score === 'number' && verificationResult.score < 100) {
-        console.warn(`[Integrity] Master challenge ${cleanId} rejected: score ${verificationResult.score} is below the required 100%.`);
+      const score = authoritativeOutcome.score;
+      if (typeof score !== 'number' || !Number.isFinite(score) || Number.isNaN(score) || score < 100) {
+        console.warn(
+          `[Integrity] Master challenge ${cleanId} rejected: authoritative score (${score}) is missing, non-finite, or below 100%.`
+        );
         return;
       }
     }

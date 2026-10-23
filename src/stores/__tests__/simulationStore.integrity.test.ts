@@ -214,21 +214,102 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
     });
 
-    it('NEGATIVE: Rejects master hardening challenge completion if audit score is below 100%', () => {
+    it('MASTER AUDIT: Rejects master challenge completion if no active validator is registered', () => {
       const store = useSimulationStore.getState();
       useSimulationStore.setState({ activeSimulationId: 'soc' });
 
-      // Partial score attempt (e.g. 80%) must be rejected for master challenges
-      store.completeChallenge('soc_master', { success: true, score: 80 });
+      // No registered validator -> must be rejected
+      store.completeChallenge('soc_master', { success: true, score: 100 });
       expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
     });
 
-    it('POSITIVE: Accepts master hardening challenge completion when score is 100% and context is valid', () => {
+    it('MASTER AUDIT: Rejects invalid, non-finite, missing, or < 100 scores for master challenges', () => {
       const store = useSimulationStore.getState();
       useSimulationStore.setState({ activeSimulationId: 'soc' });
 
+      // Register live validator that returns invalid scores
+      let testScore: any = 80;
+      store.registerChallengeValidator('soc_master', () => ({
+        success: true,
+        score: testScore,
+      }));
+
+      // 1. Below 100 (80)
       store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+
+      // 2. 99.9 (Below 100)
+      testScore = 99.9;
+      store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+
+      // 3. Missing / Undefined score
+      testScore = undefined;
+      store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+
+      // 4. NaN score
+      testScore = NaN;
+      store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+
+      // 5. Infinity score
+      testScore = Infinity;
+      store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+
+      // 6. String score ("100")
+      testScore = '100';
+      store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+
+      // 7. Null score
+      testScore = null;
+      store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+    });
+
+    it('MASTER AUDIT: Authoritative registered validator score overrides untrusted caller-supplied score', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'soc' });
+
+      // Caller claims score: 100, but live validator produces score: 85 -> Must REJECT
+      store.registerChallengeValidator('soc_master', () => ({
+        success: true,
+        score: 85,
+      }));
+      store.completeChallenge('soc_master', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('soc_master');
+
+      // Live validator produces authoritative score: 100 -> Must ACCEPT
+      store.registerChallengeValidator('soc_master', () => ({
+        success: true,
+        score: 100,
+      }));
+      store.completeChallenge('soc_master', { success: true, score: 50 }); // Caller passed 50, but live validator produced 100
       expect(useSimulationStore.getState().completedChallenges).toContain('soc_master');
+    });
+
+    it('MASTER AUDIT: Verifies all 6 master challenges with their respective registered validators and required simulation contexts', () => {
+      const masterChallenges = [
+        { id: 'linux-hardening', simId: 'linux' },
+        { id: 'windows_hardening', simId: 'windows' },
+        { id: 'soc_master', simId: 'soc' },
+        { id: 'appsec_master', simId: 'appsec_api' },
+        { id: 'nexora_master', simId: 'nexora_master' },
+        { id: 'ad_nexora_migration_master', simId: 'active_directory' },
+      ] as const;
+
+      for (const mc of masterChallenges) {
+        useSimulationStore.setState({ activeSimulationId: mc.simId, completedChallenges: [] });
+        useSimulationStore.getState().registerChallengeValidator(mc.id, () => ({
+          success: true,
+          score: 100,
+        }));
+
+        useSimulationStore.getState().completeChallenge(mc.id, { success: true, score: 100 });
+        expect(useSimulationStore.getState().completedChallenges).toContain(mc.id);
+      }
     });
 
     it('POSITIVE: Accepts completion of valid challenge when simulation context and verification are correct', () => {
