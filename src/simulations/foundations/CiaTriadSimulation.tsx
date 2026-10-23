@@ -15,6 +15,53 @@ import {
   Play,
 } from 'lucide-react';
 
+export interface CiaControlsState {
+  encryptionEnabled: boolean;
+  signingEnabled: boolean;
+  redundancyEnabled: boolean;
+  eavesdroppingAttack?: boolean;
+  tamperingAttack?: boolean;
+  dosAttack?: boolean;
+}
+
+export function calculateCiaHealth(state: CiaControlsState) {
+  const confidentialityScore = state.encryptionEnabled
+    ? (state.eavesdroppingAttack ? 95 : 100)
+    : (state.eavesdroppingAttack ? 15 : 60);
+  const integrityScore = state.signingEnabled
+    ? (state.tamperingAttack ? 90 : 100)
+    : (state.tamperingAttack ? 20 : 65);
+  const availabilityScore = state.redundancyEnabled
+    ? (state.dosAttack ? 85 : 100)
+    : (state.dosAttack ? 10 : 70);
+
+  const overallRisk = Math.round(
+    100 - (confidentialityScore * 0.35 + integrityScore * 0.35 + availabilityScore * 0.3)
+  );
+
+  return { confidentialityScore, integrityScore, availabilityScore, overallRisk };
+}
+
+export function validateCiaControls(state: CiaControlsState, language: 'ar' | 'en' = 'ar') {
+  const { overallRisk } = calculateCiaHealth(state);
+  const isValid =
+    state.encryptionEnabled &&
+    state.signingEnabled &&
+    state.redundancyEnabled &&
+    overallRisk < 20;
+
+  return {
+    success: isValid,
+    message: isValid
+      ? (language === 'ar'
+          ? 'ممتاز! تم تحصين ثالوث CIA وتخفيض الخطر المؤسسي بنجاح!'
+          : 'Excellent! CIA Triad secured and enterprise risk successfully minimized!')
+      : (language === 'ar'
+          ? 'ما زالت هناك ثغرات في أحد محاور ثالوث CIA تؤدي لارتفاع الخطر.'
+          : 'Security controls are incomplete; risk remains elevated.'),
+  };
+}
+
 export const CiaTriadSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
 
@@ -29,13 +76,14 @@ export const CiaTriadSimulation: React.FC = () => {
   const [dosAttack, setDosAttack] = useState(false);
 
   // Calculated CIA Health
-  const confidentialityScore = encryptionEnabled ? (eavesdroppingAttack ? 95 : 100) : eavesdroppingAttack ? 15 : 60;
-  const integrityScore = signingEnabled ? (tamperingAttack ? 90 : 100) : tamperingAttack ? 20 : 65;
-  const availabilityScore = redundancyEnabled ? (dosAttack ? 85 : 100) : dosAttack ? 10 : 70;
-
-  const overallRisk = Math.round(
-    100 - (confidentialityScore * 0.35 + integrityScore * 0.35 + availabilityScore * 0.3)
-  );
+  const { confidentialityScore, integrityScore, availabilityScore, overallRisk } = calculateCiaHealth({
+    encryptionEnabled,
+    signingEnabled,
+    redundancyEnabled,
+    eavesdroppingAttack,
+    tamperingAttack,
+    dosAttack,
+  });
 
   const challenge: Challenge = {
     id: 'cia-balance-challenge',
@@ -80,22 +128,17 @@ export const CiaTriadSimulation: React.FC = () => {
   };
 
   const validateChallenge = () => {
-    if (encryptionEnabled && signingEnabled && redundancyEnabled && overallRisk < 20) {
-      return {
-        success: true,
-        message:
-          language === 'ar'
-            ? 'ممتاز! تم تحصين ثالوث CIA وتخفيض الخطر المؤسسي بنجاح!'
-            : 'Excellent! CIA Triad secured and enterprise risk successfully minimized!',
-      };
-    }
-    return {
-      success: false,
-      message:
-        language === 'ar'
-          ? 'ما زالت هناك ثغرات في أحد محاور ثالوث CIA تؤدي لارتفاع الخطر.'
-          : 'Security controls are incomplete; risk remains elevated.',
-    };
+    return validateCiaControls(
+      {
+        encryptionEnabled,
+        signingEnabled,
+        redundancyEnabled,
+        eavesdroppingAttack,
+        tamperingAttack,
+        dosAttack,
+      },
+      language
+    );
   };
 
   return (

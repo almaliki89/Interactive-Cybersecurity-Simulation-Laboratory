@@ -44,7 +44,7 @@ export const ChallengePanel: React.FC<ChallengePanelProps> = ({
       const res = onValidate();
       setValidationResult(res);
       if (res.success) {
-        completeChallenge(challenge.id);
+        completeChallenge(challenge.id, res);
         confetti({
           particleCount: 60,
           spread: 70,

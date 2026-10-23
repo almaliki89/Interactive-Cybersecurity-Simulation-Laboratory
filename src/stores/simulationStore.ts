@@ -151,7 +151,7 @@ interface SimulationStoreState {
   selectEntity: (type: SelectedEntity['type'], id: string, data: any) => void;
   clearSelection: () => void;
 
-  completeChallenge: (challengeId: string) => void;
+  completeChallenge: (challengeId: string, verificationResult?: { success: boolean }) => void;
   setActiveChallengeId: (challengeId: string | null) => void;
   reloadFromStorage: () => void;
 }
@@ -167,22 +167,93 @@ export const getStoredItem = (key: string): string | null => {
   return null;
 };
 
+export const VALID_CURRICULUM_LESSON_IDS = new Set([
+  'lesson-01-cia-triad',
+  'lesson-02-system-internals',
+  'lesson-03-subnet-routing',
+  'lesson-04-firewall-rules',
+  'lesson-05-cryptography',
+  'lesson-06-active-directory',
+  'lesson-07-soc-monitoring',
+  'lesson-08-forensics',
+  'lesson-09-devsecops',
+  'lesson-10-cyber-range',
+]);
+
+export const LESSON_SEQUENCE = [
+  'lesson-01-cia-triad',
+  'lesson-02-system-internals',
+  'lesson-03-subnet-routing',
+  'lesson-04-firewall-rules',
+  'lesson-05-cryptography',
+  'lesson-06-active-directory',
+  'lesson-07-soc-monitoring',
+  'lesson-08-forensics',
+  'lesson-09-devsecops',
+  'lesson-10-cyber-range',
+];
+
+export const VALID_CHALLENGE_IDS = new Set([
+  // Curriculum interactive challenges
+  'cia-balance-challenge',
+  'internals-memory-challenge',
+  'subnet-routing-challenge',
+  'firewall-rule-mastery',
+  'crypto-avalanche-challenge',
+  // Lab interactive challenges
+  'tcp-handshake-mastery',
+  'dns-resolution-challenge',
+  'http-lifecycle-mastery',
+  'tls-handshake-challenge',
+  'siem-correlation-challenge',
+  'zero-trust-challenge',
+  // Master hardening challenges
+  'linux-hardening',
+  'windows_hardening',
+  'soc_master',
+  'appsec_master',
+  'nexora_master',
+  'ad_nexora_migration_master',
+]);
+
+// Map challengeId to the simulationId that must be active to complete it
+export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
+  'cia-balance-challenge': 'cia_triad',
+  'internals-memory-challenge': 'system_internals',
+  'subnet-routing-challenge': 'subnet_routing',
+  'firewall-rule-mastery': 'firewall',
+  'crypto-avalanche-challenge': 'crypto',
+  'tcp-handshake-mastery': 'tcp',
+  'dns-resolution-challenge': 'dns',
+  'http-lifecycle-mastery': 'http',
+  'tls-handshake-challenge': 'tls',
+  'siem-correlation-challenge': 'siem',
+  'zero-trust-challenge': 'zero_trust',
+  'linux-hardening': 'linux',
+  'windows_hardening': 'windows',
+  'soc_master': 'soc',
+  'appsec_master': 'appsec_api',
+  'nexora_master': 'nexora_master',
+  'ad_nexora_migration_master': 'active_directory',
+};
+
 export const safeParseCompletedChallenges = (raw: string | null): string[] => {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
+    let items: string[] = [];
     if (Array.isArray(parsed)) {
-      return parsed.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
-    }
-    // Handle legacy object schema e.g. { completed: string[] } or { challengeId: true }
-    if (parsed && typeof parsed === 'object') {
+      items = parsed.filter((c): c is string => typeof c === 'string' && c.trim().length > 0);
+    } else if (parsed && typeof parsed === 'object') {
       if (Array.isArray((parsed as any).completed)) {
-        return (parsed as any).completed.filter((c: any): c is string => typeof c === 'string' && c.trim().length > 0);
+        items = (parsed as any).completed.filter((c: any): c is string => typeof c === 'string' && c.trim().length > 0);
+      } else {
+        items = Object.entries(parsed)
+          .filter(([key, val]) => val === true && typeof key === 'string' && key.trim().length > 0)
+          .map(([key]) => key);
       }
-      return Object.entries(parsed)
-        .filter(([key, val]) => val === true && typeof key === 'string' && key.trim().length > 0)
-        .map(([key]) => key);
     }
+    return items.map((s) => s.trim()).filter((s) => s.length > 0);
   } catch {
     // Corrupted storage recovery - fallback gracefully without crashing
   }
@@ -291,49 +362,6 @@ export const safeParseLessonProgress = (
   }
 };
 
-export const VALID_CURRICULUM_LESSON_IDS = new Set([
-  'lesson-01-cia-triad',
-  'lesson-02-system-internals',
-  'lesson-03-subnet-routing',
-  'lesson-04-firewall-rules',
-  'lesson-05-cryptography',
-  'lesson-06-active-directory',
-  'lesson-07-soc-monitoring',
-  'lesson-08-forensics',
-  'lesson-09-devsecops',
-  'lesson-10-cyber-range',
-]);
-
-export const LESSON_SEQUENCE = [
-  'lesson-01-cia-triad',
-  'lesson-02-system-internals',
-  'lesson-03-subnet-routing',
-  'lesson-04-firewall-rules',
-  'lesson-05-cryptography',
-  'lesson-06-active-directory',
-  'lesson-07-soc-monitoring',
-  'lesson-08-forensics',
-  'lesson-09-devsecops',
-  'lesson-10-cyber-range',
-];
-
-export const VALID_CHALLENGE_IDS = new Set([
-  'cia-balance-challenge',
-  'internals-memory-challenge',
-  'subnet-routing-challenge',
-  'firewall-rule-mastery',
-  'crypto-avalanche-challenge',
-]);
-
-// Map challengeId to the simulationId that must be active to complete it
-export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
-  'cia-balance-challenge': 'cia_triad',
-  'internals-memory-challenge': 'system_internals',
-  'subnet-routing-challenge': 'subnet_routing',
-  'firewall-rule-mastery': 'firewall',
-  'crypto-avalanche-challenge': 'crypto',
-};
-
 export const DEFAULT_LESSON_ID = 'lesson-01-cia-triad';
 
 export const safeParseActiveLessonId = (raw: string | null): string => {
@@ -407,7 +435,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     onboardingStep: 0,
 
     selectedEntity: null,
-    completedChallenges: safeParseCompletedChallenges(getStoredItem('omega_completed_challenges')),
+    completedChallenges: safeParseCompletedChallenges(getStoredItem('omega_completed_challenges')).filter((id) => VALID_CHALLENGE_IDS.has(id)),
     activeChallengeId: null,
 
     activeLessonId: safeParseActiveLessonId(getStoredItem('omega_active_lesson_id')),
@@ -548,17 +576,23 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   selectEntity: (type, id, data) => set({ selectedEntity: { type, id, data } }),
   clearSelection: () => set({ selectedEntity: null }),
 
-  completeChallenge: (challengeId) => {
+  completeChallenge: (challengeId, verificationResult) => {
     if (typeof challengeId !== 'string' || !challengeId.trim()) return;
     const cleanId = challengeId.trim();
+
+    // 1. Result verification: if an explicit verification result is provided, reject if failed
+    if (verificationResult && !verificationResult.success) {
+      console.warn(`[Integrity] Challenge ${cleanId} rejected because validation criteria were not met.`);
+      return;
+    }
     
-    // 1. Whitelist Verification
+    // 2. Whitelist Verification
     if (!VALID_CHALLENGE_IDS.has(cleanId)) {
       console.warn(`[Integrity] Attempted to complete unregistered challenge: ${cleanId}`);
       return;
     }
 
-    // 2. Context Verification: Only allow completion if the relevant simulation is active
+    // 3. Context Verification: Only allow completion if the relevant simulation is active
     const requiredSim = CHALLENGE_TO_SIMULATION_MAP[cleanId];
     const activeSim = get().activeSimulationId;
     if (requiredSim && activeSim !== requiredSim) {
