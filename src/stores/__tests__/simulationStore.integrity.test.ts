@@ -312,11 +312,12 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       }
     });
 
-    it('POSITIVE: Accepts completion of valid challenge when simulation context and verification are correct', () => {
+    it('POSITIVE: Accepts completion of valid challenge when simulation context and registered verification are correct', () => {
       const store = useSimulationStore.getState();
       useSimulationStore.setState({ activeSimulationId: 'cia_triad' });
+      store.registerChallengeValidator('cia-balance-challenge', () => ({ success: true }));
 
-      store.completeChallenge('cia-balance-challenge', { success: true, verificationMode: 'guided' });
+      store.completeChallenge('cia-balance-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
     });
   });
@@ -400,9 +401,7 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       store.reloadFromStorage();
 
       // Should only contain lesson-01
-      expect(useSimulationStore.getState().completedLessons).toContain('lesson-01-cia-triad');
       expect(useSimulationStore.getState().completedLessons).not.toContain('lesson-03-subnet-routing');
-      expect(useSimulationStore.getState().completedLessons).toHaveLength(1);
     });
 
     it('NEGATIVE: Filters out fake/unregistered challenge IDs from localStorage', () => {
@@ -466,8 +465,8 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       const store = useSimulationStore.getState();
       store.reloadFromStorage();
 
-      // Only valid lesson-01 should be retained; invalid IDs discarded
-      expect(useSimulationStore.getState().completedLessons).toEqual(['lesson-01-cia-triad']);
+      // Without progress record, completed lessons are pruned
+      expect(useSimulationStore.getState().completedLessons).toEqual([]);
     });
 
     it('NEGATIVE: Resilient against severely malformed storage entries without crashing', () => {
@@ -535,14 +534,28 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       expect(item.isTaskPassed).toBeUndefined();
     });
 
-    it('POSITIVE: Reconstructed completed lessons in safeParseLessonProgress have stage 6 and verified flags', () => {
-      // When storage has completed lesson but empty/null lesson progress
-      const parsed = safeParseLessonProgress(null, ['lesson-01-cia-triad']);
-      expect(parsed['lesson-01-cia-triad']).toBeDefined();
-      expect(parsed['lesson-01-cia-triad'].currentStage).toBe(6);
-      expect(parsed['lesson-01-cia-triad'].furthestUnlockedStage).toBe(6);
-      expect(parsed['lesson-01-cia-triad'].isQuizPassed).toBe(true);
-      expect(parsed['lesson-01-cia-triad'].isTaskPassed).toBe(true);
+    it('NEGATIVE: safeParseLessonProgress returns empty progress and does NOT synthesize pass flags when progress storage is null or corrupt', () => {
+      // When storage has completed lesson but null or corrupt lesson progress
+      const parsedNull = safeParseLessonProgress(null, ['lesson-01-cia-triad']);
+      expect(parsedNull['lesson-01-cia-triad']).toBeUndefined();
+      expect(Object.keys(parsedNull)).toHaveLength(0);
+
+      const parsedCorrupt = safeParseLessonProgress('{{{invalid-json', ['lesson-01-cia-triad']);
+      expect(parsedCorrupt['lesson-01-cia-triad']).toBeUndefined();
+      expect(Object.keys(parsedCorrupt)).toHaveLength(0);
+    });
+
+    it('DEFECT 1 HARDENING: Rejects forged completedLessons when lesson progress is absent or corrupt', () => {
+      // Tampered localStorage: lesson-01 added to completed_lessons, but lesson_progress is absent/corrupt
+      localStorage.setItem('omega_completed_lessons', JSON.stringify(['lesson-01-cia-triad']));
+      localStorage.removeItem('omega_lesson_progress');
+
+      const store = useSimulationStore.getState();
+      store.reloadFromStorage();
+
+      // Forged completion without verified progress entry must be pruned from completedLessons
+      expect(useSimulationStore.getState().completedLessons).not.toContain('lesson-01-cia-triad');
+      expect(useSimulationStore.getState().completedLessons).toHaveLength(0);
     });
 
     it('DEFECT 1 HARDENING: Rejects forged completedLessons when lesson progress explicitly records unpassed quiz or task', () => {
@@ -573,22 +586,35 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       expect(prog.isTaskPassed).toBe(true);
     });
 
-    it('DEFECT 2 HARDENING: Technical challenge without validator requires explicit guided verification mode', () => {
+    it('DEFECT 2 HARDENING: Technical challenges strictly require active validator and REJECT caller verificationMode overrides', () => {
       const store = useSimulationStore.getState();
       useSimulationStore.setState({ activeSimulationId: 'cia_triad', completedChallenges: [] });
 
-      // 1. Bare { success: true } without registered validator and without verificationMode -> REJECT
+      // 1. Bare { success: true } without registered validator -> REJECT
       store.completeChallenge('cia-balance-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).not.toContain('cia-balance-challenge');
 
-      // 2. Explicit guided verificationMode -> ACCEPT for non-master challenge
+      // 2. Caller attempt to bypass technical validator by passing verificationMode: 'guided' -> REJECT
       store.completeChallenge('cia-balance-challenge', { success: true, verificationMode: 'guided' });
-      expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('cia-balance-challenge');
 
-      // 3. Master challenge with guided mode -> REJECT (Master challenges require registered validator)
-      useSimulationStore.setState({ activeSimulationId: 'linux', completedChallenges: [] });
-      store.completeChallenge('linux-hardening', { success: true, verificationMode: 'guided' });
-      expect(useSimulationStore.getState().completedChallenges).not.toContain('linux-hardening');
+      // 3. Caller attempt to bypass technical validator by passing verificationMode: 'instructional' -> REJECT
+      store.completeChallenge('cia-balance-challenge', { success: true, verificationMode: 'instructional' });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('cia-balance-challenge');
+
+      // 4. Valid completion with active registered validator -> ACCEPT
+      store.registerChallengeValidator('cia-balance-challenge', () => ({ success: true }));
+      store.completeChallenge('cia-balance-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
+    });
+
+    it('POSITIVE: Legitimate instructional challenge completes via official path', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'landing', completedChallenges: [] });
+
+      // Instructional challenge completes via official path
+      store.completeChallenge('orientation-guided-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).toContain('orientation-guided-challenge');
     });
 
     it('DEFECT 3 HARDENING: Master challenge score boundary checks (99.9 vs 100 vs 100.1)', () => {

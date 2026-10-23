@@ -238,6 +238,19 @@ export const LESSON_SEQUENCE = [
   'lesson-10-cyber-range',
 ];
 
+export const INSTRUCTIONAL_CHALLENGES = new Set<string>([
+  'orientation-guided-challenge',
+]);
+
+export type ChallengeVerificationType = 'technical' | 'instructional';
+
+export const getChallengeVerificationType = (challengeId: string): ChallengeVerificationType => {
+  if (INSTRUCTIONAL_CHALLENGES.has(challengeId)) {
+    return 'instructional';
+  }
+  return 'technical';
+};
+
 export const VALID_CHALLENGE_IDS = new Set([
   // Curriculum interactive challenges
   'cia-balance-challenge',
@@ -259,6 +272,8 @@ export const VALID_CHALLENGE_IDS = new Set([
   'appsec_master',
   'nexora_master',
   'ad_nexora_migration_master',
+  // Instructional / guided challenges
+  'orientation-guided-challenge',
 ]);
 
 export const MASTER_HARDENING_CHALLENGE_IDS = new Set([
@@ -289,6 +304,7 @@ export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
   'appsec_master': 'appsec_api',
   'nexora_master': 'nexora_master',
   'ad_nexora_migration_master': 'active_directory',
+  'orientation-guided-challenge': 'landing',
 };
 
 export const sanitizeCompletedLessonsSequence = (rawLessons: string[]): string[] => {
@@ -356,34 +372,12 @@ export const safeParseLessonProgress = (
   completedLessons: string[] = []
 ): Record<string, LessonProgressState> => {
   if (!raw) {
-    const validated: Record<string, LessonProgressState> = {};
-    for (const cId of completedLessons) {
-      if (VALID_CURRICULUM_LESSON_IDS.has(cId)) {
-        validated[cId] = {
-          currentStage: 6,
-          furthestUnlockedStage: 6,
-          isQuizPassed: true,
-          isTaskPassed: true,
-        };
-      }
-    }
-    return validated;
+    return {};
   }
   try {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      const validated: Record<string, LessonProgressState> = {};
-      for (const cId of completedLessons) {
-        if (VALID_CURRICULUM_LESSON_IDS.has(cId)) {
-          validated[cId] = {
-            currentStage: 6,
-            furthestUnlockedStage: 6,
-            isQuizPassed: true,
-            isTaskPassed: true,
-          };
-        }
-      }
-      return validated;
+      return {};
     }
 
     const validated: Record<string, LessonProgressState> = {};
@@ -410,15 +404,11 @@ export const safeParseLessonProgress = (
         ? typedItem.isTaskPassed
         : undefined;
 
-      // Integrity Check:
-      // Do not allow completed state (stage 6 / isQuizPassed = true / isTaskPassed = true)
-      // if typedItem explicitly contains unpassed quiz or task flags (isQuizPassed === false || isTaskPassed === false),
-      // or if currentStage/furthestUnlockedStage is < 6 and pass flags are not true.
-      const hasContradictoryUnpassedFlags = isQuizPassed === false || isTaskPassed === false;
-      const verifiedCompleted = isCompleted && !hasContradictoryUnpassedFlags && (
-        (isQuizPassed === true && isTaskPassed === true) ||
-        (current >= 6 || furthest >= 6)
-      );
+      // Strict Integrity Check:
+      // A lesson progress entry is verified completed ONLY IF it is listed in completedLessons
+      // AND explicitly records isQuizPassed === true AND isTaskPassed === true.
+      // Absent or corrupt progress entries NEVER synthesize passed quiz/task flags or stage 6.
+      const verifiedCompleted = isCompleted && isQuizPassed === true && isTaskPassed === true;
 
       if (!verifiedCompleted && furthest > 5) {
         furthest = 5;
@@ -476,32 +466,9 @@ export const safeParseLessonProgress = (
       };
     }
 
-    // Ensure all completedLessons missing from parsed progress are safely represented
-    for (const cId of completedLessons) {
-      if (VALID_CURRICULUM_LESSON_IDS.has(cId) && !validated[cId]) {
-        validated[cId] = {
-          currentStage: 6,
-          furthestUnlockedStage: 6,
-          isQuizPassed: true,
-          isTaskPassed: true,
-        };
-      }
-    }
-
     return validated;
   } catch {
-    const validated: Record<string, LessonProgressState> = {};
-    for (const cId of completedLessons) {
-      if (VALID_CURRICULUM_LESSON_IDS.has(cId)) {
-        validated[cId] = {
-          currentStage: 6,
-          furthestUnlockedStage: 6,
-          isQuizPassed: true,
-          isTaskPassed: true,
-        };
-      }
-    }
-    return validated;
+    return {};
   }
 };
 
@@ -768,12 +735,21 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       return;
     }
 
-    // 4. Live Simulation Validator Binding:
-    // If a live validator is registered for this challenge, evaluate it directly against live simulation state.
+    // 4. Authoritative Verification Mode & Live Validator Binding:
+    const verificationType = getChallengeVerificationType(cleanId);
     const registeredValidator = activeChallengeValidators.get(cleanId);
     let authoritativeOutcome = verificationResult;
 
-    if (registeredValidator) {
+    if (verificationType === 'technical') {
+      // Technical challenges strictly require an active registered validator bound to live simulation state.
+      // Callers cannot bypass technical validation by passing verificationMode flags in the payload.
+      if (!registeredValidator) {
+        console.warn(
+          `[Integrity] Challenge ${cleanId} rejected: technical challenge strictly requires an active registered validator.`
+        );
+        return;
+      }
+
       try {
         const liveOutcome = registeredValidator();
         if (!liveOutcome || typeof liveOutcome !== 'object' || liveOutcome.success !== true) {
@@ -787,23 +763,20 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
         console.error(`[Integrity] Error during live verification for challenge ${cleanId}:`, err);
         return;
       }
-    } else {
-      // If no live validator is currently registered:
-      // Check if explicit guided/instructional verification mode is supplied
-      if (
-        verificationResult.verificationMode === 'guided' ||
-        verificationResult.verificationMode === 'instructional'
-      ) {
-        if (MASTER_HARDENING_CHALLENGE_IDS.has(cleanId)) {
-          console.warn(`[Integrity] Master challenge ${cleanId} cannot use guided mode; active registered validator required.`);
+    } else if (verificationType === 'instructional') {
+      // Instructional/guided challenges use official instructional verification path
+      if (registeredValidator) {
+        try {
+          const liveOutcome = registeredValidator();
+          if (!liveOutcome || typeof liveOutcome !== 'object' || liveOutcome.success !== true) {
+            console.warn(`[Integrity] Instructional challenge ${cleanId} failed registered validation.`);
+            return;
+          }
+          authoritativeOutcome = liveOutcome;
+        } catch (err) {
+          console.error(`[Integrity] Error verifying instructional challenge ${cleanId}:`, err);
           return;
         }
-      } else {
-        // Technical challenge without active validator or explicit guided mode is rejected
-        console.warn(
-          `[Integrity] Challenge ${cleanId} rejected: technical verification requires an active registered validator or explicit guided verification mode.`
-        );
-        return;
       }
     }
 

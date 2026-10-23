@@ -451,6 +451,10 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
       ]);
 
       localStorage.setItem('omega_completed_lessons', rawWithDuplicatesAndInvalid);
+      localStorage.setItem('omega_lesson_progress', JSON.stringify({
+        'lesson-01-cia-triad': { isQuizPassed: true, isTaskPassed: true, currentStage: 6, furthestUnlockedStage: 6 },
+        'lesson-02-system-internals': { isQuizPassed: true, isTaskPassed: true, currentStage: 6, furthestUnlockedStage: 6 },
+      }));
       useSimulationStore.getState().reloadFromStorage();
 
       const completed = useSimulationStore.getState().completedLessons;
