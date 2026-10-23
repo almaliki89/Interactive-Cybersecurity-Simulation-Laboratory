@@ -40,3 +40,5 @@ export const ThreatHuntingSimulation: React.FC = () => {
     </div>
   );
 };
+
+export default ThreatHuntingSimulation;

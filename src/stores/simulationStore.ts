@@ -398,16 +398,32 @@ export const safeParseLessonProgress = (
         ? Math.max(0, Math.min(6, Math.floor(typedItem.furthestUnlockedStage)))
         : 0;
 
-      // Safety check: if not completed, do not allow restoring final stage 6 unless conditions are met
-      if (!isCompleted && furthest > 5) {
-        furthest = 5;
-      }
-
       let current = typeof typedItem.currentStage === 'number'
         ? Math.max(0, Math.min(6, Math.floor(typedItem.currentStage)))
         : 0;
 
-      if (!isCompleted && current > furthest) {
+      const isQuizPassed = typeof typedItem.isQuizPassed === 'boolean'
+        ? typedItem.isQuizPassed
+        : undefined;
+
+      const isTaskPassed = typeof typedItem.isTaskPassed === 'boolean'
+        ? typedItem.isTaskPassed
+        : undefined;
+
+      // Integrity Check:
+      // Do not allow completed state (stage 6 / isQuizPassed = true / isTaskPassed = true)
+      // if typedItem explicitly contains unpassed quiz or task flags (isQuizPassed === false || isTaskPassed === false),
+      // or if currentStage/furthestUnlockedStage is < 6 and pass flags are not true.
+      const hasContradictoryUnpassedFlags = isQuizPassed === false || isTaskPassed === false;
+      const verifiedCompleted = isCompleted && !hasContradictoryUnpassedFlags && (
+        (isQuizPassed === true && isTaskPassed === true) ||
+        (current >= 6 || furthest >= 6)
+      );
+
+      if (!verifiedCompleted && furthest > 5) {
+        furthest = 5;
+      }
+      if (!verifiedCompleted && current > furthest) {
         current = furthest;
       }
 
@@ -448,27 +464,19 @@ export const safeParseLessonProgress = (
         ? typedItem.manualConfirmationChecked
         : undefined;
 
-      const isQuizPassed = typeof typedItem.isQuizPassed === 'boolean'
-        ? typedItem.isQuizPassed
-        : undefined;
-
-      const isTaskPassed = typeof typedItem.isTaskPassed === 'boolean'
-        ? typedItem.isTaskPassed
-        : undefined;
-
       validated[lessonId] = {
-        currentStage: isCompleted ? 6 : current,
-        furthestUnlockedStage: isCompleted ? 6 : furthest,
+        currentStage: verifiedCompleted ? 6 : current,
+        furthestUnlockedStage: verifiedCompleted ? 6 : furthest,
         quizAnswers,
         quizSubmitted,
         checkedTaskSteps,
         manualConfirmationChecked,
-        isQuizPassed: isCompleted ? true : isQuizPassed,
-        isTaskPassed: isCompleted ? true : isTaskPassed,
+        isQuizPassed: verifiedCompleted ? true : isQuizPassed,
+        isTaskPassed: verifiedCompleted ? true : isTaskPassed,
       };
     }
 
-    // Ensure all completedLessons have valid progress representations
+    // Ensure all completedLessons missing from parsed progress are safely represented
     for (const cId of completedLessons) {
       if (VALID_CURRICULUM_LESSON_IDS.has(cId) && !validated[cId]) {
         validated[cId] = {
@@ -760,8 +768,8 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       return;
     }
 
-    // 4. Live Simulation Validator Binding: If a live validator is registered for this challenge,
-    // evaluate it directly against the live simulation state to prevent fabricated success tokens
+    // 4. Live Simulation Validator Binding:
+    // If a live validator is registered for this challenge, evaluate it directly against live simulation state.
     const registeredValidator = activeChallengeValidators.get(cleanId);
     let authoritativeOutcome = verificationResult;
 
@@ -779,9 +787,24 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
         console.error(`[Integrity] Error during live verification for challenge ${cleanId}:`, err);
         return;
       }
-    } else if (MASTER_HARDENING_CHALLENGE_IDS.has(cleanId)) {
-      console.warn(`[Integrity] Master challenge ${cleanId} rejected: missing active registered validator.`);
-      return;
+    } else {
+      // If no live validator is currently registered:
+      // Check if explicit guided/instructional verification mode is supplied
+      if (
+        verificationResult.verificationMode === 'guided' ||
+        verificationResult.verificationMode === 'instructional'
+      ) {
+        if (MASTER_HARDENING_CHALLENGE_IDS.has(cleanId)) {
+          console.warn(`[Integrity] Master challenge ${cleanId} cannot use guided mode; active registered validator required.`);
+          return;
+        }
+      } else {
+        // Technical challenge without active validator or explicit guided mode is rejected
+        console.warn(
+          `[Integrity] Challenge ${cleanId} rejected: technical verification requires an active registered validator or explicit guided verification mode.`
+        );
+        return;
+      }
     }
 
     // 5. Master Challenge Score Verification:
@@ -919,9 +942,18 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       getStoredItem('omega_completed_lessons'),
       VALID_CURRICULUM_LESSON_IDS
     );
-    const completedLess = sanitizeCompletedLessonsSequence(rawCompletedLessons);
+    const sanitizedLessons = sanitizeCompletedLessonsSequence(rawCompletedLessons);
+    const parsedProgress = safeParseLessonProgress(getStoredItem('omega_lesson_progress'), sanitizedLessons);
+
+    // Sanitize completedLessons against parsedProgress to reject forged completions where quiz or task was not passed
+    const verifiedCompletedLessons = sanitizeCompletedLessonsSequence(
+      sanitizedLessons.filter((lId) => {
+        const prog = parsedProgress[lId];
+        return prog && prog.isQuizPassed === true && prog.isTaskPassed === true;
+      })
+    );
+
     const activeLesson = safeParseActiveLessonId(getStoredItem('omega_active_lesson_id'));
-    const parsedProgress = safeParseLessonProgress(getStoredItem('omega_lesson_progress'), completedLess);
 
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -930,7 +962,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     set({
       language: lang,
       completedChallenges: completed,
-      completedLessons: completedLess,
+      completedLessons: verifiedCompletedLessons,
       activeLessonId: activeLesson,
       lessonProgress: parsedProgress,
     });

@@ -316,7 +316,7 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       const store = useSimulationStore.getState();
       useSimulationStore.setState({ activeSimulationId: 'cia_triad' });
 
-      store.completeChallenge('cia-balance-challenge', { success: true });
+      store.completeChallenge('cia-balance-challenge', { success: true, verificationMode: 'guided' });
       expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
     });
   });
@@ -543,6 +543,82 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       expect(parsed['lesson-01-cia-triad'].furthestUnlockedStage).toBe(6);
       expect(parsed['lesson-01-cia-triad'].isQuizPassed).toBe(true);
       expect(parsed['lesson-01-cia-triad'].isTaskPassed).toBe(true);
+    });
+
+    it('DEFECT 1 HARDENING: Rejects forged completedLessons when lesson progress explicitly records unpassed quiz or task', () => {
+      // Tampered localStorage: lesson-01 added to completed_lessons, but progress shows quiz not passed
+      const tamperedProgress = JSON.stringify({
+        'lesson-01-cia-triad': {
+          currentStage: 3,
+          furthestUnlockedStage: 3,
+          isQuizPassed: false,
+          isTaskPassed: true,
+        },
+      });
+
+      localStorage.setItem('omega_completed_lessons', JSON.stringify(['lesson-01-cia-triad']));
+      localStorage.setItem('omega_lesson_progress', tamperedProgress);
+
+      const store = useSimulationStore.getState();
+      store.reloadFromStorage();
+
+      // Forged completion must be pruned from completedLessons
+      expect(useSimulationStore.getState().completedLessons).not.toContain('lesson-01-cia-triad');
+      expect(useSimulationStore.getState().completedLessons).toHaveLength(0);
+
+      // Lesson progress must reflect actual recorded progress without fabricated stage 6
+      const prog = useSimulationStore.getState().lessonProgress['lesson-01-cia-triad'];
+      expect(prog.currentStage).toBe(3);
+      expect(prog.isQuizPassed).toBe(false);
+      expect(prog.isTaskPassed).toBe(true);
+    });
+
+    it('DEFECT 2 HARDENING: Technical challenge without validator requires explicit guided verification mode', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'cia_triad', completedChallenges: [] });
+
+      // 1. Bare { success: true } without registered validator and without verificationMode -> REJECT
+      store.completeChallenge('cia-balance-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('cia-balance-challenge');
+
+      // 2. Explicit guided verificationMode -> ACCEPT for non-master challenge
+      store.completeChallenge('cia-balance-challenge', { success: true, verificationMode: 'guided' });
+      expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
+
+      // 3. Master challenge with guided mode -> REJECT (Master challenges require registered validator)
+      useSimulationStore.setState({ activeSimulationId: 'linux', completedChallenges: [] });
+      store.completeChallenge('linux-hardening', { success: true, verificationMode: 'guided' });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('linux-hardening');
+    });
+
+    it('DEFECT 3 HARDENING: Master challenge score boundary checks (99.9 vs 100 vs 100.1)', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeSimulationId: 'linux', completedChallenges: [] });
+
+      // Boundary 1: 99.9 -> REJECT
+      store.registerChallengeValidator('linux-hardening', () => ({
+        success: true,
+        score: 99.9,
+      }));
+      store.completeChallenge('linux-hardening', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('linux-hardening');
+
+      // Boundary 2: 100 -> ACCEPT
+      store.registerChallengeValidator('linux-hardening', () => ({
+        success: true,
+        score: 100,
+      }));
+      store.completeChallenge('linux-hardening', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).toContain('linux-hardening');
+
+      // Boundary 3: 100.1 -> ACCEPT (score >= 100)
+      useSimulationStore.setState({ completedChallenges: [] });
+      store.registerChallengeValidator('linux-hardening', () => ({
+        success: true,
+        score: 100.1,
+      }));
+      store.completeChallenge('linux-hardening', { success: true, score: 100 });
+      expect(useSimulationStore.getState().completedChallenges).toContain('linux-hardening');
     });
   });
 });

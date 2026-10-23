@@ -53,7 +53,7 @@ const DevSecOpsSimulation = React.lazy(() =>
   import('./devsecops/DevSecOpsSimulation').then((m) => ({ default: m.DevSecOpsSimulation }))
 );
 const ThreatHuntingSimulation = React.lazy(() =>
-  import('./threat/ThreatHuntingSimulation').then((m) => ({ default: m.ThreatHuntingSimulation }))
+  import('./threat/ThreatHuntingSimulation').then((m) => ({ default: m.ThreatHuntingSimulation || m.default }))
 );
 const ZeroTrustSimulation = React.lazy(() =>
   import('./architecture/ZeroTrustSimulation').then((m) => ({ default: m.ZeroTrustSimulation }))
