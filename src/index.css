@@ -71,11 +71,11 @@
   }
   
   .cyber-button-primary {
-    @apply px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-all active:scale-95 font-bold text-xs uppercase tracking-wider;
+    @apply px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-all active:scale-95 font-bold text-xs uppercase tracking-wider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950;
   }
 
   .cyber-input {
-    @apply bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all;
+    @apply bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/80 focus:border-cyan-400 transition-all;
   }
 }
 

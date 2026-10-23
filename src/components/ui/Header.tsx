@@ -84,6 +84,7 @@ export const Header: React.FC = () => {
   const setDevSecOpsTab = useDevSecOpsStore((s) => s.setActiveTab);
 
   const [labsOpen, setLabsOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const t = translations[language];
@@ -94,8 +95,18 @@ export const Header: React.FC = () => {
         setLabsOpen(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLabsOpen(false);
+        setMobileNavOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const labsList: { id: SimulationId; nameAr: string; nameEn: string; icon: any; category: string }[] = [
@@ -344,22 +355,69 @@ export const Header: React.FC = () => {
         </button>
 
         {!isLabActive && (
-          <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
+          <>
+            <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 shadow-inner">
+              <button
+                onClick={() => setMode('guided')}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${mode === 'guided' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {language === 'ar' ? 'موجه' : 'Guided'}
+              </button>
+              <button
+                onClick={() => setMode('sandbox')}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${mode === 'sandbox' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {language === 'ar' ? 'حر' : 'Sandbox'}
+              </button>
+            </div>
+
             <button
-              onClick={() => setMode('guided')}
-              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${mode === 'guided' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+              onClick={() => setMobileNavOpen(!mobileNavOpen)}
+              className="md:hidden h-8 w-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 flex items-center justify-center hover:text-cyan-400"
+              aria-label={mobileNavOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
+              aria-expanded={mobileNavOpen}
             >
-              {language === 'ar' ? 'موجه' : 'Guided'}
+              {mobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
-            <button
-              onClick={() => setMode('sandbox')}
-              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${mode === 'sandbox' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              {language === 'ar' ? 'حر' : 'Sandbox'}
-            </button>
-          </div>
+          </>
         )}
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      {!isLabActive && mobileNavOpen && (
+        <div className="md:hidden fixed inset-x-0 top-12 bg-slate-950/95 border-b border-slate-800 backdrop-blur-xl p-3 shadow-2xl z-50 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+          {universeNav.map((item) => {
+            const isActive = activeSimulationId === item.id;
+            const NavIcon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveSimulation(item.id);
+                  setMobileNavOpen(false);
+                }}
+                className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-bold transition-all ${
+                  isActive
+                    ? item.isHighlight
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                    : 'text-slate-300 hover:bg-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <NavIcon className={`w-4 h-4 ${item.isHighlight ? 'text-emerald-400' : 'text-cyan-400'}`} />
+                  <span>{language === 'ar' ? item.labelAr : item.labelEn}</span>
+                </div>
+                {item.isHighlight && (
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 uppercase">
+                    Start
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </header>
   );
 };

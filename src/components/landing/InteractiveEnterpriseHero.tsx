@@ -427,13 +427,25 @@ export const InteractiveEnterpriseHero: React.FC = () => {
 
           {/* Node 1: External Internet WAN (World 03) */}
           <div
+            tabIndex={0}
+            role="button"
+            aria-label={language === 'ar' ? 'الإنترنت العام (WAN Gateway) - World 03' : 'Public Internet (WAN) - World 03'}
             onClick={() => {
               selectEntity('node', 'wan', {
                 name: language === 'ar' ? 'الإنترنت العام (WAN Gateway)' : 'Public Internet (WAN)',
                 details: language === 'ar' ? 'مصدر تدفق الحزم الواردة والطلبات الشرعية ومحاولات الاستطلاع الخبيثة.' : 'Source of ingress traffic, legitimate user requests, and port scans.',
               });
             }}
-            className="relative z-10 flex flex-col items-center cursor-pointer group"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectEntity('node', 'wan', {
+                  name: language === 'ar' ? 'الإنترنت العام (WAN Gateway)' : 'Public Internet (WAN)',
+                  details: language === 'ar' ? 'مصدر تدفق الحزم الواردة والطلبات الشرعية ومحاولات الاستطلاع الخبيثة.' : 'Source of ingress traffic, legitimate user requests, and port scans.',
+                });
+              }
+            }}
+            className="relative z-10 flex flex-col items-center cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-2xl"
           >
             <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-cyan-950/90 border-2 border-cyan-500/80 flex items-center justify-center shadow-lg shadow-cyan-950/50 group-hover:scale-105 transition-transform">
               <Globe className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
@@ -447,6 +459,9 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           {/* Node 2: Perimeter Firewall (World 04) */}
           <div
             data-testid="hero-node-firewall"
+            tabIndex={0}
+            role="button"
+            aria-label={language === 'ar' ? 'جدار الحماية المحيطي (Edge Firewall) - World 04' : 'Perimeter Firewall - World 04'}
             onClick={() => {
               selectEntity('node', 'fw-01', {
                 name: language === 'ar' ? 'جدار الحماية المحيطي (Edge Firewall)' : 'Perimeter Firewall',
@@ -456,7 +471,19 @@ export const InteractiveEnterpriseHero: React.FC = () => {
                 recordOnboardingAction('inspect_firewall');
               }
             }}
-            className="relative z-10 flex flex-col items-center cursor-pointer group"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectEntity('node', 'fw-01', {
+                  name: language === 'ar' ? 'جدار الحماية المحيطي (Edge Firewall)' : 'Perimeter Firewall',
+                  details: language === 'ar' ? 'يفحص الحزم تسلسلياً (First-Match) ويطبق قواعد ACL لعزل المنافذ غير المشفرة.' : 'Inspects packets sequentially, enforcing strict stateful ACL policies.',
+                });
+                if (onboardingStep === 1) {
+                  recordOnboardingAction('inspect_firewall');
+                }
+              }
+            }}
+            className="relative z-10 flex flex-col items-center cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-2xl"
           >
             <div
               className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center border-2 shadow-xl group-hover:scale-105 transition-all ${
@@ -477,13 +504,25 @@ export const InteractiveEnterpriseHero: React.FC = () => {
 
           {/* Node 3: Web Server & AppSec (World 08/09) */}
           <div
+            tabIndex={0}
+            role="button"
+            aria-label={language === 'ar' ? 'خادم التطبيقات والويب Nginx - World 08 / #09' : 'Web & App Server - World 08 / #09'}
             onClick={() => {
               selectEntity('node', 'web-01', {
                 name: language === 'ar' ? 'خادم التطبيقات والويب Nginx' : 'Web & App Server',
                 details: language === 'ar' ? 'يستقبل طلبات HTTP/HTTPS ويتحقق من مدخلات المستخدمين لمنع ثغرات الحقن SQLi/XSS.' : 'Handles HTTP lifecycles, terminates TLS, and enforces input sanitization.',
               });
             }}
-            className="relative z-10 flex flex-col items-center cursor-pointer group"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectEntity('node', 'web-01', {
+                  name: language === 'ar' ? 'خادم التطبيقات والويب Nginx' : 'Web & App Server',
+                  details: language === 'ar' ? 'يستقبل طلبات HTTP/HTTPS ويتحقق من مدخلات المستخدمين لمنع ثغرات الحقن SQLi/XSS.' : 'Handles HTTP lifecycles, terminates TLS, and enforces input sanitization.',
+                });
+              }
+            }}
+            className="relative z-10 flex flex-col items-center cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-2xl"
           >
             <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-indigo-950/90 border-2 border-indigo-500/80 flex items-center justify-center shadow-lg shadow-indigo-950/50 group-hover:scale-105 transition-transform">
               <Server className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-400" />
@@ -496,13 +535,25 @@ export const InteractiveEnterpriseHero: React.FC = () => {
 
           {/* Node 4: Database & IAM/Kerberos (World 07/16) */}
           <div
+            tabIndex={0}
+            role="button"
+            aria-label={language === 'ar' ? 'قاعدة البيانات وActive Directory - World 07 / #16' : 'Database & Directory - World 07 / #16'}
             onClick={() => {
               selectEntity('node', 'db-cluster', {
                 name: language === 'ar' ? 'قاعدة البيانات وActive Directory' : 'Database & Directory',
                 details: language === 'ar' ? 'تخزين مشفر مع مصادقة Kerberos وصلاحيات وصول قائمة على الأدوار RBAC.' : 'Encrypted PostgreSQL storage protected by Kerberos authentication & RBAC.',
               });
             }}
-            className="relative z-10 flex flex-col items-center cursor-pointer group"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectEntity('node', 'db-cluster', {
+                  name: language === 'ar' ? 'قاعدة البيانات وActive Directory' : 'Database & Directory',
+                  details: language === 'ar' ? 'تخزين مشفر مع مصادقة Kerberos وصلاحيات وصول قائمة على الأدوار RBAC.' : 'Encrypted PostgreSQL storage protected by Kerberos authentication & RBAC.',
+                });
+              }
+            }}
+            className="relative z-10 flex flex-col items-center cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-2xl"
           >
             <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-purple-950/90 border-2 border-purple-500/80 flex items-center justify-center shadow-lg shadow-purple-950/50 group-hover:scale-105 transition-transform">
               <Database className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400" />
@@ -515,13 +566,25 @@ export const InteractiveEnterpriseHero: React.FC = () => {
 
           {/* Node 5: SOC & SIEM Correlation (World 24) */}
           <div
+            tabIndex={0}
+            role="button"
+            aria-label={language === 'ar' ? 'مركز العمليات SOC وربط SIEM - World 24' : 'SOC & SIEM Correlation - World 24'}
             onClick={() => {
               selectEntity('node', 'siem-engine', {
                 name: language === 'ar' ? 'مركز العمليات SOC وربط SIEM' : 'SOC & SIEM Correlation',
                 details: language === 'ar' ? 'يحلل تدفق السجلات الحية ويكتشف الهجمات المعقدة عبر نوافذ الارتباط الزمني.' : 'Ingests telemetry stream, evaluates correlation rules, and triggers containment.',
               });
             }}
-            className="relative z-10 flex flex-col items-center cursor-pointer group"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectEntity('node', 'siem-engine', {
+                  name: language === 'ar' ? 'مركز العمليات SOC وربط SIEM' : 'SOC & SIEM Correlation',
+                  details: language === 'ar' ? 'يحلل تدفق السجلات الحية ويكتشف الهجمات المعقدة عبر نوافذ الارتباط الزمني.' : 'Ingests telemetry stream, evaluates correlation rules, and triggers containment.',
+                });
+              }
+            }}
+            className="relative z-10 flex flex-col items-center cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-2xl"
           >
             <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-rose-950/90 border-2 border-rose-500/80 flex items-center justify-center shadow-lg shadow-rose-950/50 group-hover:scale-105 transition-transform">
               <Activity className="w-6 h-6 sm:w-7 sm:h-7 text-rose-400" />
