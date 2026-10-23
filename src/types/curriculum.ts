@@ -123,6 +123,31 @@ export interface CurriculumLesson {
   nextStep: CurriculumNextStep;
 }
 
+export interface CurriculumModule {
+  id: string;
+  titleAr: string;
+  titleEn: string;
+  descriptionAr?: string;
+  descriptionEn?: string;
+  lessonIds: string[];
+}
+
+export interface CurriculumLevel {
+  id: string;
+  levelNumber: number; // 0 to 10
+  slug: string;
+  titleAr: string;
+  titleEn: string;
+  subtitleAr: string;
+  subtitleEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  estimatedMinutes: number;
+  iconName: string;
+  primarySimulationId: SimulationId;
+  modules: CurriculumModule[];
+}
+
 export interface CurriculumMilestone {
   id: number;
   slug: string;

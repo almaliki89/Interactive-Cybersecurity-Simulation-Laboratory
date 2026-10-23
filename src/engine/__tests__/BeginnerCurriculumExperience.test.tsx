@@ -26,10 +26,10 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
   });
 
   describe('Curriculum Data Integrity', () => {
-    it('contains all 10 sequential foundational milestones', () => {
-      expect(CURRICULUM_MILESTONES).toHaveLength(10);
+    it('contains all 11 sequential foundational milestones (Level 0 to Level 10)', () => {
+      expect(CURRICULUM_MILESTONES).toHaveLength(11);
       CURRICULUM_MILESTONES.forEach((milestone, idx) => {
-        expect(milestone.id).toBe(idx + 1);
+        expect(milestone.id).toBe(idx);
         expect(milestone.titleAr).toBeTruthy();
         expect(milestone.titleEn).toBeTruthy();
         expect(milestone.subtitleAr).toBeTruthy();
@@ -99,8 +99,8 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
     it('renders the LessonView in Arabic by default with all milestones and stage tabs', () => {
       render(<LessonView />);
 
-      // Milestone title check (can be in sidebar and header)
-      const titleMatches = screen.getAllByText(/التعرف إلى الأمن السيبراني وثالوث الحماية الأساسي/i);
+      // Milestone / Lesson title check (can be in sidebar and header)
+      const titleMatches = screen.getAllByText(/الدرس الأول: مدخل إلى ثالوث الحماية الأساسي/i);
       expect(titleMatches.length).toBeGreaterThanOrEqual(1);
 
       // Stage tabs present
@@ -497,28 +497,31 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
 
       render(<LessonView />);
 
-      // Exactly 1 valid lesson out of 10 should be 10%
-      expect(screen.getByText(/10% \(1\/10\)/i)).toBeDefined();
+      const totalCount = Object.keys(CURRICULUM_LESSONS).length;
+      const expectedPercent = Math.round((1 / totalCount) * 100);
+      expect(screen.getByText(new RegExp(`${expectedPercent}% \\(1\\/${totalCount}\\)`, 'i'))).toBeDefined();
     });
 
     it('does not count active lesson as completed until it is actually finished', () => {
+      const totalCount = Object.keys(CURRICULUM_LESSONS).length;
       useSimulationStore.setState({
         activeLessonId: 'lesson-01-cia-triad',
         completedLessons: [],
       });
 
       render(<LessonView />);
-      expect(screen.getByText(/0% \(0\/10\)/i)).toBeDefined();
+      expect(screen.getByText(new RegExp(`0% \\(0\\/${totalCount}\\)`, 'i'))).toBeDefined();
     });
 
     it('never exceeds 100% even if extra valid/duplicate lessons are reported', () => {
       const allLessons = Object.keys(CURRICULUM_LESSONS);
+      const totalCount = allLessons.length;
       useSimulationStore.setState({
         completedLessons: [...allLessons, ...allLessons, 'extra-invalid-id'],
       });
 
       render(<LessonView />);
-      expect(screen.getByText(/100% \(10\/10\)/i)).toBeDefined();
+      expect(screen.getByText(new RegExp(`100% \\(${totalCount}\\/${totalCount}\\)`, 'i'))).toBeDefined();
     });
 
     it('safely handles corrupted lessonProgress storage and bounds stages', () => {

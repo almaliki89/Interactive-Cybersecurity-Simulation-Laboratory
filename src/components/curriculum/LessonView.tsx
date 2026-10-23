@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSimulationStore, SimulationId } from '../../stores/simulationStore';
-import { CURRICULUM_MILESTONES, CURRICULUM_LESSONS } from '../../data/curriculumData';
+import { CURRICULUM_MILESTONES, CURRICULUM_LESSONS, CURRICULUM_LEVELS } from '../../data/curriculumData';
 import { CurriculumLesson, CurriculumMilestone } from '../../types/curriculum';
 import {
   Shield,
@@ -303,10 +303,10 @@ export const LessonView: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xs font-bold text-white tracking-wide">
-                {isAr ? 'مسار المبتدئين خطوة بخطوة' : 'Beginner Learning Track'}
+                {isAr ? 'مسار التعلم التدرجي الشامل' : 'Progressive Learning Path'}
               </h2>
               <span className="text-[10px] text-cyan-400 font-mono">
-                {isAr ? '10 محطات تأسيسية متسلسلة' : '10 Step-by-Step Milestones'}
+                {isAr ? '11 مستوًى من الصفر إلى الاحتراف' : '11 Levels (Level 0 to Level 10)'}
               </span>
             </div>
           </div>
@@ -337,67 +337,95 @@ export const LessonView: React.FC = () => {
           </div>
         </div>
 
-        {/* Milestone List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-          {CURRICULUM_MILESTONES.map((milestone) => {
-            const IconComp = getMilestoneIcon(milestone.iconName);
-            const isMilestoneActive = milestone.id === currentMilestone.id;
-            const isMilestoneDone = milestone.lessonIds.every((lid) => completedLessons.includes(lid));
-            const primaryLessonId = milestone.lessonIds[0];
+        {/* Level List */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar">
+          {CURRICULUM_LEVELS.map((level) => {
+            const IconComp = getMilestoneIcon(level.iconName);
+            const levelLessonIds = level.modules.flatMap((m) => m.lessonIds);
+            const isLevelActive = levelLessonIds.includes(activeLessonId);
+            const isLevelDone = levelLessonIds.every((lid) => completedLessons.includes(lid));
 
             return (
-              <button
-                key={milestone.id}
-                onClick={() => handleChangeLesson(primaryLessonId)}
-                className={`w-full p-3 rounded-xl border text-left rtl:text-right transition-all flex items-start gap-3 group ${
-                  isMilestoneActive
-                    ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-200 shadow-md shadow-cyan-950/40'
-                    : isMilestoneDone
-                    ? 'bg-slate-950/40 border-emerald-900/40 hover:border-emerald-700/60 text-slate-300'
-                    : 'bg-slate-950/20 border-slate-800/60 hover:border-slate-700 hover:bg-slate-900/40 text-slate-400'
+              <div
+                key={level.id}
+                className={`rounded-xl border transition-all ${
+                  isLevelActive
+                    ? 'bg-cyan-500/10 border-cyan-500/40 shadow-md shadow-cyan-950/40'
+                    : isLevelDone
+                    ? 'bg-slate-950/40 border-emerald-900/40 hover:border-emerald-700/60'
+                    : 'bg-slate-950/20 border-slate-800/60 hover:border-slate-700'
                 }`}
               >
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                    isMilestoneActive
-                      ? 'bg-cyan-500 text-slate-950 shadow-sm'
-                      : isMilestoneDone
-                      ? 'bg-emerald-950 border border-emerald-800 text-emerald-400'
-                      : 'bg-slate-900 border border-slate-800 text-slate-500 group-hover:text-slate-300'
-                  }`}
-                >
-                  {isMilestoneDone ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <IconComp className="w-4 h-4" />
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <span
-                      className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
-                        isMilestoneActive ? 'text-cyan-400' : 'text-slate-500'
-                      }`}
-                    >
-                      {isAr ? `المحطة ${milestone.id}` : `Milestone ${milestone.id}`}
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-500">
-                      ~{milestone.estimatedMinutes}m
-                    </span>
-                  </div>
-                  <h3
-                    className={`text-xs font-bold leading-snug line-clamp-2 ${
-                      isMilestoneActive ? 'text-white' : 'text-slate-300 group-hover:text-white'
+                {/* Level Main Header */}
+                <div className="p-3 flex items-start gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                      isLevelActive
+                        ? 'bg-cyan-500 text-slate-950 shadow-sm font-bold'
+                        : isLevelDone
+                        ? 'bg-emerald-950 border border-emerald-800 text-emerald-400'
+                        : 'bg-slate-900 border border-slate-800 text-slate-500'
                     }`}
                   >
-                    {isAr ? milestone.titleAr : milestone.titleEn}
-                  </h3>
-                  <p className="text-[10px] text-slate-500 line-clamp-1 mt-1">
-                    {isAr ? milestone.subtitleAr : milestone.subtitleEn}
-                  </p>
+                    {isLevelDone ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <IconComp className="w-4 h-4" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                      <span
+                        className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
+                          isLevelActive ? 'text-cyan-400' : 'text-slate-500'
+                        }`}
+                      >
+                        {isAr ? `المستوى ${level.levelNumber}` : `Level ${level.levelNumber}`}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        ~{level.estimatedMinutes}m
+                      </span>
+                    </div>
+                    <h3
+                      className={`text-xs font-bold leading-snug line-clamp-2 ${
+                        isLevelActive ? 'text-white' : 'text-slate-300'
+                      }`}
+                    >
+                      {isAr ? level.titleAr : level.titleEn}
+                    </h3>
+                  </div>
                 </div>
-              </button>
+
+                {/* Sub-Lessons List under this Level */}
+                <div className="px-3 pb-2.5 pt-0 space-y-1 border-t border-slate-800/50 mt-1">
+                  {levelLessonIds.map((lid) => {
+                    const lessonObj = CURRICULUM_LESSONS[lid];
+                    if (!lessonObj) return null;
+                    const isLessonSelected = activeLessonId === lid;
+                    const isLessonFinished = completedLessons.includes(lid);
+
+                    return (
+                      <button
+                        key={lid}
+                        onClick={() => handleChangeLesson(lid)}
+                        className={`w-full text-left rtl:text-right px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                          isLessonSelected
+                            ? 'bg-cyan-500/20 text-cyan-200 font-bold border border-cyan-500/30'
+                            : isLessonFinished
+                            ? 'text-emerald-400/90 hover:bg-slate-800/50'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                        }`}
+                      >
+                        <span className="line-clamp-1 flex-1">
+                          {isAr ? lessonObj.titleAr : lessonObj.titleEn}
+                        </span>
+                        {isLessonFinished && <Check className="w-3 h-3 text-emerald-400 shrink-0 ml-1 rtl:mr-1" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
@@ -813,6 +841,41 @@ export const LessonView: React.FC = () => {
                     : currentLesson.guidedTask.whyWeDoThisEn}
                 </p>
               </div>
+
+              {/* Independent Challenge Card */}
+              {currentLesson.independentChallengeDetail && (
+                <div className="p-5 rounded-2xl bg-amber-950/20 border border-amber-800/50 space-y-3">
+                  <div className="flex items-center gap-2.5 text-amber-400">
+                    <Sparkles className="w-5 h-5 shrink-0" />
+                    <h3 className="text-sm font-bold tracking-wide uppercase font-mono">
+                      {isAr
+                        ? currentLesson.independentChallengeDetail.titleAr
+                        : currentLesson.independentChallengeDetail.titleEn}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-amber-200/90 leading-relaxed">
+                    <strong className="block mb-1 font-semibold text-amber-300">
+                      {isAr ? 'سيناريو التحدي المستقل:' : 'Independent Challenge Scenario:'}
+                    </strong>
+                    {isAr
+                      ? currentLesson.independentChallengeDetail.scenarioAr
+                      : currentLesson.independentChallengeDetail.scenarioEn}
+                  </p>
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-900/40 text-xs text-amber-300 flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                    <div>
+                      <strong className="block text-white mb-0.5">
+                        {isAr ? 'النتيجة والمخرج المستهدف:' : 'Target Outcome:'}
+                      </strong>
+                      <span>
+                        {isAr
+                          ? currentLesson.independentChallengeDetail.targetOutcomeAr
+                          : currentLesson.independentChallengeDetail.targetOutcomeEn}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Step-by-Step Reference Steps (clearly labeled as self-organization, NOT automated proof) */}
               <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-3">
