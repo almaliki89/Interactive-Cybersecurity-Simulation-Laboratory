@@ -28,11 +28,11 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await heroBeginnerBtn.click();
 
     // 2. Verified on Curriculum / Lesson View
-    const curriculumHeading = page.getByText(/10 محطات تأسيسية متسلسلة/i).first();
+    const curriculumHeading = page.getByText(/11 مستوًى من الصفر إلى الاحتراف/i).first();
     await expect(curriculumHeading).toBeVisible({ timeout: 10000 });
 
     // Active lesson 1 title should be visible
-    const milestoneTitle = page.getByText(/التعرف إلى الأمن السيبراني وثالوث الحماية الأساسي/i).first();
+    const milestoneTitle = page.getByText(/الدرس الأول: مدخل إلى ثالوث الحماية الأساسي/i).first();
     await expect(milestoneTitle).toBeVisible();
 
     // 3. Navigate through Pedagogical Stages
@@ -150,12 +150,12 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await completeLessonBtn.click();
 
     // Lesson 1 is completed and advances to Lesson 2 (System Internals)
-    await expect(page.getByText(/المحطة 2 من 10/i).first()).toBeVisible();
+    await expect(page.getByText(/المحطة 1 من 10/i).first()).toBeVisible();
 
     // Verify reload persistence after lesson completion
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.getByText(/المحطة 2 من 10/i).first()).toBeVisible();
+    await expect(page.getByText(/المحطة 1 من 10/i).first()).toBeVisible();
 
     // 8. Verify Exploratory Lesson with Honest Guided Manual Confirmation (Lesson 6)
     // NOTE: To jump to Lesson 6, we MUST fulfill prerequisites because of OMEGA MAX integrity rules
@@ -171,10 +171,10 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await page.reload();
 
     // Re-verify we are in lesson mode
-    await expect(page.getByText(/10 محطات تأسيسية متسلسلة/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/11 مستوًى من الصفر إلى الاحتراف/i).first()).toBeVisible({ timeout: 15000 });
 
     // Jump to Lesson 6 (Active Directory & Kerberos) from sidebar
-    const milestone6Btn = page.getByText(/6\. الهوية والمصادقة/i).first();
+    const milestone6Btn = page.getByText(/5\. الهوية والمصادقة/i).first();
     await expect(milestone6Btn).toBeVisible({ timeout: 15000 });
     await milestone6Btn.click();
 
@@ -224,7 +224,7 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await expect(startHereNavBtn).toBeVisible({ timeout: 10000 });
     await startHereNavBtn.click();
 
-    await expect(page.getByText(/10 محطات تأسيسية متسلسلة/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/11 مستوًى من الصفر إلى الاحتراف/i).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('executes real browser UI onboarding flow: negative checks, step progression, completion evidence, and reload persistence', async ({ page }) => {

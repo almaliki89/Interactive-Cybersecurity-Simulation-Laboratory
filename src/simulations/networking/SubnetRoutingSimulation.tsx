@@ -11,6 +11,8 @@ import {
   Radio,
 } from 'lucide-react';
 
+import { isSameSubnet } from '../../utils/networkUtils';
+
 export const SubnetRoutingSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
 
@@ -79,26 +81,31 @@ export const SubnetRoutingSimulation: React.FC = () => {
   };
 
   const handleTransmitPacket = () => {
+    const hostIp = '192.168.1.42';
+    const gatewayIp = '192.168.1.1';
+    
     setPacketState('transmitting');
     setPacketLog([
-      `[00:00.000] HOST_PC (192.168.1.42) -> Crafting TCP SYN (Port 443 -> Destination 93.184.216.34)`,
-      `[00:00.015] ARP Table -> Resolving Gateway 192.168.1.1 (MAC 00:1A:2B:3C:4D:01)`,
+      `[00:00.000] HOST_PC (${hostIp}) -> Crafting TCP SYN (Port 443 -> Destination 93.184.216.34)`,
+      `[00:00.015] ARP Table -> Resolving Gateway ${gatewayIp} (MAC 00:1A:2B:3C:4D:01)`,
     ]);
 
     setTimeout(() => {
-      if (cidrPrefix > 26) {
+      const sameSubnet = isSameSubnet(hostIp, gatewayIp, cidrPrefix);
+      
+      if (!sameSubnet) {
         setPacketState('blocked');
         setPacketLog((prev) => [
           ...prev,
-          `[00:00.040] ROUTER_HOP (192.168.1.1) -> DROPPED: Host IP 192.168.1.42 is outside Gateway local subnet boundary /${cidrPrefix}`,
-          `[ERROR] Destination unreachable: Host 192.168.1.42 lies in subnet 192.168.1.32/${cidrPrefix}, while Gateway 192.168.1.1 lies in 192.168.1.0/${cidrPrefix}.`,
+          `[00:00.040] ROUTER_HOP (${gatewayIp}) -> DROPPED: Host IP ${hostIp} is outside Gateway local subnet boundary /${cidrPrefix}`,
+          `[ERROR] Destination unreachable: Host ${hostIp} and Gateway ${gatewayIp} are in different subnets under /${cidrPrefix} prefix.`,
         ]);
         return;
       }
 
       setPacketLog((prev) => [
         ...prev,
-        `[00:00.040] ROUTER_HOP (192.168.1.1) -> Forwarding packet to Firewall Egress Interface (203.0.113.1)`,
+        `[00:00.040] ROUTER_HOP (${gatewayIp}) -> Forwarding packet to Firewall Egress Interface (203.0.113.1)`,
       ]);
 
       setTimeout(() => {
@@ -106,14 +113,14 @@ export const SubnetRoutingSimulation: React.FC = () => {
           setPacketState('blocked');
           setPacketLog((prev) => [
             ...prev,
-            `[00:00.080] FIREWALL (203.0.113.1) -> DROPPED: Egress NAT is DISABLED. RFC 1918 Private IP (192.168.1.42) rejected by WAN router.`,
+            `[00:00.080] FIREWALL (203.0.113.1) -> DROPPED: Egress NAT is DISABLED. RFC 1918 Private IP (${hostIp}) rejected by WAN router.`,
             `[HYPOTHESIS] Enable NAT Gateway to translate private internal IPs to public WAN IP 203.0.113.1.`,
           ]);
         } else {
           setPacketState('success');
           setPacketLog((prev) => [
             ...prev,
-            `[00:00.080] NAT_TABLE -> Translated 192.168.1.42:54201 -> 203.0.113.1:50001`,
+            `[00:00.080] NAT_TABLE -> Translated ${hostIp}:54201 -> 203.0.113.1:50001`,
             `[00:00.120] WAN_SERVER (93.184.216.34:443) -> Received TCP SYN, responded TCP SYN-ACK`,
             `[00:00.150] SUCCESS: 3-Way Handshake Completed (HTTP 200 OK) via /${cidrPrefix} Subnet & NAT Gateway!`,
           ]);

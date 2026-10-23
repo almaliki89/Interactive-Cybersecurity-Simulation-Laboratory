@@ -220,6 +220,7 @@ export const getStoredItem = (key: string): string | null => {
 };
 
 export const VALID_CURRICULUM_LESSON_IDS = new Set([
+  'lesson-00-orientation',
   'lesson-01-cia-triad',
   'lesson-02-system-internals',
   'lesson-03-subnet-routing',
@@ -233,6 +234,7 @@ export const VALID_CURRICULUM_LESSON_IDS = new Set([
 ]);
 
 export const LESSON_SEQUENCE = [
+  'lesson-00-orientation',
   'lesson-01-cia-triad',
   'lesson-02-system-internals',
   'lesson-03-subnet-routing',

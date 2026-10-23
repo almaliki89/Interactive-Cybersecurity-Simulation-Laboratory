@@ -92,7 +92,7 @@ export const LearningPathsView: React.FC = () => {
               {language === 'ar' ? 'المسار الإلزامي الأول للمبتدئين' : 'Recommended Starting Point for Beginners'}
             </div>
             <h2 className="text-base sm:text-lg font-bold text-white">
-              {language === 'ar' ? 'مسار التأسيس خطوة بخطوة (10 محطات تعليمية)' : 'Foundations Step-by-Step Curriculum (10 Milestones)'}
+              {language === 'ar' ? 'مسار التأسيس خطوة بخطوة (11 محطة تعليمية)' : 'Foundations Step-by-Step Curriculum (11 Milestones)'}
             </h2>
             <p className="text-xs text-slate-400 max-w-xl mt-1 leading-relaxed">
               {language === 'ar'

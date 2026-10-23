@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CURRICULUM_LEVELS, CURRICULUM_MILESTONES, CURRICULUM_LESSONS } from '../../data/curriculumData';
 import { simulationRegistry } from '../../simulations/registry';
+import { isSameSubnet } from '../../utils/networkUtils';
 
 describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
   it('verifies all 11 Levels (0-10) exist sequentially in CURRICULUM_LEVELS', () => {
@@ -61,6 +62,7 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
     expect(CURRICULUM_LESSONS['lesson-02-02-subnetting-and-cidr'].nextStep.nextLessonId).toBe('lesson-03-subnet-routing');
     expect(CURRICULUM_LESSONS['lesson-03-subnet-routing'].nextStep.nextLessonId).toBe('lesson-04-firewall-rules');
     expect(CURRICULUM_LESSONS['lesson-04-firewall-rules'].nextStep.nextLessonId).toBe('lesson-05-cryptography');
+    expect(CURRICULUM_LESSONS['lesson-04-firewall-rules'].nextStep.nextLessonId).toBe('lesson-05-cryptography');
     expect(CURRICULUM_LESSONS['lesson-05-cryptography'].nextStep.nextLessonId).toBe('lesson-06-active-directory');
     expect(CURRICULUM_LESSONS['lesson-06-active-directory'].nextStep.nextLessonId).toBe('lesson-07-soc-monitoring');
     expect(CURRICULUM_LESSONS['lesson-07-soc-monitoring'].nextStep.nextLessonId).toBe('lesson-08-forensics');
@@ -112,13 +114,6 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
   });
 
   it('verifies mathematical CIDR host boundary rules for Subnet Routing (192.168.1.42 vs 192.168.1.1)', () => {
-    const isSameSubnet = (hostIp: string, gatewayIp: string, cidr: number) => {
-      const ipToLong = (ip: string) =>
-        ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
-      const mask = cidr === 0 ? 0 : (~0 << (32 - cidr)) >>> 0;
-      return (ipToLong(hostIp) & mask) === (ipToLong(gatewayIp) & mask);
-    };
-
     const hostIp = '192.168.1.42';
     const gatewayIp = '192.168.1.1';
 

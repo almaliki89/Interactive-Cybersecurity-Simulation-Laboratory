@@ -284,8 +284,8 @@ export const InteractiveEnterpriseHero: React.FC = () => {
               </div>
               <div className="text-[11px] text-emerald-300/80">
                 {language === 'ar'
-                  ? 'صممنا لك منهجاً من 10 محطات تأسيسية يرشدك خطوة بخطوة من ثالوث CIA إلى الميدان الواقعي.'
-                  : 'We built a 10-milestone foundational track guiding you step-by-step from CIA Triad to enterprise ranges.'}
+                  ? 'صممنا لك منهجاً من 11 محطة تأسيسية يرشدك خطوة بخطوة من ثالوث CIA إلى الميدان الواقعي.'
+                  : 'We built an 11-milestone foundational track guiding you step-by-step from CIA Triad to enterprise ranges.'}
               </div>
             </div>
           </div>
