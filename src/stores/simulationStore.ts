@@ -574,7 +574,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     onboardingProgress: safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')),
     onboardingStep: safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')).firewallInspected
       ? (safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')).policyAltered ? 3 : 2)
-      : 0,
+      : 1,
 
     selectedEntity: null,
     completedChallenges: safeParseCompletedChallenges(

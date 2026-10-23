@@ -58,12 +58,12 @@ export const InteractiveEnterpriseHero: React.FC = () => {
   const selectedEntity = useSimulationStore((s) => s.selectedEntity);
   const selectEntity = useSimulationStore((s) => s.selectEntity);
   const clearSelection = useSimulationStore((s) => s.clearSelection);
+  const onboardingStep = useSimulationStore((s) => s.onboardingStep);
 
   const [isPaused, setIsPaused] = useState(false);
   const [packets, setPackets] = useState<EnterprisePacket[]>([]);
   const [followedPacketId, setFollowedPacketId] = useState<string | null>(null);
   const [whatChangedDiff, setWhatChangedDiff] = useState<{ before: string; after: string; reason: string } | null>(null);
-  const [onboardingStep, setOnboardingStep] = useState<number>(1);
   const [activityStream, setActivityStream] = useState<Array<{ id: string; time: string; tag: string; messageAr: string; messageEn: string; level: 'info' | 'warn' | 'threat' | 'success' }>>([]);
 
   const nextPktId = useRef(1);
@@ -204,7 +204,6 @@ export const InteractiveEnterpriseHero: React.FC = () => {
     });
 
     if (onboardingStep === 2 && mode !== 'strict') {
-      setOnboardingStep(3);
       recordOnboardingAction('alter_policy');
       completeChallenge('orientation-guided-challenge', { success: true });
     }
@@ -429,9 +428,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           {/* Node 1: External Internet WAN (World 03) */}
           <div
             onClick={() => {
-              setSelectedHeroEntity({
-                type: 'Node',
-                id: 'wan',
+              selectEntity('node', 'wan', {
                 name: language === 'ar' ? 'الإنترنت العام (WAN Gateway)' : 'Public Internet (WAN)',
                 details: language === 'ar' ? 'مصدر تدفق الحزم الواردة والطلبات الشرعية ومحاولات الاستطلاع الخبيثة.' : 'Source of ingress traffic, legitimate user requests, and port scans.',
               });
@@ -455,7 +452,6 @@ export const InteractiveEnterpriseHero: React.FC = () => {
                 details: language === 'ar' ? 'يفحص الحزم تسلسلياً (First-Match) ويطبق قواعد ACL لعزل المنافذ غير المشفرة.' : 'Inspects packets sequentially, enforcing strict stateful ACL policies.',
               });
               if (onboardingStep === 1) {
-                setOnboardingStep(2);
                 recordOnboardingAction('inspect_firewall');
               }
             }}
@@ -481,9 +477,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           {/* Node 3: Web Server & AppSec (World 08/09) */}
           <div
             onClick={() => {
-              setSelectedHeroEntity({
-                type: 'Server',
-                id: 'web-01',
+              selectEntity('node', 'web-01', {
                 name: language === 'ar' ? 'خادم التطبيقات والويب Nginx' : 'Web & App Server',
                 details: language === 'ar' ? 'يستقبل طلبات HTTP/HTTPS ويتحقق من مدخلات المستخدمين لمنع ثغرات الحقن SQLi/XSS.' : 'Handles HTTP lifecycles, terminates TLS, and enforces input sanitization.',
               });
