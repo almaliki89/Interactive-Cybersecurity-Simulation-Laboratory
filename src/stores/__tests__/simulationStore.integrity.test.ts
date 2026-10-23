@@ -608,42 +608,52 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
     });
 
-    it('INSTRUCTIONAL INTEGRITY: Rejects completion without activity evidence, blocks setter manipulation, sanitizes storage tampering, accepts legitimate activity progression', () => {
+    it('INSTRUCTIONAL INTEGRITY: Rejects completion without activity evidence, blocks manipulation, sanitizes storage, accepts legitimate evidence-backed progression', () => {
       const store = useSimulationStore.getState();
       useSimulationStore.setState({
         activeSimulationId: 'landing',
         onboardingProgress: { firewallInspected: false, policyAltered: false },
         onboardingStep: 0,
         completedChallenges: [],
+        selectedEntity: null,
+        landingFirewallMode: 'strict',
       });
 
       // 1. NEGATIVE: Calling completeChallenge with { success: true } before activities -> REJECT
       store.completeChallenge('orientation-guided-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).not.toContain('orientation-guided-challenge');
 
-      // 2. NEGATIVE: Attempting to call setOnboardingStep(2) or (3) directly or sequentially without action evidence -> REJECT
-      store.setOnboardingStep(1);
-      store.setOnboardingStep(2);
-      store.setOnboardingStep(3);
-      expect(useSimulationStore.getState().onboardingStep).toBe(1);
-      store.completeChallenge('orientation-guided-challenge', { success: true });
-      expect(useSimulationStore.getState().completedChallenges).not.toContain('orientation-guided-challenge');
+      // 2. NEGATIVE: Attempting to record 'inspect_firewall' without actually selecting the firewall node -> REJECT
+      store.recordOnboardingAction('inspect_firewall');
+      expect(useSimulationStore.getState().onboardingProgress.firewallInspected).toBe(false);
 
-      // 3. NEGATIVE: Attempting to record 'alter_policy' before 'inspect_firewall' -> REJECTED BY STATE MACHINE
+      // 3. NEGATIVE: Attempting to record 'alter_policy' before 'inspect_firewall' is verified -> REJECT
+      store.setLandingFirewallMode('block_all');
       store.recordOnboardingAction('alter_policy');
       expect(useSimulationStore.getState().onboardingProgress.policyAltered).toBe(false);
 
-      // 4. STORAGE TAMPERING SANITIZATION: Injected orientation-guided-challenge in localStorage without onboarding evidence -> SANITIZED OUT
+      // 4. NEGATIVE: Attempting to record 'alter_policy' while policy is still in default 'strict' mode -> REJECT
+      store.selectEntity('node', 'fw-01', {});
+      store.recordOnboardingAction('inspect_firewall');
+      expect(useSimulationStore.getState().onboardingProgress.firewallInspected).toBe(true);
+
+      store.setLandingFirewallMode('strict'); // Reset to default
+      store.recordOnboardingAction('alter_policy');
+      expect(useSimulationStore.getState().onboardingProgress.policyAltered).toBe(false);
+
+      // 5. STORAGE TAMPERING SANITIZATION: Injected challenge in localStorage without activity evidence -> SANITIZED OUT
       localStorage.setItem('omega_completed_challenges', JSON.stringify(['orientation-guided-challenge']));
       localStorage.removeItem('omega_onboarding_progress');
       store.reloadFromStorage();
       expect(useSimulationStore.getState().completedChallenges).not.toContain('orientation-guided-challenge');
 
-      // 5. POSITIVE: Legitimate activity progression (inspect_firewall -> alter_policy -> completeChallenge) -> ACCEPT & PERSIST
+      // 6. POSITIVE: Legitimate evidence-backed progression (Select -> Inspect -> Alter -> Record -> Complete)
+      store.selectEntity('node', 'fw-01', {});
       store.recordOnboardingAction('inspect_firewall');
       expect(useSimulationStore.getState().onboardingProgress.firewallInspected).toBe(true);
       expect(useSimulationStore.getState().onboardingStep).toBe(2);
 
+      store.setLandingFirewallMode('block_all');
       store.recordOnboardingAction('alter_policy');
       expect(useSimulationStore.getState().onboardingProgress.policyAltered).toBe(true);
       expect(useSimulationStore.getState().onboardingStep).toBe(3);
@@ -651,7 +661,7 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       store.completeChallenge('orientation-guided-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).toContain('orientation-guided-challenge');
 
-      // 6. POSITIVE STORAGE VERIFICATION: Reloading from storage with valid evidence keeps challenge completed
+      // 7. POSITIVE STORAGE VERIFICATION: Reloading from storage with valid evidence keeps challenge completed
       store.reloadFromStorage();
       expect(useSimulationStore.getState().completedChallenges).toContain('orientation-guided-challenge');
     });

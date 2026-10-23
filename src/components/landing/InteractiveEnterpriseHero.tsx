@@ -53,11 +53,14 @@ export const InteractiveEnterpriseHero: React.FC = () => {
   const completedChallenges = useSimulationStore((s) => s.completedChallenges);
   const recordOnboardingAction = useSimulationStore((s) => s.recordOnboardingAction);
   const completeChallenge = useSimulationStore((s) => s.completeChallenge);
+  const landingFirewallMode = useSimulationStore((s) => s.landingFirewallMode);
+  const setLandingFirewallMode = useSimulationStore((s) => s.setLandingFirewallMode);
+  const selectedEntity = useSimulationStore((s) => s.selectedEntity);
+  const selectEntity = useSimulationStore((s) => s.selectEntity);
+  const clearSelection = useSimulationStore((s) => s.clearSelection);
 
-  const [firewallMode, setFirewallMode] = useState<'strict' | 'permissive' | 'block_all'>('strict');
   const [isPaused, setIsPaused] = useState(false);
   const [packets, setPackets] = useState<EnterprisePacket[]>([]);
-  const [selectedHeroEntity, setSelectedHeroEntity] = useState<{ type: string; id: string; name: string; details: string } | null>(null);
   const [followedPacketId, setFollowedPacketId] = useState<string | null>(null);
   const [whatChangedDiff, setWhatChangedDiff] = useState<{ before: string; after: string; reason: string } | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<number>(1);
@@ -147,8 +150,8 @@ export const InteractiveEnterpriseHero: React.FC = () => {
         // Firewall encounter at 48%
         if (nextProg >= 48 && p.progress < 48) {
           const shouldBlock =
-            firewallMode === 'block_all' ||
-            (firewallMode === 'strict' && p.port !== 443 && p.port !== 53) ||
+            landingFirewallMode === 'block_all' ||
+            (landingFirewallMode === 'strict' && p.port !== 443 && p.port !== 53) ||
             p.port === 23 ||
             p.port === 445;
 
@@ -158,7 +161,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
               progress: 48,
               state: 'blocked',
               whyReason:
-                firewallMode === 'block_all'
+                landingFirewallMode === 'block_all'
                   ? 'سياسة الحظر الشامل الافتراضية مفعلة'
                   : `جدار الحماية أسقط المنفذ ${p.port} (${p.protocol}) لمنع التهديدات غير المشفرة`,
             });
@@ -180,13 +183,15 @@ export const InteractiveEnterpriseHero: React.FC = () => {
 
     animId = requestAnimationFrame(update);
     return () => cancelAnimationFrame(animId);
-  }, [firewallMode, isPaused]);
+  }, [landingFirewallMode, isPaused]);
 
   const handleModeChange = (mode: 'strict' | 'permissive' | 'block_all') => {
     const beforeStr =
-      firewallMode === 'strict' ? 'صارم (HTTPS/DNS)' : firewallMode === 'block_all' ? 'حظر شامل' : 'سماح واسع';
+      landingFirewallMode === 'strict' ? 'صارم (HTTPS/DNS)' : landingFirewallMode === 'block_all' ? 'حظر شامل' : 'سماح واسع';
     const afterStr = mode === 'strict' ? 'صارم (HTTPS/DNS)' : mode === 'block_all' ? 'حظر شامل' : 'سماح واسع';
-    setFirewallMode(mode);
+    
+    setLandingFirewallMode(mode);
+    
     setWhatChangedDiff({
       before: `الوضع السابق: ${beforeStr}`,
       after: `الوضع الجديد: ${afterStr}`,
@@ -198,7 +203,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           : 'تم فتح المنافذ للاختبار غير المقيد',
     });
 
-    if (onboardingStep === 2) {
+    if (onboardingStep === 2 && mode !== 'strict') {
       setOnboardingStep(3);
       recordOnboardingAction('alter_policy');
       completeChallenge('orientation-guided-challenge', { success: true });
@@ -360,7 +365,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
               <button
                 onClick={() => handleModeChange('strict')}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                  firewallMode === 'strict' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  landingFirewallMode === 'strict' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {language === 'ar' ? 'صارم (443/53)' : 'Strict (443/53)'}
@@ -368,7 +373,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
               <button
                 onClick={() => handleModeChange('block_all')}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                  firewallMode === 'block_all' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  landingFirewallMode === 'block_all' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {language === 'ar' ? 'حظر شامل' : 'Block All'}
@@ -376,7 +381,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
               <button
                 onClick={() => handleModeChange('permissive')}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                  firewallMode === 'permissive' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  landingFirewallMode === 'permissive' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {language === 'ar' ? 'سماح واسع' : 'Permissive'}
@@ -445,9 +450,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           {/* Node 2: Perimeter Firewall (World 04) */}
           <div
             onClick={() => {
-              setSelectedHeroEntity({
-                type: 'Firewall',
-                id: 'fw-01',
+              selectEntity('node', 'fw-01', {
                 name: language === 'ar' ? 'جدار الحماية المحيطي (Edge Firewall)' : 'Perimeter Firewall',
                 details: language === 'ar' ? 'يفحص الحزم تسلسلياً (First-Match) ويطبق قواعد ACL لعزل المنافذ غير المشفرة.' : 'Inspects packets sequentially, enforcing strict stateful ACL policies.',
               });
@@ -460,9 +463,9 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           >
             <div
               className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center border-2 shadow-xl group-hover:scale-105 transition-all ${
-                firewallMode === 'strict'
+                landingFirewallMode === 'strict'
                   ? 'bg-emerald-950/90 border-emerald-500 shadow-emerald-950/50'
-                  : firewallMode === 'block_all'
+                  : landingFirewallMode === 'block_all'
                   ? 'bg-rose-950/90 border-rose-500 shadow-rose-950/50 ring-4 ring-rose-500/20'
                   : 'bg-amber-950/90 border-amber-500 shadow-amber-950/50'
               }`}
@@ -499,9 +502,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           {/* Node 4: Database & IAM/Kerberos (World 07/16) */}
           <div
             onClick={() => {
-              setSelectedHeroEntity({
-                type: 'Database',
-                id: 'db-cluster',
+              selectEntity('node', 'db-cluster', {
                 name: language === 'ar' ? 'قاعدة البيانات وActive Directory' : 'Database & Directory',
                 details: language === 'ar' ? 'تخزين مشفر مع مصادقة Kerberos وصلاحيات وصول قائمة على الأدوار RBAC.' : 'Encrypted PostgreSQL storage protected by Kerberos authentication & RBAC.',
               });
@@ -520,9 +521,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           {/* Node 5: SOC & SIEM Correlation (World 24) */}
           <div
             onClick={() => {
-              setSelectedHeroEntity({
-                type: 'SOC',
-                id: 'siem-engine',
+              selectEntity('node', 'siem-engine', {
                 name: language === 'ar' ? 'مركز العمليات SOC وربط SIEM' : 'SOC & SIEM Correlation',
                 details: language === 'ar' ? 'يحلل تدفق السجلات الحية ويكتشف الهجمات المعقدة عبر نوافذ الارتباط الزمني.' : 'Ingests telemetry stream, evaluates correlation rules, and triggers containment.',
               });
@@ -550,9 +549,7 @@ export const InteractiveEnterpriseHero: React.FC = () => {
                 onClick={(e) => {
                   e.stopPropagation();
                   setFollowedPacketId(isFollowed ? null : pkt.id);
-                  setSelectedHeroEntity({
-                    type: 'Packet',
-                    id: pkt.id,
+                  selectEntity('packet', pkt.id, {
                     name: `${pkt.protocol} Packet :${pkt.port}`,
                     details: `المصدر: ${pkt.source} ➔ الوجهة: ${pkt.destination} (${pkt.whyReason || 'حزمة بيانات'})`,
                   });
@@ -589,22 +586,23 @@ export const InteractiveEnterpriseHero: React.FC = () => {
         </div>
 
         {/* Selected Entity Live Inspector Strip */}
-        {selectedHeroEntity && (
+        {selectedEntity && (
           <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-300 font-bold">
-                {selectedHeroEntity.type}
+                {selectedEntity.type}
               </span>
-              <span className="font-bold text-white">{selectedHeroEntity.name}</span>
-              <span className="text-slate-400 hidden sm:inline">— {selectedHeroEntity.details}</span>
+              <span className="font-bold text-white">{selectedEntity.data?.name}</span>
+              <span className="text-slate-400 hidden sm:inline">— {selectedEntity.data?.details}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  if (selectedHeroEntity.type === 'Firewall') setActiveSimulation('firewall');
-                  else if (selectedHeroEntity.type === 'Server') setActiveSimulation('http');
-                  else if (selectedHeroEntity.type === 'Database') setActiveSimulation('active_directory');
-                  else if (selectedHeroEntity.type === 'SOC') setActiveSimulation('siem');
+                  const type = selectedEntity.data?.name || '';
+                  if (type.includes('Firewall')) setActiveSimulation('firewall');
+                  else if (type.includes('Server')) setActiveSimulation('http');
+                  else if (type.includes('Database')) setActiveSimulation('active_directory');
+                  else if (type.includes('SOC')) setActiveSimulation('siem');
                   else setActiveSimulation('subnet_routing');
                 }}
                 className="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-1 transition-colors"
@@ -613,7 +611,10 @@ export const InteractiveEnterpriseHero: React.FC = () => {
                 <ArrowRight className="w-3 h-3 rtl:rotate-180" />
               </button>
               <button
-                onClick={() => setSelectedHeroEntity(null)}
+                onClick={() => {
+                  clearSelection();
+                  setFollowedPacketId(null);
+                }}
                 className="text-slate-400 hover:text-white p-1 font-mono"
               >
                 ✕

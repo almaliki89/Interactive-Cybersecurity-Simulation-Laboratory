@@ -93,6 +93,7 @@ interface SimulationStoreState {
   inspectorActiveTab: 'overview' | 'rules' | 'connections' | 'events' | 'logs' | 'security';
   onboardingStep: number;
   onboardingProgress: OnboardingRequirements;
+  landingFirewallMode: 'strict' | 'permissive' | 'block_all';
 
   selectedEntity: SelectedEntity | null;
   completedChallenges: string[];
@@ -111,6 +112,7 @@ interface SimulationStoreState {
   setLessonStage: (lessonId: string, stage: number) => void;
   updateLessonProgressState: (lessonId: string, updates: Partial<LessonProgressState>) => void;
   recordOnboardingAction: (action: 'inspect_firewall' | 'alter_policy') => void;
+  setLandingFirewallMode: (mode: 'strict' | 'permissive' | 'block_all') => void;
   setSelectedMacroDomainId: (id: MacroDomainId | null) => void;
   setSelectedWorldId: (id: number | null) => void;
   setMode: (mode: SimulationMode) => void;
@@ -174,18 +176,21 @@ export type ChallengeValidatorFn = () => ChallengeVerificationResult;
 /**
  * ARCHITECTURAL NOTICE — Client-Side Verification vs. Authoritative Attestation:
  *
- * The integrity protections in this store (whitelist filtering, active simulation context
- * validation, live validator binding, sequential curriculum gating, and local storage
- * sanitization) prevent accidental state corruption, malformed inputs, skipped learning
- * phases, and casual client manipulation in the browser.
+ * IMPORTANT: In this client-only web application (SPA), all logic, state, and achievements
+ * exist solely within the user's browser sandbox. There is NO server-authoritative backend
+ * for cryptographic attestation or session-based verification.
  *
- * However, in any client-only web application (SPA), code running in the user's browser
- * sandbox is inherently accessible to determined inspection and manipulation (e.g., via
- * browser DevTools, localStorage tampering, or memory modification).
+ * CONSEQUENTLY:
+ * 1. PERSISTENCE & TRUST: The "Integrity" protections implemented here (whitelist filtering,
+ *    live validator binding, sequential gating, activity evidence verification) are designed to
+ *    prevent accidental state corruption, malformed inputs, and casual "skipping" of the
+ *    learning experience.
+ * 2. MANIPULATION: A determined user can easily inspect and manipulate any part of this state
+ *    via browser DevTools, memory modification, or manual editing of localStorage.
+ * 3. NO PROOF: These checks DO NOT constitute a cryptographically secure proof of achievement.
  *
- * For high-stakes certification, competitive rankings, or authoritative compliance
- * achievements, a server-authoritative backend with cryptographic attestation, session tokens,
- * and server-side challenge evaluation is recommended.
+ * For high-stakes certification, competitive rankings, or authoritative compliance tracking,
+ * a server-side evaluator with persistent database verification is required.
  */
 
 // Active validator registry binding challenge validation directly to live simulation state
@@ -565,6 +570,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     explanationState: null,
     whatChanged: null,
     inspectorActiveTab: 'overview',
+    landingFirewallMode: 'strict',
     onboardingProgress: safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')),
     onboardingStep: safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')).firewallInspected
       ? (safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')).policyAltered ? 3 : 2)
@@ -671,8 +677,20 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     let policyAltered = currentProgress.policyAltered;
 
     if (action === 'inspect_firewall') {
+      // Evidence-based check: firewall entity must be actually selected in the store
+      const selection = get().selectedEntity;
+      if (selection?.id !== 'fw-01') {
+        console.warn('[Integrity] inspect_firewall rejected: Firewall (fw-01) not selected.');
+        return;
+      }
       firewallInspected = true;
     } else if (action === 'alter_policy') {
+      // Evidence-based check: current firewall mode must be different from the default 'strict'
+      const mode = get().landingFirewallMode;
+      if (mode === 'strict') {
+        console.warn('[Integrity] alter_policy rejected: Firewall policy is still in default "strict" mode.');
+        return;
+      }
       if (!firewallInspected) {
         console.warn('[Integrity] Cannot record policyAltered action before inspecting firewall.');
         return;
@@ -691,6 +709,8 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       onboardingStep: calculatedStep,
     });
   },
+
+  setLandingFirewallMode: (landingFirewallMode) => set({ landingFirewallMode }),
 
   setOnboardingStep: (onboardingStep) => {
     if (typeof onboardingStep !== 'number' || !Number.isFinite(onboardingStep) || Number.isNaN(onboardingStep)) {
