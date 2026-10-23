@@ -51,6 +51,8 @@ export const InteractiveEnterpriseHero: React.FC = () => {
   const setSelectedWorldId = useSimulationStore((s) => s.setSelectedWorldId);
   const setIsSearchOpen = useSimulationStore((s) => s.setIsSearchOpen);
   const completedChallenges = useSimulationStore((s) => s.completedChallenges);
+  const storeSetOnboardingStep = useSimulationStore((s) => s.setOnboardingStep);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
 
   const [firewallMode, setFirewallMode] = useState<'strict' | 'permissive' | 'block_all'>('strict');
   const [isPaused, setIsPaused] = useState(false);
@@ -62,6 +64,11 @@ export const InteractiveEnterpriseHero: React.FC = () => {
   const [activityStream, setActivityStream] = useState<Array<{ id: string; time: string; tag: string; messageAr: string; messageEn: string; level: 'info' | 'warn' | 'threat' | 'success' }>>([]);
 
   const nextPktId = useRef(1);
+
+  // Sync store onboarding step on mount
+  useEffect(() => {
+    storeSetOnboardingStep(1);
+  }, [storeSetOnboardingStep]);
 
   // Activity Stream Generator
   useEffect(() => {
@@ -196,6 +203,8 @@ export const InteractiveEnterpriseHero: React.FC = () => {
 
     if (onboardingStep === 2) {
       setOnboardingStep(3);
+      storeSetOnboardingStep(3);
+      completeChallenge('orientation-guided-challenge', { success: true });
     }
   };
 
@@ -445,7 +454,10 @@ export const InteractiveEnterpriseHero: React.FC = () => {
                 name: language === 'ar' ? 'جدار الحماية المحيطي (Edge Firewall)' : 'Perimeter Firewall',
                 details: language === 'ar' ? 'يفحص الحزم تسلسلياً (First-Match) ويطبق قواعد ACL لعزل المنافذ غير المشفرة.' : 'Inspects packets sequentially, enforcing strict stateful ACL policies.',
               });
-              if (onboardingStep === 1) setOnboardingStep(2);
+              if (onboardingStep === 1) {
+                setOnboardingStep(2);
+                storeSetOnboardingStep(2);
+              }
             }}
             className="relative z-10 flex flex-col items-center cursor-pointer group"
           >

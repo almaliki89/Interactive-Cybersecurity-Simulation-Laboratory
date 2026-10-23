@@ -633,7 +633,24 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       whatChanged: diff ? { ...diff, visible: true } : null,
     }),
   setInspectorActiveTab: (inspectorActiveTab) => set({ inspectorActiveTab }),
-  setOnboardingStep: (onboardingStep) => set({ onboardingStep }),
+  setOnboardingStep: (onboardingStep) => {
+    if (typeof onboardingStep !== 'number' || !Number.isFinite(onboardingStep) || Number.isNaN(onboardingStep)) {
+      console.warn('[Integrity] Invalid onboardingStep value rejected.');
+      return;
+    }
+    const currentStep = get().onboardingStep;
+    const targetStep = Math.floor(onboardingStep);
+
+    // Sequential step gating: step can only reset to 0 or 1, or advance by at most 1 step at a time
+    if (targetStep > 1 && targetStep > currentStep + 1) {
+      console.warn(
+        `[Integrity] Cannot jump onboarding step from ${currentStep} to ${targetStep}. Sequential progression required.`
+      );
+      return;
+    }
+
+    set({ onboardingStep: Math.max(0, Math.min(3, targetStep)) });
+  },
 
   setIsSearchOpen: (isSearchOpen) => set({ isSearchOpen }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -764,7 +781,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
         return;
       }
     } else if (verificationType === 'instructional') {
-      // Instructional/guided challenges use official instructional verification path
+      // Instructional/guided challenges require authoritative step progression in store
       if (registeredValidator) {
         try {
           const liveOutcome = registeredValidator();
@@ -775,6 +792,25 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
           authoritativeOutcome = liveOutcome;
         } catch (err) {
           console.error(`[Integrity] Error verifying instructional challenge ${cleanId}:`, err);
+          return;
+        }
+      }
+
+      // Store-authoritative step completion verification for instructional challenges
+      if (cleanId === 'orientation-guided-challenge') {
+        const currentStep = get().onboardingStep;
+        if (typeof currentStep !== 'number' || currentStep < 3) {
+          console.warn(
+            `[Integrity] Instructional challenge ${cleanId} rejected: required onboarding steps not completed (current step: ${currentStep}, required: 3).`
+          );
+          return;
+        }
+      } else {
+        // Any other instructional challenge must also have a registered validator or verified step state
+        if (!registeredValidator) {
+          console.warn(
+            `[Integrity] Instructional challenge ${cleanId} rejected: missing registered validator or verified step state.`
+          );
           return;
         }
       }

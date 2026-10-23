@@ -608,11 +608,36 @@ describe('SimulationStore Integrity & Gating (OMEGA MAX)', () => {
       expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
     });
 
-    it('POSITIVE: Legitimate instructional challenge completes via official path', () => {
+    it('INSTRUCTIONAL INTEGRITY: Rejects completion when onboarding steps are incomplete, prevents step jumping, accepts upon sequential completion', () => {
       const store = useSimulationStore.getState();
-      useSimulationStore.setState({ activeSimulationId: 'landing', completedChallenges: [] });
+      useSimulationStore.setState({ activeSimulationId: 'landing', onboardingStep: 0, completedChallenges: [] });
 
-      // Instructional challenge completes via official path
+      // 1. NEGATIVE: Calling completeChallenge with { success: true } when onboardingStep < 3 -> REJECT
+      store.completeChallenge('orientation-guided-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('orientation-guided-challenge');
+
+      // 2. NEGATIVE: Attempting to bypass by jumping onboardingStep directly from 0 to 3 -> REJECTED BY STEP GATING
+      store.setOnboardingStep(3);
+      expect(useSimulationStore.getState().onboardingStep).not.toBe(3);
+      store.completeChallenge('orientation-guided-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('orientation-guided-challenge');
+
+      // 3. NEGATIVE: Onboarding step 2 is still incomplete -> REJECT
+      store.setOnboardingStep(1);
+      store.setOnboardingStep(2);
+      expect(useSimulationStore.getState().onboardingStep).toBe(2);
+      store.completeChallenge('orientation-guided-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('orientation-guided-challenge');
+
+      // 4. NEGATIVE: Active validator returning failure overrides caller success -> REJECT
+      store.setOnboardingStep(3);
+      expect(useSimulationStore.getState().onboardingStep).toBe(3);
+      store.registerChallengeValidator('orientation-guided-challenge', () => ({ success: false }));
+      store.completeChallenge('orientation-guided-challenge', { success: true });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('orientation-guided-challenge');
+
+      // 5. POSITIVE: Onboarding steps complete (step 3) and valid validator/store state -> ACCEPT
+      store.unregisterChallengeValidator('orientation-guided-challenge');
       store.completeChallenge('orientation-guided-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).toContain('orientation-guided-challenge');
     });
