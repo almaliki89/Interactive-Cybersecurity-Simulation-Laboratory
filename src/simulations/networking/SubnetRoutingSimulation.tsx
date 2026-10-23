@@ -81,7 +81,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
   const handleTransmitPacket = () => {
     setPacketState('transmitting');
     setPacketLog([
-      `[00:00.000] HOST_PC (192.168.1.10) -> Crafting TCP SYN (Port 443 -> Destination 93.184.216.34)`,
+      `[00:00.000] HOST_PC (192.168.1.42) -> Crafting TCP SYN (Port 443 -> Destination 93.184.216.34)`,
       `[00:00.015] ARP Table -> Resolving Gateway 192.168.1.1 (MAC 00:1A:2B:3C:4D:01)`,
     ]);
 
@@ -90,8 +90,8 @@ export const SubnetRoutingSimulation: React.FC = () => {
         setPacketState('blocked');
         setPacketLog((prev) => [
           ...prev,
-          `[00:00.040] ROUTER_HOP (192.168.1.1) -> DROPPED: Host IP 192.168.1.10 is outside subnet boundary /${cidrPrefix}`,
-          `[ERROR] Destination unreachable: Subnet CIDR mask too narrow for current topology.`,
+          `[00:00.040] ROUTER_HOP (192.168.1.1) -> DROPPED: Host IP 192.168.1.42 is outside Gateway local subnet boundary /${cidrPrefix}`,
+          `[ERROR] Destination unreachable: Host 192.168.1.42 lies in subnet 192.168.1.32/${cidrPrefix}, while Gateway 192.168.1.1 lies in 192.168.1.0/${cidrPrefix}.`,
         ]);
         return;
       }
@@ -106,14 +106,14 @@ export const SubnetRoutingSimulation: React.FC = () => {
           setPacketState('blocked');
           setPacketLog((prev) => [
             ...prev,
-            `[00:00.080] FIREWALL (203.0.113.1) -> DROPPED: Egress NAT is DISABLED. RFC 1918 Private IP (192.168.1.10) rejected by WAN router.`,
+            `[00:00.080] FIREWALL (203.0.113.1) -> DROPPED: Egress NAT is DISABLED. RFC 1918 Private IP (192.168.1.42) rejected by WAN router.`,
             `[HYPOTHESIS] Enable NAT Gateway to translate private internal IPs to public WAN IP 203.0.113.1.`,
           ]);
         } else {
           setPacketState('success');
           setPacketLog((prev) => [
             ...prev,
-            `[00:00.080] NAT_TABLE -> Translated 192.168.1.10:54201 -> 203.0.113.1:50001`,
+            `[00:00.080] NAT_TABLE -> Translated 192.168.1.42:54201 -> 203.0.113.1:50001`,
             `[00:00.120] WAN_SERVER (93.184.216.34:443) -> Received TCP SYN, responded TCP SYN-ACK`,
             `[00:00.150] SUCCESS: 3-Way Handshake Completed (HTTP 200 OK) via /${cidrPrefix} Subnet & NAT Gateway!`,
           ]);
@@ -215,7 +215,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             {[
-              { id: 'pc', label: 'Host PC', ip: '192.168.1.10', icon: Server },
+              { id: 'pc', label: 'Host PC', ip: '192.168.1.42', icon: Server },
               { id: 'router', label: 'L3 Router', ip: '192.168.1.1', icon: Radio },
               { id: 'firewall', label: 'NAT Firewall', ip: '203.0.113.1', icon: Sliders },
               { id: 'server', label: 'WAN Web Server', ip: '93.184.216.34', icon: Globe },
@@ -278,7 +278,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
             <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-300 h-40 overflow-x-auto">
               {natEnabled
                 ? `[NAT SESSION ACTIVE]
-[NAT] 192.168.1.10:54201 <-> 203.0.113.1:50001 <-> 93.184.216.34:443
+[NAT] 192.168.1.42:54201 <-> 203.0.113.1:50001 <-> 93.184.216.34:443
 [NAT] 192.168.1.22:49152 <-> 203.0.113.1:50002 <-> 8.8.8.8:53`
                 : '[NAT DISABLED]\nPrivate IP addresses (192.168.1.0/26) are rejected on public WAN egress interfaces.'}
             </pre>

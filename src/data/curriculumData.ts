@@ -229,7 +229,7 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     descriptionEn: 'Formulate threat hypotheses, trace CloudTrail audit streams, and secure Kubernetes container perimeters.',
     estimatedMinutes: 30,
     iconName: 'Cloud',
-    primarySimulationId: 'threat',
+    primarySimulationId: 'threat_hunting',
     modules: [
       {
         id: 'mod-9-1',
@@ -949,7 +949,7 @@ To organize security defenses, professionals use the CIA Triad:
 
   'lesson-02-system-internals': {
     id: 'lesson-02-system-internals',
-    milestoneId: 2,
+    milestoneId: 1,
     order: 2,
     titleAr: 'الدرس الثاني: كيف يحمي نظام التشغيل نفسه وبرامجه؟',
     titleEn: 'Lesson 2: OS Privilege Isolation & System Internals',
@@ -959,6 +959,56 @@ To organize security defenses, professionals use the CIA Triad:
     simulationId: 'system_internals',
     worldId: 2,
     challengeId: 'internals-memory-challenge',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس الأول: ثالوث الحماية الأساسي (CIA Triad).',
+        textEn: 'Completion of Lesson 1: CIA Triad & Core Security Principles.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: تتبع محاولة الوصول غير المصرح لذاكرة النواة',
+      titleEn: 'Worked Example: Intercepting Unauthorized Kernel Memory Access',
+      scenarioAr: 'برنامج عادي يحاول القراءة المباشرة من مساحة ذاكرة النواة (Ring 0):',
+      scenarioEn: 'A user-mode process attempts direct memory read from Kernel space (Ring 0):',
+      stepsAr: [
+        'الخطوة 1: يرسل البرنامج تعليمة قراءة لعنوان في مساحة النواة (Kernel Space).',
+        'الخطوة 2: يكتشف العتاد (CPU) أن مستوى الصلاحية الحالي هو Ring 3 (وضع المستخدم).',
+        'الخطوة 3: يطلق المعالج اعتراض عتادي (Trap) ويحول التحكم للنواة.',
+        'الخطوة 4: تنهي النواة العملية فوراً لمنع تسريب الذاكرة وتصدر خطأ Segmentation Fault.',
+      ],
+      stepsEn: [
+        'Step 1: User process emits read instruction for address in Kernel space.',
+        'Step 2: CPU checks current privilege ring level (Ring 3 vs Ring 0).',
+        'Step 3: CPU triggers hardware exception trap, passing execution to kernel handler.',
+        'Step 4: Kernel immediately kills the process with Segmentation Fault to safeguard RAM.',
+      ],
+      takeawayAr: 'العتاد يمنع التطبيقات العادية من الوصول للذاكرة السيادية للنظام.',
+      takeawayEn: 'Hardware CPU rings strictly isolate kernel RAM from user-space processes.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: محاكاة استدعاء النظام الآمن (Syscall)',
+      titleEn: 'Independent Challenge: Safe System Call Execution',
+      scenarioAr: 'اطلب خدمة فتح ملف من النواة باستخدام التجسير المسموح عبر Syscall دون انتهاك الذاكرة:',
+      scenarioEn: 'Request disk file read service using controlled syscall interface without breaching memory rules:',
+      targetOutcomeAr: 'تنفيذ استدعاء النظام ونجاح قراءة الملف عبر قنوات النواة المصرحة.',
+      targetOutcomeEn: 'Execute legitimate syscall and complete file read via validated kernel channels.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن وضع النواة متاح لأي برنامج بسرعة عند الحاجة.',
+      commonMisconceptionEn: 'Thinking user apps can switch to kernel mode at will.',
+      guidanceAr: 'الانتقال لوضع النواة يتم بضبط محكم للغاية عبر بوابات استدعاء النظام فقط.',
+      guidanceEn: 'Privilege escalation to Ring 0 is gated strictly by hardware syscall boundaries.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'العزل بين وضع المستخدم ووضع النواة يمنع انهيار النظام عند تعطل التطبيقات.',
+        textEn: 'User/Kernel isolation prevents total system crashes when user applications fail.',
+      },
+      {
+        textAr: 'استدعاء النظام (Syscall) هو البوابة المشروعة الوحيدة لطلب خدمات العتاد.',
+        textEn: 'System calls are the sole authorized gateway for requesting hardware services.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم الفصل بين وضع المستخدم (User Mode) ووضع النواة (Kernel Mode).',
@@ -1066,7 +1116,7 @@ To prevent this, CPUs enforce strict rings of protection:
       },
     ],
     nextStep: {
-      nextLessonId: 'lesson-03-subnet-routing',
+      nextLessonId: 'lesson-02-01-ip-addressing-and-binary',
       takeawayAr: 'ممتاز! فهمت الآن كيف يحمي الحاسوب نفسه داخليًا. حان الوقت لنتعلم كيف تتواصل الحواسيب عبر الشبكات في الدرس الثالث.',
       takeawayEn: 'Great job! Now you understand internal host security. Next, discover how machines communicate securely over networks.',
     },
@@ -1074,7 +1124,7 @@ To prevent this, CPUs enforce strict rings of protection:
 
   'lesson-03-subnet-routing': {
     id: 'lesson-03-subnet-routing',
-    milestoneId: 3,
+    milestoneId: 2,
     order: 3,
     titleAr: 'الدرس الثالث: فهم الشبكات وعناوين IP والتوجيه',
     titleEn: 'Lesson 3: Network Fundamentals & IP Routing',
@@ -1084,6 +1134,56 @@ To prevent this, CPUs enforce strict rings of protection:
     simulationId: 'subnet_routing',
     worldId: 3,
     challengeId: 'subnet-routing-challenge',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس 2: التقسيم الفرعي وقناع البادئة CIDR.',
+        textEn: 'Completion of Lesson 2: Subnet Masks & CIDR Notation.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: تتبع مسار حزمة عبر راوتر (Hop-by-Hop)',
+      titleEn: 'Worked Example: Tracing a Packet via Router Hops',
+      scenarioAr: 'إرسال حزمة من شبكة 192.168.1.0/24 إلى خادم في شبكة 10.0.0.0/8:',
+      scenarioEn: 'Sending a packet from 192.168.1.0/24 to a server in 10.0.0.0/8:',
+      stepsAr: [
+        'الخطوة 1: يكتشف المضيف أن الوجهة خارج شبكته المحلية فيرسلها للبوابة الافتراضية (Default Gateway).',
+        'الخطوة 2: يفحص الراوتر جدول التوجيه (Routing Table) للعثور على أفضل مطابقة للبادئة (Longest Prefix Match).',
+        'الخطوة 3: يغير الراوتر عنوان MAC للوجهة (Layer 2) مع الحفاظ على عناوين IP الأصلية (Layer 3).',
+        'الخطوة 4: تصل الحزمة للواجهة الصحيحة في الشبكة المستهدفة.',
+      ],
+      stepsEn: [
+        'Step 1: Host determines destination is non-local and forwards frame to Default Gateway.',
+        'Step 2: Router consults its Routing Table for the Longest Prefix Match (LPM).',
+        'Step 3: Router rewrites Layer 2 MAC addresses while preserving Layer 3 IP headers.',
+        'Step 4: Packet is egressed out the correct interface toward the destination network.',
+      ],
+      takeawayAr: 'الراوتر هو صلة الوصل التي تربط الجزر الشبكية المعزولة ببعضها.',
+      takeawayEn: 'Routers bridge isolated network islands by making intelligent forwarding decisions.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: تشخيص مسار فاشل وتعديل الجدول',
+      titleEn: 'Independent Challenge: Troubleshooting Failed Routes',
+      scenarioAr: 'حزمة لا تصل لوجهتها بسبب غياب مسار العودة (Return Route). قم بتشخيص الجدول وإصلاحه:',
+      scenarioEn: 'A packet fails to reach its destination due to a missing return route. Audit and fix the table:',
+      targetOutcomeAr: 'تأمين وصول الحزمة واستلام الرد (Echo Reply) بنجاح.',
+      targetOutcomeEn: 'Ensure bidirectional packet flow and successful Echo Reply reception.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن الحزم تتحرك عشوائياً في الإنترنت.',
+      commonMisconceptionEn: 'Thinking packets roam randomly through the internet.',
+      guidanceAr: 'كل قفزة (Hop) محكومة بقرار منطقي دقيق داخل جدول التوجيه بناءً على عنوان الوجهة.',
+      guidanceEn: 'Every hop is governed by a deterministic logic lookup in the local routing table.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'التوجيه يعتمد على عناوين IP (الطبقة الثالثة) وجداول التوجيه.',
+        textEn: 'Routing operates at Layer 3 using IP addresses and routing tables.',
+      },
+      {
+        textAr: 'البوابة الافتراضية هي المخرج الوحيد للبيانات المتوجهة لشبكات غريبة.',
+        textEn: 'The Default Gateway is the sole exit for traffic destined for external networks.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم عنوان IP وبنية حزمة البيانات (Packet).',
@@ -1201,7 +1301,7 @@ The shipping box is the packet, the sender address is the source IP, the recipie
 
   'lesson-04-firewall-rules': {
     id: 'lesson-04-firewall-rules',
-    milestoneId: 4,
+    milestoneId: 3,
     order: 4,
     titleAr: 'الدرس الرابع: جدران الحماية الرقمية وقواعد الفحص (Firewall ACL)',
     titleEn: 'Lesson 4: Digital Firewalls & Access Control Rules',
@@ -1211,6 +1311,56 @@ The shipping box is the packet, the sender address is the source IP, the recipie
     simulationId: 'firewall',
     worldId: 4,
     challengeId: 'firewall-rule-mastery',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس 3: الشبكات وتوجيه الحزم.',
+        textEn: 'Completion of Lesson 3: Network Fundamentals & Packet Routing.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: تأمين خادم ويب (Web Server Hardening)',
+      titleEn: 'Worked Example: Securing a Public Web Server',
+      scenarioAr: 'خادم ويب يحتاج لاستقبال زوار الإنترنت بأمان مع حجب محاولات الاختراق:',
+      scenarioEn: 'A web server must serve public visitors safely while blocking brute-force attempts:',
+      stepsAr: [
+        'الخطوة 1: السماح (Allow) للمنفذ 443 (HTTPS) من أي مصدر للوصول للخدمات المشفرة.',
+        'الخطوة 2: السماح (Allow) للمنفذ 22 (SSH) فقط من عنوان IP الإدارة الخاص بالشركة.',
+        'الخطوة 3: المنع الافتراضي (Deny All) لأي حركة مرور أخرى لم تُذكر صراحة.',
+        'الخطوة 4: تفعيل تفتيش الحزم (Stateful Inspection) لضمان أن الردود تطابق الطلبات المشروعة.',
+      ],
+      stepsEn: [
+        'Step 1: Permit (Allow) port 443 (HTTPS) from any source for encrypted web traffic.',
+        'Step 2: Permit (Allow) port 22 (SSH) strictly from the secure Corporate Management IP.',
+        'Step 3: Implement "Default Deny" for any traffic not explicitly authorized above.',
+        'Step 4: Enable Stateful Packet Inspection to correlate inbound replies with legitimate outbound requests.',
+      ],
+      takeawayAr: 'فتح الأبواب الضرورية فقط يقلص مساحة الهجوم بشكل جذري.',
+      takeawayEn: 'Opening only essential ports drastically reduces the available attack surface.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: عزل منطقة DMZ ومنع التسلل',
+      titleEn: 'Independent Challenge: DMZ Isolation & Infiltration Defense',
+      scenarioAr: 'قم بضبط قواعد الجدار الناري لعزل منطقة الخوادم العامة (DMZ) عن الشبكة الداخلية الحساسة:',
+      scenarioEn: 'Configure firewall rules to isolate the public-facing DMZ from the sensitive internal corporate network:',
+      targetOutcomeAr: 'نجاح عمل الموقع مع منع أي اتصال مباشر من خادم الويب إلى قاعدة بيانات الشركة الداخلية.',
+      targetOutcomeEn: 'Web services remain functional while direct connectivity from the DMZ to the internal database is blocked.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن وجود جدار حماية يعني أن النظام أصبح منيعاً تماماً.',
+      commonMisconceptionEn: 'Thinking that having a firewall makes a system invincible.',
+      guidanceAr: 'جدار الحماية يحمي المنافذ، لكنه لا يمنع الثغرات البرمجية في التطبيقات المسموح لها بالمرور (مثل ثغرات الويب).',
+      guidanceEn: 'Firewalls guard ports but cannot stop logic exploits within permitted application traffic (e.g. SQL injection via HTTPS).',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'جدار الحماية هو خط الدفاع الأول بين الشبكات الموثوقة وغير الموثوقة.',
+        textEn: 'The firewall is the primary boundary between trusted and untrusted network zones.',
+      },
+      {
+        textAr: 'المنع الافتراضي (Default Deny) هو أفضل ممارسة أمنية لإدارة القواعد.',
+        textEn: 'Default Deny is the security gold standard for firewall policy management.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم مفهوم أرقام المنافذ (Ports) مثل منفذ 80 و443 و22.',
@@ -1328,7 +1478,7 @@ The officer inspects your ticket and boarding pass; if you have a valid pass you
 
   'lesson-05-cryptography': {
     id: 'lesson-05-cryptography',
-    milestoneId: 5,
+    milestoneId: 4,
     order: 5,
     titleAr: 'الدرس الخامس: مقدمة إلى التشفير ودوال التجزئة (SHA-256)',
     titleEn: 'Lesson 5: Cryptography & Cryptographic Hash Functions',
@@ -1338,6 +1488,56 @@ The officer inspects your ticket and boarding pass; if you have a valid pass you
     simulationId: 'crypto',
     worldId: 5,
     challengeId: 'crypto-avalanche-challenge',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس 4: جدران الحماية وقواعد الفحص.',
+        textEn: 'Completion of Lesson 4: Digital Firewalls & Access Control Rules.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: التحقق من سلامة تحميل البرمجيات (Software Integrity)',
+      titleEn: 'Worked Example: Validating Software Download Integrity',
+      scenarioAr: 'تحميل ملف تحديث أمني لنظام التشغيل والتأكد من أنه لم يُعدل من قبل مخترق أثناء النقل:',
+      scenarioEn: 'Downloading a critical security patch and verifying it was not tampered with during transit:',
+      stepsAr: [
+        'الخطوة 1: تنشر الشركة المصنعة بصمة SHA-256 الرسمية للملف على موقعها الآمن.',
+        'الخطوة 2: يقوم المستخدم بتحميل الملف على جهازه الخاص.',
+        'الخطوة 3: يشغل المستخدم أداة تجزئة (Hasher) على الملف المحمل لتوليد بصمة محلية.',
+        'الخطوة 4: إذا تطابقت البصمة المحلية مع البصمة الرسمية حرفاً بحرف، يكون الملف سليماً 100%.',
+      ],
+      stepsEn: [
+        'Step 1: The vendor publishes the official SHA-256 checksum for the update file on their secure site.',
+        'Step 2: The user downloads the update file to their local workstation.',
+        'Step 3: The user runs a local hashing utility on the downloaded file to compute a digest.',
+        'Step 4: If the local hash matches the official vendor hash exactly, file integrity is guaranteed.',
+      ],
+      takeawayAr: 'دوال التجزئة هي "شمع الختم" الرقمي الذي يضمن سلامة البيانات.',
+      takeawayEn: 'Hashing functions act as the digital "wax seal" for data integrity verification.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: اكتشاف التعديل الخفي في السجلات',
+      titleEn: 'Independent Challenge: Detecting Stealthy Log Tampering',
+      scenarioAr: 'مخترق قام بتعديل سطر واحد في ملف سجلات الأمان لإخفاء أثره. استخدم البصمات السابقة للكشف عن التعديل:',
+      scenarioEn: 'An intruder modified a single line in a security log to hide their tracks. Use checksum history to detect the fraud:',
+      targetOutcomeAr: 'تحديد السطر المعدل بدقة وإثبات فشل البصمة (Checksum Failure).',
+      targetOutcomeEn: 'Precisely identify the tampered line and validate the checksum mismatch.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن دالة التجزئة (Hash) يمكن فكها لاسترجاع النص الأصلي.',
+      commonMisconceptionEn: 'Thinking a hash can be "decrypted" to recover the original plaintext.',
+      guidanceAr: 'التجزئة عملية اتجاه واحد رياضياً؛ لا يوجد "مفتاح" لفك الخلاط واسترجاع الفاكهة الأصلية.',
+      guidanceEn: 'Hashing is mathematically a one-way process; there is no "key" to reverse the digest back into input data.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'التشفير يحمي السرية (Confidentiality)، بينما التجزئة تحمي السلامة (Integrity).',
+        textEn: 'Encryption secures Confidentiality, while Hashing secures Integrity.',
+      },
+      {
+        textAr: 'تأثير الانهيار الجليدي يضمن أن أي تغيير طفيف في البيانات يتم اكتشافه فوراً.',
+        textEn: 'The Avalanche Effect ensures that even a tiny data modification is immediately detectable.',
+      },
+    ],
     objectives: [
       {
         textAr: 'التمييز الجوهري بين التشفير (ذو اتجاهين بمفتاح) والتجزئة (اتجاه واحد بدون استرجاع).',
@@ -1453,7 +1653,7 @@ Your fingerprint uniquely proves your identity, but nobody can take a fingerprin
 
   'lesson-06-active-directory': {
     id: 'lesson-06-active-directory',
-    milestoneId: 6,
+    milestoneId: 5,
     order: 6,
     titleAr: 'الدرس السادس: إدارة الهويات والمصادقة في المؤسسات (Active Directory & Kerberos)',
     titleEn: 'Lesson 6: Enterprise Identity, Active Directory & Kerberos',
@@ -1462,6 +1662,57 @@ Your fingerprint uniquely proves your identity, but nobody can take a fingerprin
     estimatedMinutes: 15,
     simulationId: 'active_directory',
     worldId: 6,
+    challengeId: 'kerberos-ticket-challenge',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس 5: مقدمة إلى التشفير ودوال التجزئة.',
+        textEn: 'Completion of Lesson 5: Cryptography & Hash Functions.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: تتبع مصادقة المستخدم عبر Kerberos',
+      titleEn: 'Worked Example: Tracing a Kerberos Authentication Flow',
+      scenarioAr: 'موظف في قسم المالية يحاول الوصول لمجلد الرواتب المحمي على خادم الملفات:',
+      scenarioEn: 'A finance employee attempts to access the restricted payroll share on a file server:',
+      stepsAr: [
+        'الخطوة 1: يطلب الموظف تذكرة دخول (AS_REQ) من خادم النطاق (DC).',
+        'الخطوة 2: يرسل الخادم تذكرة TGT مشفرة (AS_REP) بعد التحقق من الهوية.',
+        'الخطوة 3: يطلب الموظف تذكرة خدمة (TGS_REQ) للوصول لخادم الملفات FILE01.',
+        'الخطوة 4: يقدم الموظف تذكرة الخدمة لـ FILE01، فيفتح الخادم المجلد فوراً دون طلب كلمة مرور جديدة.',
+      ],
+      stepsEn: [
+        'Step 1: User requests an Authentication Ticket (AS_REQ) from the Domain Controller.',
+        'Step 2: DC verifies identity and issues an encrypted TGT (AS_REP).',
+        'Step 3: User presents TGT to request a Service Ticket (TGS_REQ) for FILE01.',
+        'Step 4: User presents Service Ticket to FILE01; the server grants access instantly without re-prompting for credentials.',
+      ],
+      takeawayAr: 'كيربيروس يتيح الدخول الموحد (SSO) ويحمي كلمات المرور من التنصت.',
+      takeawayEn: 'Kerberos enables Single Sign-On (SSO) while preventing password transmission over the network.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: كشف محاولة انتحال الهوية (Pass-the-Ticket)',
+      titleEn: 'Independent Challenge: Detecting Pass-the-Ticket (PtT) Attacks',
+      scenarioAr: 'مهاجم حصل على تذكرة TGT لمستخدم آخر. حاول استخدام التذكرة للوصول لمجلدات حساسة دون معرفة كلمة المرور:',
+      scenarioEn: 'An adversary hijacked a TGT from another user. Attempt to use that ticket to access sensitive shares without knowing the password:',
+      targetOutcomeAr: 'اكتشاف التناقض في بصمة التذكرة وحظر الوصول غير المصرح به.',
+      targetOutcomeEn: 'Detect ticket signature anomalies and block the unauthorized session.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن Active Directory هو مجرد قائمة بأسماء الموظفين.',
+      commonMisconceptionEn: 'Thinking Active Directory is just a static staff directory.',
+      guidanceAr: 'AD هو محرك أمان حي يدير السياسات (Group Policy) والمصادقة والترخيص لكل كائن في الشبكة.',
+      guidanceEn: 'AD is a dynamic security engine governing Group Policies, authentication, and authorization for every network object.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'متحكم النطاق هو "مصدر الثقة" (Source of Truth) في الشبكات المؤسسية.',
+        textEn: 'The Domain Controller is the centralized "Source of Truth" for corporate networks.',
+      },
+      {
+        textAr: 'تذاكر كيربيروس لها عمر زمني محدد (Time-to-Live) لمنع إعادة استخدامها للأبد.',
+        textEn: 'Kerberos tickets have a finite TTL to prevent indefinite session hijacking.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم دور خادم النطاق (Domain Controller) في إدارة هويات الموظفين.',
@@ -1581,7 +1832,7 @@ You purchase a master wristband at the front gate (your TGT). Then, whenever you
 
   'lesson-07-soc-monitoring': {
     id: 'lesson-07-soc-monitoring',
-    milestoneId: 7,
+    milestoneId: 6,
     order: 7,
     titleAr: 'الدرس السابع: مركز العمليات الأمنية (SOC) وقراءة السجلات',
     titleEn: 'Lesson 7: SOC Operations & Security Log Monitoring',
@@ -1590,6 +1841,57 @@ You purchase a master wristband at the front gate (your TGT). Then, whenever you
     estimatedMinutes: 18,
     simulationId: 'soc',
     worldId: 7,
+    challengeId: 'brute-force-triage-challenge',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس 6: إدارة الهويات وActive Directory.',
+        textEn: 'Completion of Lesson 6: Enterprise Identity & Active Directory.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: تحليل سجلات تسجيل دخول فاشلة (Brute-Force)',
+      titleEn: 'Worked Example: Triage of Brute-Force Authentication Logs',
+      scenarioAr: 'ملاحظة 50 محاولة تسجيل دخول فاشلة للمستخدم Admin خلال دقيقة واحدة من عنوان IP خارجي:',
+      scenarioEn: 'Observing 50 failed login attempts for user "Admin" within 60 seconds from an unknown external IP:',
+      stepsAr: [
+        'الخطوة 1: يطلق نظام SIEM تنبيهاً عالي الخطورة لتكرار الفشل.',
+        'الخطوة 2: يقوم محلل SOC بفحص تفاصيل السجلات وتحديد عنوان IP المصدر.',
+        'الخطوة 3: التحقق مما إذا كان هناك نجاح لاحق (Success after Failure) مما يشير لاختراق محتمل.',
+        'الخطوة 4: حظر عنوان IP المهاجم في جدار الحماية فوراً وتصفير كلمة مرور الحساب المستهدف.',
+      ],
+      stepsEn: [
+        'Step 1: SIEM platform triggers a high-severity alert for "Multiple Login Failures".',
+        'Step 2: SOC Analyst inspects event log details to isolate the offending Source IP.',
+        'Step 3: Analyst checks for a subsequent successful login, which would indicate a confirmed breach.',
+        'Step 4: Block the Source IP at the perimeter firewall and force a password reset for the target account.',
+      ],
+      takeawayAr: 'المراقبة المستمرة تحول دون نجاح الهجمات حتى لو عرف المهاجم اسم المستخدم.',
+      takeawayEn: 'Continuous monitoring prevents attack success even when the adversary has valid usernames.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: مراقبة محاولات تصعيد الصلاحيات',
+      titleEn: 'Independent Challenge: Monitoring Privilege Escalation Attempts',
+      scenarioAr: 'مستخدم عادي يحاول تنفيذ أوامر إدارية (Sudo/Admin) بشكل متكرر. حلل السجلات وكافح التهديد:',
+      scenarioEn: 'A regular user account is repeatedly attempting to execute administrative commands. Analyze logs and neutralize:',
+      targetOutcomeAr: 'تحديد الحساب المشبوه، وإثبات محاولة التصعيد، وإصدار أمر تعليق الحساب.',
+      targetOutcomeEn: 'Identify the suspicious account, validate the escalation attempt, and issue a suspension order.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن وجود السجلات (Logs) يكفي دون الحاجة لنظام تنبيه (SIEM).',
+      commonMisconceptionEn: 'Thinking that simply having logs is enough without an active alerting system (SIEM).',
+      guidanceAr: 'السجلات صامتة بطبعها؛ نحتاج لـ SIEM لربط الأحداث (Correlation) وإطلاق جرس الإنذار عند وقوع خطر.',
+      guidanceEn: 'Raw logs are silent; SIEM is required to correlate disparate events and sound the alarm when patterns emerge.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'مركز العمليات SOC هو "برج المراقبة" الذي لا ينام في المؤسسة.',
+        textEn: 'The SOC acts as the 24/7 "Watchtower" for the enterprise infrastructure.',
+      },
+      {
+        textAr: 'ربط الأحداث (Correlation) هو ما يميز محلل SOC المحترف عن مراقب السجلات العادي.',
+        textEn: 'Event correlation distinguishes a professional SOC analyst from a basic log viewer.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم السجلات الأمنية (Security Event Logs) وكيف تُجمع في نظام SIEM.',
@@ -1703,7 +2005,7 @@ Cameras record 24/7 (like raw system logs), and smart alarms ping the guard room
 
   'lesson-08-forensics': {
     id: 'lesson-08-forensics',
-    milestoneId: 8,
+    milestoneId: 7,
     order: 8,
     titleAr: 'الدرس الثامن: التحقيق الجنائي الرقمي وجمع الأدلة (Digital Forensics)',
     titleEn: 'Lesson 8: Digital Forensics & Evidence Investigation',
@@ -1712,6 +2014,57 @@ Cameras record 24/7 (like raw system logs), and smart alarms ping the guard room
     estimatedMinutes: 18,
     simulationId: 'forensics',
     worldId: 8,
+    challengeId: 'forensics-root-cause-challenge',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس 7: مركز العمليات الأمنية SOC.',
+        textEn: 'Completion of Lesson 7: SOC Operations & Monitoring.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: التحقيق في ملف مخترق (File System Forensics)',
+      titleEn: 'Worked Example: Investigating a Compromised File',
+      scenarioAr: 'اكتشاف ملف مشبوه باسم "backdoor.sh" في مجلد النظام. المطلوب إثبات وقت إنشائه وكيفية وصوله:',
+      scenarioEn: 'A suspicious file named "backdoor.sh" is found in a system directory. Prove creation time and ingress vector:',
+      stepsAr: [
+        'الخطوة 1: استخراج البصمة الزمنية (Timestamps) للملف: وقت الإنشاء، التعديل، وآخر وصول (MAC times).',
+        'الخطوة 2: فحص سجلات المتصفح (Browser History) لمعرفة ما إذا كان الملف حُمل من موقع ويب مشبوه.',
+        'الخطوة 3: تحليل الذاكرة العشوائية (Memory Forensics) للبحث عن أي عملية نشطة تستخدم هذا الملف.',
+        'الخطوة 4: توثيق سلسلة الحضانة (Chain of Custody) لضمان قبول الأدلة في المحكمة.',
+      ],
+      stepsEn: [
+        'Step 1: Extract file timestamps: Modified, Accessed, and Created (MAC times).',
+        'Step 2: Cross-reference Browser History to determine if the file was downloaded from a known malicious URL.',
+        'Step 3: Perform Memory Analysis to find active processes interacting with the suspect script.',
+        'Step 4: Document the Chain of Custody to ensure evidence remains admissible in legal proceedings.',
+      ],
+      takeawayAr: 'الأدلة الرقمية لا تكذب إذا استُخرجت وحُفظت بطريقة علمية صحيحة.',
+      takeawayEn: 'Digital evidence is indisputable when extracted and preserved using scientifically sound methodologies.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: استعادة السجلات المحذوفة واكتشاف الجاني',
+      titleEn: 'Independent Challenge: Recovering Deleted Logs & Culprit Discovery',
+      scenarioAr: 'مخترق حاول مسح سجلات الدخول لإخفاء أثره. استخدم أدوات التحقيق لاستعادة البيانات:',
+      scenarioEn: 'An intruder attempted to clear login logs to hide their tracks. Use forensic tools to recover the slack space data:',
+      targetOutcomeAr: 'استعادة السجلات، تحديد عنوان IP المهاجم، وإصدار تقرير التحقيق النهائي.',
+      targetOutcomeEn: 'Successful log recovery, attacker IP identification, and final forensic report generation.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن حذف ملف يعني اختفاءه نهائياً من القرص الصلب.',
+      commonMisconceptionEn: 'Thinking that deleting a file makes it permanently vanish from the storage media.',
+      guidanceAr: 'الملفات المحذوفة غالباً ما تترك أثراً في المساحات غير المستخدمة (Slack Space) حتى يتم استبدالها ببيانات جديدة.',
+      guidanceEn: 'Deleted files often persists in unallocated storage sectors (Slack Space) until physically overwritten by new data.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'التحقيق الجنائي الرقمي يركز على الإجابة على: "ماذا حدث؟ متى؟ ومن فعل ذلك؟".',
+        textEn: 'Digital Forensics focuses on answering: "What happened? When? And who did it?".',
+      },
+      {
+        textAr: 'سلسلة الحضانة (Chain of Custody) هي أهم إجراء قانوني لحماية سلامة الأدلة.',
+        textEn: 'Chain of Custody is the most critical procedural safeguard for evidence integrity.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم سلسلة حفظ الأدلة (Chain of Custody) وسلامة القرص الصلب.',
@@ -1827,7 +2180,7 @@ Investigators wear gloves to avoid contaminating evidence and photograph everyth
 
   'lesson-09-devsecops': {
     id: 'lesson-09-devsecops',
-    milestoneId: 9,
+    milestoneId: 8,
     order: 9,
     titleAr: 'الدرس التاسع: أمن التطبيقات السحابية والحاويات وDevSecOps',
     titleEn: 'Lesson 9: Cloud, Containers & DevSecOps Security',
@@ -1836,6 +2189,57 @@ Investigators wear gloves to avoid contaminating evidence and photograph everyth
     estimatedMinutes: 20,
     simulationId: 'devsecops',
     worldId: 9,
+    challengeId: 'secure-pipeline-challenge',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس 8: التحقيق الجنائي الرقمي.',
+        textEn: 'Completion of Lesson 8: Digital Forensics & Evidence Investigation.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: كشف تسريب الأسرار في Git (Secret Scanning)',
+      titleEn: 'Worked Example: Detecting Secrets Leakage in Git',
+      scenarioAr: 'مطور قام برفع كود يحتوي على مفتاح AWS Access Key عن طريق الخطأ:',
+      scenarioEn: 'A developer accidentally committed code containing a plaintext AWS Access Key:',
+      stepsAr: [
+        'الخطوة 1: يكتشف فاحص الأسرار (Secret Scanner) وجود نمط يطابق مفاتيح AWS.',
+        'الخطوة 2: توقف بوابة الأمان (Security Gate) عملية البناء فوراً.',
+        'الخطوة 3: يتم إرسال تنبيه لفريق الأمان لإلغاء المفتاح (Revoke) في منصة السحابة.',
+        'الخطوة 4: يتم تطهير سجل Git وحذف المفتاح من تاريخ الالتزامات (Commits).',
+      ],
+      stepsEn: [
+        'Step 1: The Secret Scanner identifies a high-entropy string matching AWS credential patterns.',
+        'Step 2: The Security Gate immediately halts the CI/CD pipeline building process.',
+        'Step 3: An automated alert triggers for the security team to revoke the leaked key in the cloud console.',
+        'Step 4: The Git history is purged to remove the sensitive credential from all historical commits.',
+      ],
+      takeawayAr: 'الأتمتة هي الطريقة الوحيدة لمنع تسريب الأسرار في بيئات التطوير السريعة.',
+      takeawayEn: 'Automated scanning is the only scalable way to prevent credential leakage in high-velocity development.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: إصلاح ثغرة SAST وتجاوز البوابة',
+      titleEn: 'Independent Challenge: Remediating SAST Flaws & Gate Bypass',
+      scenarioAr: 'فحص الكود الآلي (SAST) يكتشف ثغرة SQL Injection في طلب جديد. قم بإصلاح الكود لتجاوز الفحص:',
+      scenarioEn: 'A SAST scan detects a SQL Injection vulnerability in a Pull Request. Refactor the code to secure the application:',
+      targetOutcomeAr: 'تحويل الاستعلام إلى Prepared Statement ونجاح اجتياز بوابة الأمان.',
+      targetOutcomeEn: 'Implement parameterized queries and achieve a green security gate status.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن حذف المفتاح في التزام (Commit) جديد يكفي لتأمينه.',
+      commonMisconceptionEn: 'Thinking that deleting a leaked key in a subsequent commit makes it safe.',
+      guidanceAr: 'المفاتيح المسربة تظل في تاريخ Git؛ يجب إلغاء المفتاح فوراً وتطهير تاريخ المستودع بالكامل.',
+      guidanceEn: 'Leaked credentials persist in Git history; you must revoke the key on the service side and purge the repository history.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'نهج DevSecOps يدمج الأمان كجزء أصيل من دورة حياة البرنامج وليس كمرحلة أخيرة.',
+        textEn: 'DevSecOps integrates security as a continuous part of the lifecycle, not a final gate.',
+      },
+      {
+        textAr: 'التحول لليسار (Shift Left) يعني اكتشاف الثغرات في وقت مبكر لتوفير الجهد والتكلفة.',
+        textEn: 'Shift Left means catching vulnerabilities early to minimize remediation cost and risk.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم خطوط إنتاج البرمجيات الآمنة (Secure CI/CD Pipeline).',
@@ -1947,9 +2351,188 @@ Rather than waiting for a car to crash on the highway to notice bad brakes, auto
       },
     ],
     nextStep: {
+      nextLessonId: 'lesson-09-cloud-threat-hunting',
+      takeawayAr: 'رائع لأبعد حد! لقد أتقنت خطوط التطوير الآمنة. الآن انتقل إلى اصطياد التهديدات السحابية والصيد الاستباقي قبل الانتقال للميدان الشامل!',
+      takeawayEn: 'Phenomenal progress! You have mastered secure build pipelines. Now advance to cloud threat hunting before entering the capstone range!',
+    },
+  },
+
+  'lesson-09-cloud-threat-hunting': {
+    id: 'lesson-09-cloud-threat-hunting',
+    milestoneId: 9,
+    order: 1,
+    titleAr: 'الدرس التاسع: اصطياد التهديدات السحابية وصياغة الفرضيات',
+    titleEn: 'Lesson 9: Cloud Threat Hunting & Attack Hypothesis Formulation',
+    whyItMattersAr: 'الهجمات السحابية لا تلفت الانتباه؛ بل تتخفى كأعمال صيانة مشروعة باستخدام أدوار IAM المسروقة، واصطياد التهديدات الاستباقي هو السلاح الوحيد لربط الأحداث المستترة.',
+    whyItMattersEn: 'Cloud attackers blend in using stolen IAM identities; proactive threat hunting leverages structured hypotheses to unveil subtle API anomalies before data exfiltration occurs.',
+    estimatedMinutes: 30,
+    simulationId: 'threat_hunting',
+    worldId: 28,
+    challengeId: 'cloud-threat-hunting-challenge',
+    prerequisites: [
+      {
+        textAr: 'إكمال الدرس 8: أمن التطبيقات وخطوط DevSecOps.',
+        textEn: 'Completion of Lesson 8: Application Security & DevSecOps Pipelines.',
+      },
+      {
+        textAr: 'فهم أساسيات سجلات التدقيق CloudTrail ورموز الوصول IAM.',
+        textEn: 'Foundational grasp of CloudTrail audit streams and IAM credentials.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: تتبع فرضية تصعيد الصلاحيات السحابية',
+      titleEn: 'Worked Example: Tracing a Cloud IAM Privilege Escalation Hypothesis',
+      scenarioAr: 'ملاحظة نمط شاذ من طلبات GetCallerIdentity تليها استدعاءات AttachUserPolicy في CloudTrail من عنوان IP غير معروف:',
+      scenarioEn: 'Detecting an unusual burst of GetCallerIdentity calls followed by AttachUserPolicy in CloudTrail logs from an unapproved IP range:',
+      stepsAr: [
+        'صياغة الفرضية: قيام مهاجم باستخدام مفتاح access_key مسرب لربط سياسة AdministratorAccess بحسابه.',
+        'الاستعلام في سجلات CloudTrail عن الحدث AttachUserPolicy ومقارنته بالرقم التعريفي لمنفذ العملية.',
+        'تتبع التسلسل الزمني لطلبات API والتثبت من أن الهوية المخترقة أنشأت دور سحابي مساند لتأمين التواجد المستمر.',
+        'إلغاء المفتاح المخترق فوراً، وحذف السياسة المرفقة غير المصرح بها، وتفعيل تنبيه SIEM تلقائي لمراقبة تعديلات IAM.',
+      ],
+      stepsEn: [
+        'Formulate Hypothesis: An adversary is leveraging a leaked access key to bind AdministratorAccess to an unprivileged entity.',
+        'Filter CloudTrail logs for AttachUserPolicy events, correlating userARN with sourceIPAddress.',
+        'Trace the API sequence to confirm if the compromise attempted backdoor role creation for persistence.',
+        'Remediate by revoking compromised access keys, detaching unauthorized policies, and establishing automated SIEM alerts.',
+      ],
+      takeawayAr: 'اصطياد التهديدات يتطلب صياغة فرضيات فرضية من منهجية MITRE ATT&CK بدلاً من الانتظار السلبي للتنبيهات.',
+      takeawayEn: 'Threat hunting relies on proactive MITRE ATT&CK hypothesis testing rather than purely passive alert triage.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: كشف تسريب بيانات الحاويات واصطياد التهديد',
+      titleEn: 'Independent Challenge: Uncovering Container Exfiltration & Threat Hypothesis Testing',
+      scenarioAr: 'حلل سجلات الأحداث في بيئة الحاويات المستضافة لتحديد شذوذ نقل البيانات واكتشاف نقطة الاختراق المبدئية:',
+      scenarioEn: 'Analyze container runtime audit logs to isolate abnormal egress traffic and trace the initial compromise entry vector:',
+      targetOutcomeAr: 'عزل الحاوية المصابة، إلغاء صلاحيات IAM المخترقة، وإثبات اكتمال اصطياد التهديد.',
+      targetOutcomeEn: 'Isolate compromised pods, revoke escalated IAM privileges, and validate complete threat neutralization.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن الاعتماد على أدوات الكشف التلقائي كافٍ دون الحاجة للبحث الاستباقي عن التهديدات.',
+      commonMisconceptionEn: 'Believing legacy automated signatures alone catch sophisticated identity-driven cloud intrusions.',
+      guidanceAr: 'المهاجمون الأذكياء يستغلون الصلاحيات المشروعة؛ واصطياد التهديدات يفحص الأنماط السلوكية والشاذة حتى دون وجود تنبيه برمجيات خبيثة تقليدي.',
+      guidanceEn: 'Sophisticated attackers use valid credentials; hunting inspects behavior baselines and API execution anomalies even without malware signatures.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'سجلات CloudTrail وKubernetes Audit Stream هي مصدر الحقيقة الأول لاصطياد الهجمات السحابية.',
+        textEn: 'CloudTrail and K8s Audit streams serve as the primary ground truth for cloud threat hunting.',
+      },
+      {
+        textAr: 'صياغة الفرضيات المستندة لمصفوفة MITRE ATT&CK تضمن تحليلاً شاملاً دون إغفال التهديدات المتقدمة.',
+        textEn: 'Hypothesis-driven testing anchored in MITRE ATT&CK matrix ensures systematic threat discovery.',
+      },
+    ],
+    objectives: [
+      {
+        textAr: 'فهم منهجية اصطياد التهديدات السحابية واستخدام فرضيات الهجوم.',
+        textEn: 'Master hypothesis-driven cloud threat hunting methodologies.',
+      },
+      {
+        textAr: 'تحليل سجلات الأحداث السحابية واستعلامات IAM وKubernetes لتحديد الأنشطة المشبوهة.',
+        textEn: 'Analyze CloudTrail and container logs to detect IAM escalation and lateral movement.',
+      },
+    ],
+    concept: {
+      textAr: `اصطياد التهديدات (Threat Hunting) هو عملية استباقية ومنظمة للبحث في الشبكات والأنظمة السحابية عن المهاجمين المستترين الذين تمكنوا من تجاوز وسائل الدفاع التلقائية.
+في البيئات السحابية، يركز الصيد على:
+• شذوذ طلبات API في CloudTrail (مثل الوصول من بلدان غير معتادة أو في أوقات غير طبيعية).
+• تصعيد الصلاحيات الهادئ عبر تعديل سياسات IAM.
+• الحركة الجانبية بين الحاويات ومجموعات Kubernetes.`,
+      textEn: `Threat Hunting is a proactive, hypothesis-led search through cloud environments to locate stealthy adversaries who bypassed automated security controls.
+In cloud infrastructure, hunting focuses on:
+• CloudTrail API anomalies (unusual geographic locations or off-hours credential usage).
+• Stealthy privilege escalation via IAM policy manipulations.
+• Container-to-host lateral movement across Kubernetes clusters.`,
+      analogyAr: `حارس الغابة الخبير:
+مثل حارس الغابة الذي لا ينتظر سماع أجهزة الإنذار بل يقرأ آثار الأقدام المكسورة والغريبة على الأرض؛ كذلك مصطاد التهديدات يقرأ السجلات الدقيقة لاكتشاف أثر المهاجم قبل وقوع الضرر.`,
+      analogyEn: `The Expert Tracker:
+Like a wilderness ranger who doesn't wait for alarm sirens but actively searches for unusual footprints and broken twigs; a threat hunter reads audit logs to discover stealth adversaries before damage occurs.`,
+      keyTerms: [
+        {
+          termAr: 'اصطياد التهديدات (Threat Hunting)',
+          termEn: 'Threat Hunting',
+          definitionAr: 'النهج الاستباقي المنهجي للبحث عن التهديدات المتقدمة وتحديد الهجمات النشطة غير المكتشفة.',
+          definitionEn: 'The proactive, hypothesis-led search for advanced persistent threats hidden inside networks and cloud environments.',
+        },
+        {
+          termAr: 'فرضية الهجوم (Attack Hypothesis)',
+          termEn: 'Attack Hypothesis',
+          definitionAr: 'افتراض علمي ومدروس حول طريقة محتملة يستخدمها المهاجم بناءً على إطار MITRE ATT&CK.',
+          definitionEn: 'A structured proposition regarding potential adversary behavior based on threat intelligence and MITRE ATT&CK techniques.',
+        },
+      ],
+    },
+    demonstration: {
+      titleAr: 'ما الذي ستلاحظه في محاكي اصطياد التهديدات؟',
+      titleEn: 'What will you observe in the Threat Hunting simulator?',
+      whatToLookForAr: 'افحص خط الأحداث السحابية وراقب شذوذ طلبات IAM وسجلات CloudTrail في بيئة Nexora Cloud.',
+      whatToLookForEn: 'Observe CloudTrail API event flows and inspect anomalous IAM calls in the Nexora Cloud console.',
+      initialStateAr: 'ظهور مؤشرات استعلامات IAM متزايدة من عنوان IP غير معروف مع تغيير في تكوين المجموعات السحابية.',
+      initialStateEn: 'Initial baseline shows heightened IAM query volume from an unlisted IP along with cloud bucket ACL modifications.',
+    },
+    guidedTask: {
+      taskTitleAr: 'مهمتك العملية في المحاكي',
+      taskTitleEn: 'Your Guided Task in the Simulator',
+      instructionsAr: [
+        'افتح محاكي اصطياد التهديدات السحابية (Threat Hunting Simulator).',
+        'افحص سجلات CloudTrail وحدد طلبات API الشاذة المنفذة باستعمال مفتاح IAM المسرب.',
+        'صغ فرضية الهجوم بناءً على تقنيات MITRE ATT&CK المستهدفة.',
+        'قم بإلغاء الصلاحية المسربة، وعزل الحاوية المتضررة، واطلب تقرير تأكيد التطهير.',
+      ],
+      instructionsEn: [
+        'Launch the Cloud Threat Hunting Simulator.',
+        'Query CloudTrail logs to identify anomalous API calls originating from compromised IAM access keys.',
+        'Formulate an attack hypothesis based on MITRE ATT&CK technique IDs.',
+        'Revoke compromised IAM tokens, isolate the affected workload, and trigger verification confirmation.',
+      ],
+      whyWeDoThisAr: 'إتقان القدرة الاستباقية على شل حركة المهاجمين واكتشاف اختراق المفاتيح قبل إتمام سرقة البيانات.',
+      whyWeDoThisEn: 'To master proactive threat neutralization and stop compromised keys before exfiltration occurs.',
+      hintsAr: [
+        'ابحث عن أحدث طلبات AttachUserPolicy وCreateAccessKey في شاشة السجلات.',
+      ],
+      hintsEn: [
+        'Inspect the audit log view for recent AttachUserPolicy and CreateAccessKey calls.',
+      ],
+      validationCriterionAr: 'تحديد الحدث الشاذ وتطبيق الاستجابة الصحيحة وإكمال اصطياد التهديد.',
+      validationCriterionEn: 'Anomalous event isolated, threat hypothesis verified, and remediation executed.',
+      checkType: 'interactive_simulation',
+    },
+    resultExplanation: {
+      whatHappenedAr: 'تم تعقب النشاط الشاذ في سجلات السحابة، والتحقق من صحة فرضية الاختراق، ثم إلغاء صلاحيات المهاجم واجتياز التحدي.',
+      whatHappenedEn: 'Anomalous API events were correlated, attack hypothesis verified against CloudTrail, and attacker access keys revoked.',
+      securitySignificanceAr: 'اصطياد التهديدات يقلل وقت بقاء المهاجم (Dwell Time) داخل السحابة من أسابيع إلى دقائق معدودة.',
+      securitySignificanceEn: 'Proactive threat hunting reduces adversary dwell time in cloud environments from weeks to minutes.',
+    },
+    knowledgeCheck: [
+      {
+        id: 'q1-threat-hunting-hypothesis',
+        questionAr: 'ما الفرق الرئيسي بين الاستجابة التقليدية للحوادث (Incident Response) واصطياد التهديدات (Threat Hunting)؟',
+        questionEn: 'What is the primary difference between Incident Response and Threat Hunting?',
+        options: [
+          {
+            id: 'opt-th1',
+            textAr: 'الاستجابة للحوادث تبدأ بعد صدور تنبيه أمني، بينما اصطياد التهديدات يبدأ استباقياً بالبحث عن التهديدات المستترة بدون تنبيه مبدئي',
+            textEn: 'Incident Response triggers after an alert, whereas Threat Hunting proactively seeks hidden threats without waiting for an automated alert',
+            isCorrect: true,
+            explanationAr: 'ممتاز! اصطياد التهديدات هو نهج استباقي يقوده العنصر البشري وصياغة الفرضيات.',
+            explanationEn: 'Spot on! Threat hunting is a proactive, analyst-driven discipline powered by hypothesis formulation.',
+          },
+          {
+            id: 'opt-th2',
+            textAr: 'لا يوجد أي فرق بينهما',
+            textEn: 'There is no difference between them',
+            isCorrect: false,
+            explanationAr: 'غير صحيح على الإطلاق.',
+            explanationEn: 'Incorrect.',
+          },
+        ],
+      },
+    ],
+    nextStep: {
       nextLessonId: 'lesson-10-cyber-range',
-      takeawayAr: 'رائع لأبعد حد! لقد أكملت 9 محطات تأسيسية متكاملة. الآن حان موعد التتويج: الدخول إلى الميدان السيبراني الشامل (Cyber Range) لتطبيق كل ما تعلمته في بيئة مؤسسية تفاعلية كاملة!',
-      takeawayEn: 'Phenomenal progress! You have conquered 9 foundational milestones. Now enter the culmination: The Enterprise Cyber Range (Lesson 10)!',
+      takeawayAr: 'أحسنت صنعاً! لقد أكملت اصطياد التهديدات السحابية بمؤشرات عالية. الآن حان موعد التحدي الأكبر: الميدان السيبراني المؤسسي الشامل (Lesson 10)!',
+      takeawayEn: 'Outstanding! You have mastered cloud threat hunting principles. Now proceed to the ultimate capstone: The Unified Enterprise Cyber Range (Lesson 10)!',
     },
   },
 
@@ -1964,6 +2547,58 @@ Rather than waiting for a car to crash on the highway to notice bad brakes, auto
     estimatedMinutes: 25,
     simulationId: 'range',
     worldId: 60,
+    prerequisites: [
+      {
+        textAr: 'إكمال كافة الدروس السابقة من 0 إلى 9.',
+        textEn: 'Completion of all preceding lessons from 0 to 9.',
+      },
+    ],
+    workedExample: {
+      titleAr: 'مثال عملي: تتبع دورة الحياة الكاملة لاتصال مستخدم بخادم',
+      titleEn: 'Worked Example: Full Lifecycle of a User-to-Server Session',
+      scenarioAr: 'مستخدم في قسم المالية يحاول الوصول لسجل الرواتب في بيئة Nexora الحية:',
+      scenarioEn: 'A Finance user attempts to access the payroll ledger in the live Nexora environment:',
+      stepsAr: [
+        'الخطوة 1: الموظف يسجل دخوله لمحطة العمل (OS Internals & Active Directory).',
+        'الخطوة 2: يطلب الموظف الوصول للخادم عبر الشبكة (Subnetting & Routing).',
+        'الخطوة 3: يمر الطلب عبر الجدار الناري للتأكد من القواعد (Firewall ACLs).',
+        'الخطوة 4: يتم التحقق من تذكرة Kerberos وتشفير الاتصال (Identity & Crypto).',
+        'الخطوة 5: يظهر الحدث في لوحة تحكم SOC للتحقق من سلامة النشاط (SOC Monitoring).',
+      ],
+      stepsEn: [
+        'Step 1: User authenticates to the workstation (OS Internals & Active Directory).',
+        'Step 2: Request traverses internal routers to locate the server (Subnetting & Routing).',
+        'Step 3: Perimeter/Internal firewalls validate the traffic flow (Firewall ACLs).',
+        'Step 4: Kerberos verifies the identity and TLS encrypts the payload (Identity & Crypto).',
+        'Step 5: The successful access event is logged and analyzed in the SOC console (SOC Monitoring).',
+      ],
+      takeawayAr: 'الميدان السيبراني يجسد تكامل كافة الدفاعات السيبرانية في نظام واحد.',
+      takeawayEn: 'The Cyber Range demonstrates the total orchestration of all defensive layers working in unison.',
+    },
+    independentChallengeDetail: {
+      titleAr: 'التحدي المستقل: الدفاع عن المؤسسة ضد هجوم شامل',
+      titleEn: 'Independent Challenge: Defending the Enterprise Against Full-Spectrum Attack',
+      scenarioAr: 'مهاجم يحاول التسلل من الإنترنت للوصول لمتحكم النطاق. استخدم كافة الأدوات المتاحة لصد الهجوم:',
+      scenarioEn: 'An adversary is attempting to pivot from the internet to the Domain Controller. Deploy every skill to block and hunt the threat:',
+      targetOutcomeAr: 'حظر المهاجم، عزل الأنظمة المتضررة، وتأكيد سلامة البنية التحتية بالكامل.',
+      targetOutcomeEn: 'Attacker blocked, affected nodes isolated, and infrastructure integrity fully restored.',
+    },
+    remediationGuidance: {
+      commonMisconceptionAr: 'الاعتقاد بأن تأمين جزء واحد (مثل الجدار الناري فقط) يكفي لحماية الشركة.',
+      commonMisconceptionEn: 'Thinking that a single point of defense (e.g. just a firewall) secures the entire enterprise.',
+      guidanceAr: 'الأمان هو "دفاع بالعمق" (Defense-in-Depth)؛ فإذا سقط خط دفاع، يجب أن يتصدى الخط التالي للمهاجم.',
+      guidanceEn: 'Security relies on "Defense-in-Depth"; if one layer is breached, the next must contain and neutralize the threat.',
+    },
+    keyTakeaways: [
+      {
+        textAr: 'الأمن السيبراني هو عملية مستمرة وشاملة تبدأ من الكابل وتنتهي بالتطبيق.',
+        textEn: 'Cybersecurity is a continuous, holistic process from Layer 1 to Layer 7.',
+      },
+      {
+        textAr: 'التوأم الرقمي (Digital Twin) يتيح اختبار الدفاعات وتدريب الكوادر دون خطر على الإنتاج.',
+        textEn: 'Digital Twins enable risk-free defense testing and high-fidelity personnel training.',
+      },
+    ],
     objectives: [
       {
         textAr: 'فهم معمارية المؤسسة المتكاملة (Enterprise Digital Twin).',
