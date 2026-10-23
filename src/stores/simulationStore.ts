@@ -92,6 +92,7 @@ interface SimulationStoreState {
   whatChanged: { before: string; after: string; visible: boolean } | null;
   inspectorActiveTab: 'overview' | 'rules' | 'connections' | 'events' | 'logs' | 'security';
   onboardingStep: number;
+  onboardingProgress: OnboardingRequirements;
 
   selectedEntity: SelectedEntity | null;
   completedChallenges: string[];
@@ -109,6 +110,7 @@ interface SimulationStoreState {
   completeLesson: (lessonId: string) => void;
   setLessonStage: (lessonId: string, stage: number) => void;
   updateLessonProgressState: (lessonId: string, updates: Partial<LessonProgressState>) => void;
+  recordOnboardingAction: (action: 'inspect_firewall' | 'alter_policy') => void;
   setSelectedMacroDomainId: (id: MacroDomainId | null) => void;
   setSelectedWorldId: (id: number | null) => void;
   setMode: (mode: SimulationMode) => void;
@@ -499,6 +501,27 @@ export const safeParseLanguage = (raw: string | null): Language => {
   return 'ar';
 };
 
+export interface OnboardingRequirements {
+  firewallInspected: boolean;
+  policyAltered: boolean;
+}
+
+export const safeParseOnboardingProgress = (raw: string | null): OnboardingRequirements => {
+  if (!raw) return { firewallInspected: false, policyAltered: false };
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return {
+        firewallInspected: parsed.firewallInspected === true,
+        policyAltered: parsed.policyAltered === true,
+      };
+    }
+  } catch {
+    // Corrupted storage recovery - fallback gracefully
+  }
+  return { firewallInspected: false, policyAltered: false };
+};
+
 export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   // Subscribe Zustand to globalSimulationRuntime
   globalSimulationRuntime.subscribe((runtimeState) => {
@@ -542,13 +565,22 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     explanationState: null,
     whatChanged: null,
     inspectorActiveTab: 'overview',
-    onboardingStep: 0,
+    onboardingProgress: safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')),
+    onboardingStep: safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')).firewallInspected
+      ? (safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress')).policyAltered ? 3 : 2)
+      : 0,
 
     selectedEntity: null,
     completedChallenges: safeParseCompletedChallenges(
       getStoredItem('omega_completed_challenges'),
       VALID_CHALLENGE_IDS
-    ),
+    ).filter((cId) => {
+      if (cId === 'orientation-guided-challenge') {
+        const prog = safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress'));
+        return prog.firewallInspected === true && prog.policyAltered === true;
+      }
+      return true;
+    }),
     activeChallengeId: null,
 
     activeLessonId: safeParseActiveLessonId(getStoredItem('omega_active_lesson_id')),
@@ -633,6 +665,33 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       whatChanged: diff ? { ...diff, visible: true } : null,
     }),
   setInspectorActiveTab: (inspectorActiveTab) => set({ inspectorActiveTab }),
+  recordOnboardingAction: (action) => {
+    const currentProgress = get().onboardingProgress;
+    let firewallInspected = currentProgress.firewallInspected;
+    let policyAltered = currentProgress.policyAltered;
+
+    if (action === 'inspect_firewall') {
+      firewallInspected = true;
+    } else if (action === 'alter_policy') {
+      if (!firewallInspected) {
+        console.warn('[Integrity] Cannot record policyAltered action before inspecting firewall.');
+        return;
+      }
+      policyAltered = true;
+    }
+
+    const updatedProgress = { firewallInspected, policyAltered };
+    let calculatedStep = 1;
+    if (firewallInspected) calculatedStep = 2;
+    if (firewallInspected && policyAltered) calculatedStep = 3;
+
+    setStoredItem('omega_onboarding_progress', JSON.stringify(updatedProgress));
+    set({
+      onboardingProgress: updatedProgress,
+      onboardingStep: calculatedStep,
+    });
+  },
+
   setOnboardingStep: (onboardingStep) => {
     if (typeof onboardingStep !== 'number' || !Number.isFinite(onboardingStep) || Number.isNaN(onboardingStep)) {
       console.warn('[Integrity] Invalid onboardingStep value rejected.');
@@ -640,6 +699,17 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     }
     const currentStep = get().onboardingStep;
     const targetStep = Math.floor(onboardingStep);
+    const prog = get().onboardingProgress;
+
+    // Evidence-driven gating: step number cannot advance beyond verified activities!
+    if (targetStep >= 2 && !prog.firewallInspected) {
+      console.warn('[Integrity] Cannot set onboardingStep >= 2 without verified inspect_firewall activity.');
+      return;
+    }
+    if (targetStep >= 3 && (!prog.firewallInspected || !prog.policyAltered)) {
+      console.warn('[Integrity] Cannot set onboardingStep >= 3 without verified alter_policy activity.');
+      return;
+    }
 
     // Sequential step gating: step can only reset to 0 or 1, or advance by at most 1 step at a time
     if (targetStep > 1 && targetStep > currentStep + 1) {
@@ -799,9 +869,15 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       // Store-authoritative step completion verification for instructional challenges
       if (cleanId === 'orientation-guided-challenge') {
         const currentStep = get().onboardingStep;
-        if (typeof currentStep !== 'number' || currentStep < 3) {
+        const prog = get().onboardingProgress;
+        if (
+          typeof currentStep !== 'number' ||
+          currentStep < 3 ||
+          !prog.firewallInspected ||
+          !prog.policyAltered
+        ) {
           console.warn(
-            `[Integrity] Instructional challenge ${cleanId} rejected: required onboarding steps not completed (current step: ${currentStep}, required: 3).`
+            `[Integrity] Instructional challenge ${cleanId} rejected: required onboarding activities unverified (firewallInspected: ${prog.firewallInspected}, policyAltered: ${prog.policyAltered}, step: ${currentStep}).`
           );
           return;
         }
@@ -943,10 +1019,24 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
 
   reloadFromStorage: () => {
     const lang = safeParseLanguage(getStoredItem('omega_language'));
-    const completed = safeParseCompletedChallenges(
+    const rawCompletedChallenges = safeParseCompletedChallenges(
       getStoredItem('omega_completed_challenges'),
       VALID_CHALLENGE_IDS
     );
+    const storedOnboardingProgress = safeParseOnboardingProgress(getStoredItem('omega_onboarding_progress'));
+
+    // Sanitize completed challenges: Reject orientation-guided-challenge if onboarding activities are missing/incomplete
+    const verifiedCompletedChallenges = rawCompletedChallenges.filter((cId) => {
+      if (cId === 'orientation-guided-challenge') {
+        return storedOnboardingProgress.firewallInspected === true && storedOnboardingProgress.policyAltered === true;
+      }
+      return true;
+    });
+
+    let restoredStep = 1;
+    if (storedOnboardingProgress.firewallInspected) restoredStep = 2;
+    if (storedOnboardingProgress.firewallInspected && storedOnboardingProgress.policyAltered) restoredStep = 3;
+
     const rawCompletedLessons = safeParseCompletedLessons(
       getStoredItem('omega_completed_lessons'),
       VALID_CURRICULUM_LESSON_IDS
@@ -970,10 +1060,12 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     }
     set({
       language: lang,
-      completedChallenges: completed,
+      completedChallenges: verifiedCompletedChallenges,
       completedLessons: verifiedCompletedLessons,
       activeLessonId: activeLesson,
       lessonProgress: parsedProgress,
+      onboardingProgress: storedOnboardingProgress,
+      onboardingStep: restoredStep,
     });
   },
 };
