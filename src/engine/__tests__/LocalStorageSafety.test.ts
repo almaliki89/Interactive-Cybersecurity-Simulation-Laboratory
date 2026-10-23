@@ -124,8 +124,9 @@ describe('LocalStorage Safety & Storage Recovery Engine Suite', () => {
         });
 
         const store = useSimulationStore.getState();
-        // Set correct context for whitelist check
+        // Set correct context for whitelist check and register validator for technical challenge integrity
         store.setActiveSimulation('cia_triad');
+        store.registerChallengeValidator('cia-balance-challenge', () => ({ success: true, score: 100 }));
 
         // setLanguage should update in-memory state and catch storage error
         expect(() => {

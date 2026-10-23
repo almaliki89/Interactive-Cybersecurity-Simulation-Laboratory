@@ -217,6 +217,7 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
         
         // Context required for OMEGA MAX integrity
         store.setActiveSimulation('cia_triad');
+        store.registerChallengeValidator('cia-balance-challenge', () => ({ success: true, score: 100 }));
         store.completeChallenge('cia-balance-challenge', { success: true });
       });
 
@@ -559,9 +560,10 @@ describe('Beginner-First Learning Experience & Curriculum Architecture', () => {
 
       expect(useSimulationStore.getState().completedChallenges.length).toBe(initialCount);
 
-      // Valid ID registers cleanly if context is correct
+      // Valid ID registers cleanly if context and validator are correct
       act(() => {
         useSimulationStore.getState().setActiveSimulation('cia_triad');
+        useSimulationStore.getState().registerChallengeValidator('cia-balance-challenge', () => ({ success: true, score: 100 }));
       });
       store.completeChallenge('cia-balance-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).toContain('cia-balance-challenge');
