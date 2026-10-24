@@ -4,6 +4,7 @@ import { simulationRegistry } from '../../simulations/registry';
 import {
   isSameSubnet,
   isValidIpv4,
+  isValidCidrPrefix,
   calculateSubnetDetails,
   evaluatePacketTransmission,
 } from '../../utils/networkUtils';
@@ -290,6 +291,142 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
     expect(isChallengeSolved24).toBe(false);
     expect(isChallengeSolved25).toBe(false);
     expect(isChallengeSolved26).toBe(true);
+  });
+
+  describe('CIDR Validation Hardening & Regression Suite', () => {
+    it('verifies isValidCidrPrefix accepts valid integer prefixes (0 to 32) and rejects invalid, fractional, and non-finite values', () => {
+      // Valid integer prefixes
+      const validPrefixes = [0, 1, 8, 16, 24, 25, 26, 27, 28, 30, 31, 32];
+      validPrefixes.forEach((prefix) => {
+        expect(isValidCidrPrefix(prefix), `Expected prefix /${prefix} to be valid`).toBe(true);
+      });
+
+      // Invalid negative prefixes and prefixes > 32
+      expect(isValidCidrPrefix(-1)).toBe(false);
+      expect(isValidCidrPrefix(-32)).toBe(false);
+      expect(isValidCidrPrefix(33)).toBe(false);
+      expect(isValidCidrPrefix(64)).toBe(false);
+      expect(isValidCidrPrefix(128)).toBe(false);
+
+      // Fractional prefixes
+      expect(isValidCidrPrefix(26.5)).toBe(false);
+      expect(isValidCidrPrefix(24.5)).toBe(false);
+      expect(isValidCidrPrefix(0.5)).toBe(false);
+      expect(isValidCidrPrefix(31.9)).toBe(false);
+
+      // NaN, infinite values, and non-numeric values
+      expect(isValidCidrPrefix(NaN)).toBe(false);
+      expect(isValidCidrPrefix(Infinity)).toBe(false);
+      expect(isValidCidrPrefix(-Infinity)).toBe(false);
+      expect(isValidCidrPrefix(null)).toBe(false);
+      expect(isValidCidrPrefix(undefined)).toBe(false);
+      expect(isValidCidrPrefix('24')).toBe(false);
+      expect(isValidCidrPrefix({})).toBe(false);
+      expect(isValidCidrPrefix([])).toBe(false);
+    });
+
+    it('verifies isSameSubnet handles valid prefixes (/0, /24, /26, /32) and rejects invalid/fractional prefixes', () => {
+      const hostIp = '192.168.1.42';
+      const gatewayIp = '192.168.1.1';
+
+      // Valid prefixes
+      expect(isSameSubnet(hostIp, gatewayIp, 0)).toBe(true); // /0 encompasses all IPv4 space
+      expect(isSameSubnet('10.0.0.1', '192.168.1.1', 0)).toBe(true);
+      expect(isSameSubnet(hostIp, gatewayIp, 24)).toBe(true);
+      expect(isSameSubnet(hostIp, '192.168.2.1', 24)).toBe(false);
+      expect(isSameSubnet(hostIp, gatewayIp, 26)).toBe(true);
+      expect(isSameSubnet('192.168.1.65', gatewayIp, 26)).toBe(false);
+      expect(isSameSubnet(hostIp, hostIp, 32)).toBe(true);
+      expect(isSameSubnet(hostIp, gatewayIp, 32)).toBe(false);
+
+      // Rejected prefixes: must return false without throwing
+      const invalidPrefixes = [-1, 33, 26.5, 24.5, NaN, Infinity, -Infinity];
+      invalidPrefixes.forEach((invalidPrefix) => {
+        expect(
+          isSameSubnet(hostIp, gatewayIp, invalidPrefix),
+          `Expected isSameSubnet to return false for prefix ${invalidPrefix}`
+        ).toBe(false);
+      });
+    });
+
+    it('verifies calculateSubnetDetails contract for /0, /32, /24, /26 and rejection of invalid prefixes', () => {
+      // Rejection of invalid prefixes -> returns null
+      const invalidPrefixes = [-1, 33, 26.5, 24.5, NaN, Infinity, -Infinity];
+      invalidPrefixes.forEach((invalidPrefix) => {
+        expect(
+          calculateSubnetDetails('192.168.1.0', invalidPrefix),
+          `Expected calculateSubnetDetails to return null for prefix ${invalidPrefix}`
+        ).toBeNull();
+      });
+
+      // Boundary: /0
+      const details0 = calculateSubnetDetails('0.0.0.0', 0);
+      expect(details0).not.toBeNull();
+      expect(details0!.subnetMask).toBe('0.0.0.0');
+      expect(details0!.totalIps).toBe(4294967296);
+      expect(details0!.usableHosts).toBe(4294967294);
+      expect(details0!.networkAddress).toBe('0.0.0.0');
+      expect(details0!.broadcastAddress).toBe('255.255.255.255');
+      expect(details0!.firstUsableIp).toBe('0.0.0.1');
+      expect(details0!.lastUsableIp).toBe('255.255.255.254');
+
+      // Boundary: /32
+      const details32 = calculateSubnetDetails('192.168.1.1', 32);
+      expect(details32).not.toBeNull();
+      expect(details32!.subnetMask).toBe('255.255.255.255');
+      expect(details32!.totalIps).toBe(1);
+      expect(details32!.usableHosts).toBe(0);
+      expect(details32!.networkAddress).toBe('192.168.1.1');
+      expect(details32!.broadcastAddress).toBe('192.168.1.1');
+      expect(details32!.firstUsableIp).toBe('192.168.1.1');
+      expect(details32!.lastUsableIp).toBe('192.168.1.1');
+
+      // Standard /24
+      const details24 = calculateSubnetDetails('192.168.1.0', 24);
+      expect(details24).not.toBeNull();
+      expect(details24!.subnetMask).toBe('255.255.255.0');
+      expect(details24!.totalIps).toBe(256);
+      expect(details24!.usableHosts).toBe(254);
+
+      // Standard /26
+      const details26 = calculateSubnetDetails('192.168.1.0', 26);
+      expect(details26).not.toBeNull();
+      expect(details26!.subnetMask).toBe('255.255.255.192');
+      expect(details26!.totalIps).toBe(64);
+      expect(details26!.usableHosts).toBe(62);
+    });
+
+    it('verifies evaluatePacketTransmission rejects invalid CIDR prefixes consistently without throwing', () => {
+      const hostIp = '192.168.1.42';
+      const gatewayIp = '192.168.1.1';
+      const invalidPrefixes = [-1, 33, 26.5, 24.5, NaN, Infinity, -Infinity];
+
+      invalidPrefixes.forEach((invalidPrefix) => {
+        const result = evaluatePacketTransmission({
+          hostIp,
+          gatewayIp,
+          cidrPrefix: invalidPrefix,
+          natEnabled: true,
+        });
+
+        expect(result.validInputs).toBe(false);
+        expect(result.isSameSubnet).toBe(false);
+        expect(result.status).toBe('invalid_ip');
+        expect(result.packetState).toBe('blocked');
+        expect(result.allLogs.some((l) => l.includes('Invalid IPv4 or CIDR prefix configuration'))).toBe(true);
+      });
+
+      // Valid prefixes execute without invalid_ip error
+      const validResult26 = evaluatePacketTransmission({
+        hostIp,
+        gatewayIp,
+        cidrPrefix: 26,
+        natEnabled: true,
+      });
+      expect(validResult26.validInputs).toBe(true);
+      expect(validResult26.status).toBe('success');
+      expect(validResult26.packetState).toBe('success');
+    });
   });
 });
 

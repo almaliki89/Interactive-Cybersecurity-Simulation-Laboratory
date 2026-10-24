@@ -40,11 +40,18 @@ export const longToIp = (long: number): string => {
 };
 
 /**
+ * Validates whether a CIDR prefix is a valid integer between 0 and 32 inclusive.
+ * Rejects negative numbers, values > 32, fractional numbers (e.g. 24.5, 26.5), NaN, and non-finite values.
+ */
+export const isValidCidrPrefix = (cidr: unknown): cidr is number => {
+  return typeof cidr === 'number' && Number.isInteger(cidr) && cidr >= 0 && cidr <= 32;
+};
+
+/**
  * Checks if two IP addresses belong to the same subnet based on the CIDR prefix.
  */
 export const isSameSubnet = (ip1: string, ip2: string, cidr: number): boolean => {
-  if (!isValidIpv4(ip1) || !isValidIpv4(ip2)) return false;
-  if (cidr < 0 || cidr > 32) return false;
+  if (!isValidIpv4(ip1) || !isValidIpv4(ip2) || !isValidCidrPrefix(cidr)) return false;
   if (cidr === 0) return true;
   
   const mask = (~0 << (32 - cidr)) >>> 0;
@@ -70,7 +77,7 @@ export interface SubnetDetails {
  * Computes complete subnet details for a base network and CIDR prefix.
  */
 export const calculateSubnetDetails = (baseIp: string, cidr: number): SubnetDetails | null => {
-  if (!isValidIpv4(baseIp) || cidr < 0 || cidr > 32) return null;
+  if (!isValidIpv4(baseIp) || !isValidCidrPrefix(cidr)) return null;
 
   const maskLong = cidr === 0 ? 0 : (~0 << (32 - cidr)) >>> 0;
   const baseLong = ipToLong(baseIp);
@@ -126,9 +133,9 @@ export const evaluatePacketTransmission = (
     firewallIp = '203.0.113.1',
   } = params;
 
-  if (!isValidIpv4(hostIp) || !isValidIpv4(gatewayIp) || cidrPrefix < 0 || cidrPrefix > 32) {
+  if (!isValidIpv4(hostIp) || !isValidIpv4(gatewayIp) || !isValidCidrPrefix(cidrPrefix)) {
     const errorLogs = [
-      `[00:00.000] HOST_PC (${hostIp}) -> [ERROR] Invalid IPv4 or CIDR prefix configuration (/ ${cidrPrefix})`,
+      `[00:00.000] HOST_PC (${hostIp}) -> [ERROR] Invalid IPv4 or CIDR prefix configuration (/${cidrPrefix})`,
       `[ERROR] Packet crafting failed: Check IP address format and CIDR range (0-32).`,
     ];
     return {
