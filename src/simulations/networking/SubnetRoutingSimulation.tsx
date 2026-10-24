@@ -174,7 +174,8 @@ export const SubnetRoutingSimulation: React.FC = () => {
     setPacketLog(result.initialLogs);
 
     setTimeout(() => {
-      if (result.status === 'subnet_mismatch' || result.status === 'invalid_ip') {
+      const isValidationError = result.status.startsWith('invalid_');
+      if (result.status === 'subnet_mismatch' || isValidationError) {
         setPacketState('blocked');
         setPacketLog(result.allLogs);
         return;
@@ -292,13 +293,13 @@ export const SubnetRoutingSimulation: React.FC = () => {
               </select>
             </div>
 
-            {/* Port Selector */}
-            <div className="flex items-center gap-1.5">
+            <div className={`flex items-center gap-1.5 ${protocol === 'ICMP' ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
               <span className="text-[11px] text-slate-400 font-bold uppercase font-mono">
                 {isAr ? 'المنفذ:' : 'Port:'}
               </span>
               <select
                 value={destPort}
+                disabled={protocol === 'ICMP'}
                 onChange={(e) => setDestPort(Number(e.target.value))}
                 className="bg-slate-900 border border-slate-700 text-white text-xs font-mono rounded px-2 py-1"
               >
@@ -597,7 +598,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
 
           <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800 space-y-2">
             <span className="text-xs font-bold text-white block">
-              {isAr ? 'جدول ترجمة عناوين NAT الحية' : 'Stateful NAT Translation Table'}
+              {isAr ? 'جدول ترجمة عناوين NAT (محاكاة)' : 'Stateful NAT Translation Table (Simulated)'}
             </span>
             <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-300 h-40 overflow-x-auto">
               {natEnabled

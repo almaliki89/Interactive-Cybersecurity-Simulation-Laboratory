@@ -217,7 +217,7 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
     expect(invalidResult.validInputs).toBe(false);
     expect(invalidResult.status).toBe('invalid_ip');
     expect(invalidResult.packetState).toBe('blocked');
-    expect(invalidResult.allLogs.some((l) => l.includes('Invalid IPv4'))).toBe(true);
+    expect(invalidResult.allLogs.some((l) => l.includes('Invalid IPv4 address syntax'))).toBe(true);
 
     // 2. Subnet mismatch (/27: host 192.168.1.42 is in 192.168.1.32/27, gateway 192.168.1.1 is in 192.168.1.0/27)
     const mismatch27Result = evaluatePacketTransmission({
@@ -411,9 +411,9 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
 
         expect(result.validInputs).toBe(false);
         expect(result.isSameSubnet).toBe(false);
-        expect(result.status).toBe('invalid_ip');
+        expect(result.status).toBe('invalid_cidr');
         expect(result.packetState).toBe('blocked');
-        expect(result.allLogs.some((l) => l.includes('Invalid IPv4 or CIDR prefix configuration'))).toBe(true);
+        expect(result.allLogs.some((l) => l.includes('Invalid CIDR prefix configuration'))).toBe(true);
       });
 
       // Valid prefixes execute without invalid_ip error

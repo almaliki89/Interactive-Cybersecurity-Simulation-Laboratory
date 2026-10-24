@@ -54,7 +54,22 @@ export type SimulationId =
   | 'forensics'
   | 'cloud'
   | 'containers'
-  | 'devsecops';
+  | 'devsecops'
+  | 'chain_of_custody'
+  | 'volatility'
+  | 'registry'
+  | 'incident_response'
+  | 'reporting'
+  | 'sql_injection'
+  | 'xss'
+  | 'sast'
+  | 'secrets_scan'
+  | 'sca'
+  | 'sbom'
+  | 'cloud_iam'
+  | 'kubernetes'
+  | 'mitre_attack'
+  | 'cloud_trail';
 
 export interface SelectedEntity {
   type: 'node' | 'packet' | 'rule' | 'log' | 'event' | 'connection' | 'world' | 'concept';

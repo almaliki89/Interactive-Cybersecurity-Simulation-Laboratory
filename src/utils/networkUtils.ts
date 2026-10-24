@@ -125,7 +125,17 @@ export interface PacketTransmissionParams {
 export interface PacketTransmissionResult {
   validInputs: boolean;
   isSameSubnet: boolean;
-  status: 'invalid_ip' | 'subnet_mismatch' | 'nat_disabled' | 'firewall_blocked' | 'port_unreachable' | 'success';
+  status: 
+    | 'invalid_ip' 
+    | 'invalid_cidr' 
+    | 'invalid_port' 
+    | 'invalid_protocol' 
+    | 'invalid_firewall_policy'
+    | 'subnet_mismatch' 
+    | 'nat_disabled' 
+    | 'firewall_blocked' 
+    | 'port_unreachable' 
+    | 'success';
   packetState: 'blocked' | 'success';
   initialLogs: string[];
   hopLogs: string[];
@@ -156,44 +166,98 @@ export const evaluatePacketTransmission = (
     firewallPolicy = 'allow_all',
   } = params;
 
-  // 1. Strict Input Validation (IPv4 format, CIDR range, Port range, Protocol, Firewall Policy)
+  // 1. Differentiated Input Validation
   const isHostValid = isValidIpv4(hostIp);
   const isGatewayValid = isValidIpv4(gatewayIp);
   const isWanServerValid = isValidIpv4(wanServerIp);
   const isCidrValid = isValidCidrPrefix(cidrPrefix);
-  const isPortValid = typeof destPort === 'number' && Number.isInteger(destPort) && destPort >= 1 && destPort <= 65535;
+  const isPortApplicable = protocol !== 'ICMP';
+  const isPortValid = !isPortApplicable || (typeof destPort === 'number' && Number.isInteger(destPort) && destPort >= 1 && destPort <= 65535);
   const isProtocolValid = protocol === 'TCP' || protocol === 'UDP' || protocol === 'ICMP';
   const isPolicyValid = firewallPolicy === 'allow_all' || firewallPolicy === 'strict_https' || firewallPolicy === 'block_http' || firewallPolicy === 'drop_all';
 
-  if (!isHostValid || !isGatewayValid || !isWanServerValid || !isCidrValid || !isPortValid || !isProtocolValid || !isPolicyValid) {
-    const errorLogs = [
-      `[00:00.000] HOST_PC (${hostIp}) -> [ERROR] Invalid IPv4 or CIDR prefix configuration (/${cidrPrefix})`,
-      `[ERROR] Packet crafting failed: Verify IP address syntax, CIDR range (0-32), Port range (1-65535), and Protocol.`,
-    ];
+  if (!isHostValid || !isGatewayValid || !isWanServerValid) {
     return {
       validInputs: false,
       isSameSubnet: false,
       status: 'invalid_ip',
       packetState: 'blocked',
-      initialLogs: errorLogs,
+      initialLogs: [`[ERROR] Invalid IPv4 address syntax encountered.`],
       hopLogs: [],
-      allLogs: errorLogs,
+      allLogs: [`[ERROR] Invalid IPv4 address syntax encountered.`],
       failureHop: 'host',
-      failureReasonAr: 'أحد عناصر التكوين (عنوان IP، قناع CIDR، رقم المنفذ، أو البرتوكول) يحتوي صيغة غير صالحة.',
-      failureReasonEn: 'Invalid network configuration parameters (IPv4 address, CIDR prefix, port number, or protocol).',
-      remediationAr: 'تأكد من إدخال عنوان IPv4 صحيح، وقناع بين 0 و32، ومنفذ بين 1 و65535، وبروتوكول قياسي.',
-      remediationEn: 'Ensure valid IPv4 addresses, CIDR prefix (0-32), port number (1-65535), and valid protocol.',
-      hopTraces: [
-        {
-          hopIndex: 1,
-          nodeName: 'Host PC',
-          nodeIp: hostIp,
-          action: 'DROPPED',
-          status: 'dropped',
-          descriptionAr: 'فشل بناء الحزمة بسبب مدخلات غير صالحة.',
-          descriptionEn: 'Packet crafting failed due to invalid configuration parameters.',
-        },
-      ],
+      failureReasonAr: 'عنوان IPv4 غير صالح.',
+      failureReasonEn: 'Invalid IPv4 address format.',
+      remediationAr: 'تأكد من إدخال عناوين IP صحيحة.',
+      remediationEn: 'Ensure valid IPv4 addresses are entered.',
+    };
+  }
+
+  if (!isCidrValid) {
+    return {
+      validInputs: false,
+      isSameSubnet: false,
+      status: 'invalid_cidr',
+      packetState: 'blocked',
+      initialLogs: [`[ERROR] Invalid CIDR prefix configuration (/${cidrPrefix}).`],
+      hopLogs: [],
+      allLogs: [`[ERROR] Invalid CIDR prefix configuration (/${cidrPrefix}).`],
+      failureHop: 'host',
+      failureReasonAr: 'قناع CIDR غير صالح.',
+      failureReasonEn: 'Invalid CIDR prefix.',
+      remediationAr: 'أدخل عددًا صحيحًا بين 0 و32.',
+      remediationEn: 'Enter an integer between 0 and 32.',
+    };
+  }
+
+  if (!isPortValid) {
+    return {
+      validInputs: false,
+      isSameSubnet: false,
+      status: 'invalid_port',
+      packetState: 'blocked',
+      initialLogs: [`[ERROR] Invalid port number: ${destPort}.`],
+      hopLogs: [],
+      allLogs: [`[ERROR] Invalid port number: ${destPort}.`],
+      failureHop: 'host',
+      failureReasonAr: 'رقم المنفذ غير صالح.',
+      failureReasonEn: 'Invalid port number.',
+      remediationAr: 'أدخل رقم منفذ بين 1 و65535.',
+      remediationEn: 'Enter a port number between 1 and 65535.',
+    };
+  }
+
+  if (!isProtocolValid) {
+    return {
+      validInputs: false,
+      isSameSubnet: false,
+      status: 'invalid_protocol',
+      packetState: 'blocked',
+      initialLogs: [`[ERROR] Unsupported protocol: ${protocol}.`],
+      hopLogs: [],
+      allLogs: [`[ERROR] Unsupported protocol: ${protocol}.`],
+      failureHop: 'host',
+      failureReasonAr: 'بروتوكول غير مدعوم.',
+      failureReasonEn: 'Unsupported protocol.',
+      remediationAr: 'اختر TCP أو UDP أو ICMP.',
+      remediationEn: 'Select TCP, UDP, or ICMP.',
+    };
+  }
+
+  if (!isPolicyValid) {
+    return {
+      validInputs: false,
+      isSameSubnet: false,
+      status: 'invalid_firewall_policy',
+      packetState: 'blocked',
+      initialLogs: [`[ERROR] Unsupported firewall policy: ${firewallPolicy}.`],
+      hopLogs: [],
+      allLogs: [`[ERROR] Unsupported firewall policy: ${firewallPolicy}.`],
+      failureHop: 'host',
+      failureReasonAr: 'سياسة جدار حماية غير مدعومة.',
+      failureReasonEn: 'Unsupported firewall policy.',
+      remediationAr: 'اختر سياسة من القائمة المتاحة.',
+      remediationEn: 'Select a policy from the available list.',
     };
   }
 
@@ -206,7 +270,7 @@ export const evaluatePacketTransmission = (
   }
 
   const initialLogs = [
-    `[00:00.000] HOST_PC (${hostIp}) -> [محاكاة افتراضية] ${craftDescription}`,
+    `[00:00.000] HOST_PC (${hostIp}) -> [محاكاة افتراضية / Virtual Trace] ${craftDescription}`,
     `[00:00.015] ARP Table -> Resolving Gateway ${gatewayIp} (MAC 00:1A:2B:3C:4D:01)`,
   ];
 
@@ -254,16 +318,18 @@ export const evaluatePacketTransmission = (
     };
   }
 
-  // 3. Firewall Policy ACL Evaluation
+  // 3. Firewall Policy ACL Evaluation (Fixed ICMP/UDP Interaction)
   let isFirewallBlocked = false;
   if (firewallPolicy === 'drop_all') {
     isFirewallBlocked = true;
   } else if (firewallPolicy === 'strict_https') {
+    // Only allow TCP/443
     if (protocol !== 'TCP' || destPort !== 443) {
       isFirewallBlocked = true;
     }
   } else if (firewallPolicy === 'block_http') {
-    if (destPort === 80) {
+    // Only block TCP/80 (Standard HTTP)
+    if (protocol === 'TCP' && destPort === 80) {
       isFirewallBlocked = true;
     }
   }
@@ -271,7 +337,7 @@ export const evaluatePacketTransmission = (
   if (isFirewallBlocked) {
     const hopLogs = [
       `[00:00.040] ROUTER_HOP (${gatewayIp}) -> Forwarding packet to Firewall Egress Interface (${firewallIp})`,
-      `[00:00.080] FIREWALL (${firewallIp}) -> DROPPED: Security ACL Rule Matched [DENY ${protocol} Port ${destPort}].`,
+      `[00:00.080] FIREWALL (${firewallIp}) -> DROPPED: Security ACL Rule Matched [DENY ${protocol}${protocol === 'ICMP' ? '' : ` Port ${destPort}`}].`,
       `[ERROR] Egress traffic blocked by perimeter firewall policy (${firewallPolicy}).`,
     ];
     return {
@@ -283,8 +349,8 @@ export const evaluatePacketTransmission = (
       hopLogs,
       allLogs: [...initialLogs, ...hopLogs],
       failureHop: 'firewall',
-      failureReasonAr: `جدار الحماية أقصى الحزمة وفق سياسة الأمن ACL المحددة (${firewallPolicy}: حظر ${protocol} على المنفذ ${destPort}).`,
-      failureReasonEn: `Firewall dropped packet matching ACL deny rule (${firewallPolicy}: DENY ${protocol} on Port ${destPort}).`,
+      failureReasonAr: `جدار الحماية أقصى الحزمة وفق سياسة الأمن ACL المحددة (${firewallPolicy}: حظر ${protocol}${protocol === 'ICMP' ? '' : ` على المنفذ ${destPort}`}).`,
+      failureReasonEn: `Firewall dropped packet matching ACL deny rule (${firewallPolicy}: DENY ${protocol}${protocol === 'ICMP' ? '' : ` on Port ${destPort}`}).`,
       remediationAr: 'عدّل قواعد جدار الحماية لتسمية مرور منفذ الخدمة المطلوبة (مثل السماح برقم المنفذ 443 للاتصال المشفر).',
       remediationEn: 'Update firewall ACL policy to permit desired service port (e.g. allow HTTPS 443).',
       hopTraces: [
@@ -371,40 +437,53 @@ export const evaluatePacketTransmission = (
     };
   }
 
-  // 5. Remote Server Daemon & Service Model Evaluation
-  // Supported open services on simulated WAN Server 93.184.216.34:
-  // - TCP / 443: HTTPS Web Daemon (TLS 1.3)
-  // - TCP / 80: HTTP Web Daemon (Plaintext)
-  // - TCP / 22: SSH Daemon
-  // - UDP / 53 or TCP / 53: DNS Name Server Daemon
-  // - ICMP: Kernel ICMP Echo Responder Daemon
+  // 5. Remote Server Daemon & Service Model Evaluation (Enhanced TLS/HTTPS sequence)
   let isServiceSupported = false;
-  let serviceResponseLog = '';
+  let serviceLogs: string[] = [];
   let successSummaryLog = '';
 
   if (protocol === 'TCP' && destPort === 443) {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:443) -> TCP 3-Way Handshake & TLS 1.3 Handshake Completed (ClientHello -> ServerHello -> Encrypted Session)`;
-    successSummaryLog = `[00:00.150] SUCCESS: 3-Way Handshake Completed & Encrypted TLS 1.3 HTTP 200 OK Response Received via /${cidrPrefix} Subnet & NAT Gateway!`;
+    serviceLogs = [
+      `[00:00.120] WAN_SERVER (${wanServerIp}:443) -> TCP 3-Way Handshake Completed.`,
+      `[00:00.130] WAN_SERVER (${wanServerIp}:443) -> TLS 1.3 Handshake: ClientHello received.`,
+      `[00:00.140] WAN_SERVER (${wanServerIp}:443) -> TLS 1.3 Handshake: ServerHello, Certificate, Finished.`,
+      `[00:00.145] WAN_SERVER (${wanServerIp}:443) -> Encrypted session established.`,
+      `[00:00.150] WAN_SERVER (${wanServerIp}:443) -> Processing Encrypted HTTP GET / request...`,
+    ];
+    successSummaryLog = `[00:00.160] SUCCESS: 3-Way Handshake Completed & Encrypted TLS 1.3 HTTP 200 OK Response Received via /${cidrPrefix} Subnet & NAT Gateway!`;
   } else if (protocol === 'TCP' && destPort === 80) {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:80) -> TCP 3-Way Handshake Completed & Plaintext HTTP GET / processed`;
+    serviceLogs = [
+      `[00:00.120] WAN_SERVER (${wanServerIp}:80) -> TCP 3-Way Handshake Completed.`,
+      `[00:00.130] WAN_SERVER (${wanServerIp}:80) -> Plaintext HTTP GET / processed.`,
+    ];
     successSummaryLog = `[00:00.150] SUCCESS: 3-Way Handshake Completed (HTTP 200 OK) via /${cidrPrefix} Subnet & NAT Gateway!`;
   } else if (protocol === 'TCP' && destPort === 22) {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:22) -> TCP 3-Way Handshake Completed & SSHv2 Banner Exchanged (OpenSSH 8.9p1)`;
+    serviceLogs = [
+      `[00:00.120] WAN_SERVER (${wanServerIp}:22) -> TCP 3-Way Handshake Completed.`,
+      `[00:00.130] WAN_SERVER (${wanServerIp}:22) -> SSHv2 Banner Exchanged (OpenSSH 8.9p1).`,
+    ];
     successSummaryLog = `[00:00.150] SUCCESS: SSH Key Exchange Completed (Curve25519) & Session Established via /${cidrPrefix} Subnet & NAT Gateway!`;
   } else if (protocol === 'UDP' && destPort === 53) {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:53) -> Processed UDP DNS Query for domain`;
+    serviceLogs = [
+      `[00:00.120] WAN_SERVER (${wanServerIp}:53) -> Processed UDP DNS Query for domain.`,
+    ];
     successSummaryLog = `[00:00.150] SUCCESS: DNS Query Resolved (A Record 93.184.216.34) via /${cidrPrefix} Subnet & NAT Gateway!`;
   } else if (protocol === 'TCP' && destPort === 53) {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:53) -> TCP 3-Way Handshake Completed & Processed TCP DNS Query`;
+    serviceLogs = [
+      `[00:00.120] WAN_SERVER (${wanServerIp}:53) -> TCP 3-Way Handshake Completed.`,
+      `[00:00.130] WAN_SERVER (${wanServerIp}:53) -> Processed TCP DNS Query.`,
+    ];
     successSummaryLog = `[00:00.150] SUCCESS: DNS Query Resolved over TCP via /${cidrPrefix} Subnet & NAT Gateway!`;
   } else if (protocol === 'ICMP') {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}) -> Kernel ICMP Responder processed Echo Request`;
+    serviceLogs = [
+      `[00:00.120] WAN_SERVER (${wanServerIp}) -> Kernel ICMP Responder processed Echo Request.`,
+    ];
     successSummaryLog = `[00:00.150] SUCCESS: ICMP Echo Reply Received (0ms RTT, TTL=64) via /${cidrPrefix} Subnet & NAT Gateway!`;
   }
 
@@ -503,7 +582,7 @@ export const evaluatePacketTransmission = (
   const hopLogs = [
     `[00:00.040] ROUTER_HOP (${gatewayIp}) -> Forwarding packet to Firewall Egress Interface (${firewallIp})`,
     `[00:00.080] NAT_TABLE -> Translated ${hostIp}:54201 -> ${firewallIp}:50001`,
-    serviceResponseLog,
+    ...serviceLogs,
     successSummaryLog,
   ];
 
