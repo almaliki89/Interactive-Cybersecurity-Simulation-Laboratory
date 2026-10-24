@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { globalSimulationRuntime } from '../../engine/runtime/SimulationRuntime';
 import {
   INITIAL_USERS,
@@ -90,6 +94,30 @@ export const KerberosSimulation: React.FC<KerberosSimulationProps> = ({
   } = derivedState;
 
   const currentUser = INITIAL_USERS.find((u) => u.samAccountName === selectedUser) || INITIAL_USERS[0];
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
+
+  useEffect(() => {
+    registerChallengeValidator('kerberos-ticket-challenge', () => {
+      const isTicketAcquired = Boolean(tgtTicket || serviceTicket);
+      if (isTicketAcquired && failureReason === 'NONE') {
+        return { success: true, score: 100, message: 'Kerberos authentication ticket exchange completed.' };
+      }
+      return { success: false, score: 0, message: 'Execute Kerberos authentication to acquire service ticket.' };
+    });
+    return () => {
+      unregisterChallengeValidator('kerberos-ticket-challenge');
+    };
+  }, [tgtTicket, serviceTicket, failureReason]);
+
+  useEffect(() => {
+    if ((tgtTicket || serviceTicket) && failureReason === 'NONE') {
+      completeChallenge('kerberos-ticket-challenge', {
+        success: true,
+        score: 100,
+        message: 'Kerberos authentication ticket exchange completed.',
+      });
+    }
+  }, [tgtTicket, serviceTicket, failureReason, completeChallenge]);
 
   // Protocol Orchestration delegating to globalSimulationRuntime
   const handleStart = () => {

@@ -2,8 +2,12 @@
  * OMEGA V15 — SAST Static Code Scanner Interactive Lab
  */
 
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
 import { scanCodeForSastVulnerabilities } from './logic/sast';
 import { SastFinding } from './logic/types';
@@ -11,6 +15,7 @@ import { FileCode, ShieldCheck, AlertTriangle, RefreshCw, CheckCircle2, Sparkles
 
 export const SastCodeScannerLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
 
   const findings = useDevSecOpsStore((s) => s.masterState.sastFindings);
@@ -22,17 +27,42 @@ export const SastCodeScannerLab: React.FC = () => {
   const scan = scanCodeForSastVulnerabilities(findings);
   const selectedFinding = findings.find((f) => f.id === selectedFindingId) || findings[0];
 
+  useEffect(() => {
+    registerChallengeValidator('web-vulnerability-challenge', () => {
+      if (scan.sastScore >= 80) {
+        return { success: true, score: scan.sastScore, message: 'Web vulnerabilities remediated successfully.' };
+      }
+      return { success: false, score: scan.sastScore, message: 'Remediate detected OWASP web flaws.' };
+    });
+    return () => {
+      unregisterChallengeValidator('web-vulnerability-challenge');
+    };
+  }, [scan.sastScore]);
+
   const remediateFinding = (id: string) => {
     setMasterState((state) => {
       state.sastFindings = state.sastFindings.map((f) =>
         f.id === id ? { ...f, remediated: true } : f
       );
+      const updatedScan = scanCodeForSastVulnerabilities(state.sastFindings);
+      if (updatedScan.sastScore >= 80) {
+        completeChallenge('web-vulnerability-challenge', {
+          success: true,
+          score: updatedScan.sastScore,
+          message: 'Web vulnerabilities remediated successfully.',
+        });
+      }
     });
   };
 
   const remediateAll = () => {
     setMasterState((state) => {
       state.sastFindings = state.sastFindings.map((f) => ({ ...f, remediated: true }));
+      completeChallenge('web-vulnerability-challenge', {
+        success: true,
+        score: 100,
+        message: 'All OWASP web vulnerabilities remediated successfully.',
+      });
     });
   };
 

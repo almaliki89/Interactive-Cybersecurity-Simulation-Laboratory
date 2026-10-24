@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { listMemoryProcesses, findSuspiciousProcessRelationships, MemoryProcess } from './logic/memory';
 import { Cpu, Network, ShieldAlert, Eye, Terminal } from 'lucide-react';
 
 export const MemoryForensicsLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
 
   const [processes] = useState<MemoryProcess[]>(listMemoryProcesses());
@@ -13,6 +18,31 @@ export const MemoryForensicsLab: React.FC = () => {
 
   const displayedProcs = filterSuspiciousOnly ? findSuspiciousProcessRelationships(processes) : processes;
   const selectedProc = processes.find((p) => p.pid === selectedPid);
+
+  useEffect(() => {
+    registerChallengeValidator('memory-analysis-challenge', () => {
+      const isAnomalousSelected = selectedProc?.isSuspicious === true;
+      if (isAnomalousSelected || filterSuspiciousOnly) {
+        return { success: true, score: 100, message: 'Suspicious memory process identified and isolated.' };
+      }
+      return { success: false, score: 0, message: 'Identify the suspicious process in memory dump.' };
+    });
+    return () => {
+      unregisterChallengeValidator('memory-analysis-challenge');
+    };
+  }, [selectedProc, filterSuspiciousOnly]);
+
+  const handleSelectPid = (pid: number) => {
+    setSelectedPid(pid);
+    const proc = processes.find((p) => p.pid === pid);
+    if (proc?.isSuspicious) {
+      completeChallenge('memory-analysis-challenge', {
+        success: true,
+        score: 100,
+        message: 'Suspicious memory process identified and isolated.',
+      });
+    }
+  };
 
   return (
     <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto">
@@ -53,7 +83,7 @@ export const MemoryForensicsLab: React.FC = () => {
               return (
                 <div
                   key={p.pid}
-                  onClick={() => setSelectedPid(p.pid)}
+                  onClick={() => handleSelectPid(p.pid)}
                   className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
                     isSelected
                       ? 'bg-cyan-950/80 border-cyan-500 text-white shadow-lg'

@@ -3,14 +3,19 @@
  * High-fidelity interactive laboratory simulating SLSA Level 3 build provenance audits and material checks.
  */
 
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
 import { validateBuildProvenance } from './logic/masterState';
 import { ShieldCheck, Lock, RefreshCw, Key, CheckCircle2, AlertTriangle, ShieldAlert, Cpu, Award } from 'lucide-react';
 
 export const SupplyChainSlsaLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
 
   const masterState = useDevSecOpsStore((s) => s.masterState);
@@ -24,6 +29,19 @@ export const SupplyChainSlsaLab: React.FC = () => {
 
   // Validate build provenance
   const provResult = validateBuildProvenance(attestation, artifact);
+
+  useEffect(() => {
+    registerChallengeValidator('supply-chain-challenge', () => {
+      const result = validateBuildProvenance(attestation, artifact);
+      if (result.verified || masterState.testedProvenancePassed) {
+        return { success: true, score: 100, message: 'SLSA Level 3 build provenance verified and signed.' };
+      }
+      return { success: false, score: 0, message: 'Attestation missing cryptographic signature or SLSA Level 3 verification.' };
+    });
+    return () => {
+      unregisterChallengeValidator('supply-chain-challenge');
+    };
+  }, [attestation, artifact, masterState.testedProvenancePassed]);
 
   const appendLog = (msg: string) => setLogs((prev) => [...prev, `[slsa-audit] ${msg}`]);
 
@@ -48,6 +66,13 @@ export const SupplyChainSlsaLab: React.FC = () => {
         isSignedRekorLog: true,
         verified: true
       };
+      state.testedProvenancePassed = true;
+    });
+
+    completeChallenge('supply-chain-challenge', {
+      success: true,
+      score: 100,
+      message: 'SLSA Level 3 build provenance verified and signed.',
     });
   };
 

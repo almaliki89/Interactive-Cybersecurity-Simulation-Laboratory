@@ -3,8 +3,12 @@
  * Interactive control room for configuring, simulating, and auditing CI/CD security pipeline gates.
  */
 
-import React from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { useDevSecOpsStore } from '../../stores/devSecOpsStore';
 import { evaluateDevSecOpsPipeline } from './logic/masterState';
 import { CiCdPipelineConfig } from './logic/types';
@@ -12,6 +16,7 @@ import { CheckCircle2, XCircle, ShieldCheck, RefreshCw, Workflow, Sliders, Play,
 
 export const PipelineGatesLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
 
   const masterState = useDevSecOpsStore((s) => s.masterState);
@@ -20,10 +25,32 @@ export const PipelineGatesLab: React.FC = () => {
   const config = masterState.pipelineConfig;
   const pipelineResult = evaluateDevSecOpsPipeline(masterState);
 
+  useEffect(() => {
+    registerChallengeValidator('pipeline-gate-challenge', () => {
+      const evaluation = evaluateDevSecOpsPipeline(masterState);
+      const gatesConfigured = config.requireSastGate && config.requireSecretScanGate && !config.allowBypassOnFailure;
+      if (gatesConfigured || evaluation.allowed || masterState.testedPipelinePassed) {
+        return { success: true, score: 100, message: 'CI/CD security quality gates active and blocking unverified merges.' };
+      }
+      return { success: false, score: 0, message: 'Enforce security quality gates in the pipeline.' };
+    });
+    return () => {
+      unregisterChallengeValidator('pipeline-gate-challenge');
+    };
+  }, [masterState, config]);
+
   const toggleGate = (key: keyof CiCdPipelineConfig) => {
     if (typeof config[key] === 'boolean') {
       setMasterState((state) => {
         (state.pipelineConfig[key] as any) = !state.pipelineConfig[key];
+        const updatedEval = evaluateDevSecOpsPipeline(state);
+        if (state.pipelineConfig.requireSastGate && !state.pipelineConfig.allowBypassOnFailure) {
+          completeChallenge('pipeline-gate-challenge', {
+            success: true,
+            score: 100,
+            message: 'CI/CD security quality gates active.',
+          });
+        }
       });
     }
   };
@@ -33,6 +60,13 @@ export const PipelineGatesLab: React.FC = () => {
     setMasterState((state) => {
       const evaluation = evaluateDevSecOpsPipeline(state);
       state.testedPipelinePassed = evaluation.allowed;
+      if (evaluation.allowed) {
+        completeChallenge('pipeline-gate-challenge', {
+          success: true,
+          score: 100,
+          message: 'CI/CD security quality gates verified.',
+        });
+      }
     });
   };
 
@@ -45,6 +79,11 @@ export const PipelineGatesLab: React.FC = () => {
       state.pipelineConfig.requireContainerScanGate = true;
       state.pipelineConfig.requireCosignSignatureGate = true;
       state.pipelineConfig.allowBypassOnFailure = false;
+      completeChallenge('pipeline-gate-challenge', {
+        success: true,
+        score: 100,
+        message: 'All CI/CD security quality gates enforced successfully.',
+      });
     });
   };
 

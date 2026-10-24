@@ -1,13 +1,39 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { FileSearch, AlertTriangle, ShieldCheck, Cpu, HardDrive } from 'lucide-react';
 
 export const EvidencePreservationLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
 
   const [preservedRAM, setPreservedRAM] = useState(false);
   const [hardPowerOffExecuted, setHardPowerOffExecuted] = useState(false);
+
+  useEffect(() => {
+    registerChallengeValidator('evidence-preservation-challenge', () => {
+      if (preservedRAM && !hardPowerOffExecuted) {
+        return { success: true, score: 100, message: 'Volatile RAM preserved successfully before power-off.' };
+      }
+      return { success: false, score: 0, message: 'RAM must be preserved before shutdown.' };
+    });
+    return () => {
+      unregisterChallengeValidator('evidence-preservation-challenge');
+    };
+  }, [preservedRAM, hardPowerOffExecuted]);
+
+  const handlePreserveRAM = () => {
+    setPreservedRAM(true);
+    completeChallenge('evidence-preservation-challenge', {
+      success: true,
+      score: 100,
+      message: 'Volatile RAM preserved successfully before power-off.',
+    });
+  };
 
   return (
     <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto">
@@ -97,7 +123,7 @@ export const EvidencePreservationLab: React.FC = () => {
 
           <div className="flex flex-col gap-3 mt-2">
             <button
-              onClick={() => setPreservedRAM(true)}
+              onClick={handlePreserveRAM}
               className="py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg"
             >
               <Cpu className="w-4 h-4" />

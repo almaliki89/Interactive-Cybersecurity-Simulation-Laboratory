@@ -142,6 +142,13 @@ export default function App() {
     }
   }, [activeSimulationId]);
 
+  const reloadFromStorage = useSimulationStore((s) => s.reloadFromStorage);
+
+  // Initialize state from storage
+  useEffect(() => {
+    reloadFromStorage();
+  }, [reloadFromStorage]);
+
   const activeRegistration = getRegisteredSimulation(activeSimulationId);
   const ActiveComponent = activeRegistration.component;
 

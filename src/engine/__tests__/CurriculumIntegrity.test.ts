@@ -8,6 +8,14 @@ import {
   calculateSubnetDetails,
   evaluatePacketTransmission,
 } from '../../utils/networkUtils';
+import {
+  useSimulationStore,
+  LESSON_SEQUENCE,
+  VALID_CURRICULUM_LESSON_IDS,
+  VALID_CHALLENGE_IDS,
+  CHALLENGE_TO_SIMULATION_MAP,
+  clearChallengeValidators,
+} from '../../stores/simulationStore';
 
 describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
   it('verifies all 11 Levels (0-10) exist sequentially in CURRICULUM_LEVELS', () => {
@@ -68,13 +76,18 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
     expect(CURRICULUM_LESSONS['lesson-02-02-subnetting-and-cidr'].nextStep.nextLessonId).toBe('lesson-03-subnet-routing');
     expect(CURRICULUM_LESSONS['lesson-03-subnet-routing'].nextStep.nextLessonId).toBe('lesson-04-firewall-rules');
     expect(CURRICULUM_LESSONS['lesson-04-firewall-rules'].nextStep.nextLessonId).toBe('lesson-05-cryptography');
-    expect(CURRICULUM_LESSONS['lesson-04-firewall-rules'].nextStep.nextLessonId).toBe('lesson-05-cryptography');
     expect(CURRICULUM_LESSONS['lesson-05-cryptography'].nextStep.nextLessonId).toBe('lesson-06-active-directory');
     expect(CURRICULUM_LESSONS['lesson-06-active-directory'].nextStep.nextLessonId).toBe('lesson-07-soc-monitoring');
-    expect(CURRICULUM_LESSONS['lesson-07-soc-monitoring'].nextStep.nextLessonId).toBe('lesson-08-forensics');
-    expect(CURRICULUM_LESSONS['lesson-08-forensics'].nextStep.nextLessonId).toBe('lesson-09-devsecops');
-    expect(CURRICULUM_LESSONS['lesson-09-devsecops'].nextStep.nextLessonId).toBe('lesson-09-cloud-threat-hunting');
-    expect(CURRICULUM_LESSONS['lesson-09-cloud-threat-hunting'].nextStep.nextLessonId).toBe('lesson-10-cyber-range');
+    expect(CURRICULUM_LESSONS['lesson-07-soc-monitoring'].nextStep.nextLessonId).toBe('lesson-07-01-forensics-foundations');
+    expect(CURRICULUM_LESSONS['lesson-07-01-forensics-foundations'].nextStep.nextLessonId).toBe('lesson-07-02-memory-artifacts');
+    expect(CURRICULUM_LESSONS['lesson-07-02-memory-artifacts'].nextStep.nextLessonId).toBe('lesson-07-03-incident-response');
+    expect(CURRICULUM_LESSONS['lesson-07-03-incident-response'].nextStep.nextLessonId).toBe('lesson-08-01-web-owasp');
+    expect(CURRICULUM_LESSONS['lesson-08-01-web-owasp'].nextStep.nextLessonId).toBe('lesson-08-02-devsecops-pipeline');
+    expect(CURRICULUM_LESSONS['lesson-08-02-devsecops-pipeline'].nextStep.nextLessonId).toBe('lesson-08-03-supply-chain');
+    expect(CURRICULUM_LESSONS['lesson-08-03-supply-chain'].nextStep.nextLessonId).toBe('lesson-09-01-cloud-identity');
+    expect(CURRICULUM_LESSONS['lesson-09-01-cloud-identity'].nextStep.nextLessonId).toBe('lesson-09-02-containers');
+    expect(CURRICULUM_LESSONS['lesson-09-02-containers'].nextStep.nextLessonId).toBe('lesson-09-03-threat-hunting');
+    expect(CURRICULUM_LESSONS['lesson-09-03-threat-hunting'].nextStep.nextLessonId).toBe('lesson-10-cyber-range');
   });
 
   it('verifies milestoneId on each lesson aligns with parent CURRICULUM_LEVEL levelNumber', () => {
@@ -119,9 +132,9 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
     });
   });
 
-  it('verifies all 14 currently defined lesson records contain extended pedagogical components', () => {
+  it('verifies all 20 currently defined lesson records contain extended pedagogical components', () => {
     const lessonKeys = Object.keys(CURRICULUM_LESSONS);
-    expect(lessonKeys).toHaveLength(14);
+    expect(lessonKeys).toHaveLength(20);
 
     const expectedLessons = [
       'lesson-00-orientation',
@@ -134,9 +147,15 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
       'lesson-05-cryptography',
       'lesson-06-active-directory',
       'lesson-07-soc-monitoring',
-      'lesson-08-forensics',
-      'lesson-09-devsecops',
-      'lesson-09-cloud-threat-hunting',
+      'lesson-07-01-forensics-foundations',
+      'lesson-07-02-memory-artifacts',
+      'lesson-07-03-incident-response',
+      'lesson-08-01-web-owasp',
+      'lesson-08-02-devsecops-pipeline',
+      'lesson-08-03-supply-chain',
+      'lesson-09-01-cloud-identity',
+      'lesson-09-02-containers',
+      'lesson-09-03-threat-hunting',
       'lesson-10-cyber-range',
     ];
 
@@ -426,6 +445,100 @@ describe('OMEGA MAX Curriculum Referential & Framework Integrity', () => {
       expect(validResult26.validInputs).toBe(true);
       expect(validResult26.status).toBe('success');
       expect(validResult26.packetState).toBe('success');
+    });
+  });
+
+  describe('OMEGA MAX Curriculum Store Synchronization & Gating Suite', () => {
+    it('verifies LESSON_SEQUENCE matches the exact module order across all 11 levels', () => {
+      const declaredSequence = CURRICULUM_LEVELS.flatMap((level) =>
+        level.modules.flatMap((m) => m.lessonIds)
+      );
+
+      expect(LESSON_SEQUENCE).toEqual(declaredSequence);
+      expect(LESSON_SEQUENCE).toHaveLength(20);
+      expect(VALID_CURRICULUM_LESSON_IDS.size).toBe(20);
+    });
+
+    it('verifies every lesson has its simulationId and relatedSimulationIds registered in simulationRegistry', () => {
+      Object.values(CURRICULUM_LESSONS).forEach((lesson) => {
+        expect(simulationRegistry[lesson.simulationId], `Simulation ${lesson.simulationId} in lesson ${lesson.id} missing from registry`).toBeDefined();
+        if (lesson.relatedSimulationIds) {
+          lesson.relatedSimulationIds.forEach((relId) => {
+            expect(simulationRegistry[relId], `Related simulation ${relId} in lesson ${lesson.id} missing from registry`).toBeDefined();
+          });
+        }
+      });
+    });
+
+    it('verifies every lesson challengeId exists in VALID_CHALLENGE_IDS and has an active entry in CHALLENGE_TO_SIMULATION_MAP', () => {
+      Object.values(CURRICULUM_LESSONS).forEach((lesson) => {
+        if (lesson.challengeId) {
+          expect(VALID_CHALLENGE_IDS.has(lesson.challengeId), `Challenge ${lesson.challengeId} missing from VALID_CHALLENGE_IDS`).toBe(true);
+          const mappedSim = CHALLENGE_TO_SIMULATION_MAP[lesson.challengeId];
+          expect(mappedSim, `Challenge ${lesson.challengeId} not mapped in CHALLENGE_TO_SIMULATION_MAP`).toBeDefined();
+          const allowedSims = Array.isArray(mappedSim) ? mappedSim : [mappedSim];
+          expect(allowedSims.includes(lesson.simulationId) || (lesson.relatedSimulationIds && lesson.relatedSimulationIds.some(r => allowedSims.includes(r))),
+            `Challenge ${lesson.challengeId} allowed sims ${allowedSims.join(',')} do not include lesson simulationId ${lesson.simulationId}`
+          ).toBe(true);
+        }
+      });
+    });
+
+    it('verifies setActiveLessonId cleanly rejects unknown or malformed lesson IDs without corrupting activeLessonId', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({ activeLessonId: 'lesson-01-cia-triad' });
+
+      // Reject empty / null / non-string
+      store.setActiveLessonId('');
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-01-cia-triad');
+
+      store.setActiveLessonId(null as any);
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-01-cia-triad');
+
+      // Reject non-existent unknown lesson ID
+      store.setActiveLessonId('unknown-hacker-lesson-99');
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-01-cia-triad');
+
+      // Accepts valid new lessons
+      store.setActiveLessonId('lesson-07-01-forensics-foundations');
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-07-01-forensics-foundations');
+
+      store.setActiveLessonId('lesson-08-01-web-owasp');
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-08-01-web-owasp');
+
+      store.setActiveLessonId('lesson-09-03-threat-hunting');
+      expect(useSimulationStore.getState().activeLessonId).toBe('lesson-09-03-threat-hunting');
+    });
+
+    it('verifies overall progress calculation strictly audits valid completed lessons against valid curriculum lessons', () => {
+      const totalLessons = VALID_CURRICULUM_LESSON_IDS.size;
+      expect(totalLessons).toBe(20);
+
+      const fakeCompletedLessons = ['unknown-lesson', 'lesson-01-cia-triad', 'non-existent-lesson', 'lesson-02-system-internals'];
+      const validCompleted = fakeCompletedLessons.filter(id => VALID_CURRICULUM_LESSON_IDS.has(id));
+      expect(validCompleted).toEqual(['lesson-01-cia-triad', 'lesson-02-system-internals']);
+
+      const progressPercent = Math.round((validCompleted.length / totalLessons) * 100);
+      expect(progressPercent).toBe(10); // 2 out of 20 = 10%
+    });
+
+    it('verifies sequential lesson gating prevents skipping predecessor lessons', () => {
+      const store = useSimulationStore.getState();
+      useSimulationStore.setState({
+        completedLessons: ['lesson-00-orientation', 'lesson-01-cia-triad'],
+        lessonProgress: {
+          'lesson-03-subnet-routing': {
+            currentStage: 6,
+            furthestUnlockedStage: 6,
+            isQuizPassed: true,
+            isTaskPassed: true,
+          },
+        },
+      });
+
+      // Attempting to complete lesson-03-subnet-routing without lesson-02-system-internals and 02-01 and 02-02
+      store.completeLesson('lesson-03-subnet-routing');
+      expect(useSimulationStore.getState().completedLessons).not.toContain('lesson-03-subnet-routing');
     });
   });
 });

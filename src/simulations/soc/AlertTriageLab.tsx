@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import {
   evaluateDetectionRules,
   SecurityAlert,
@@ -36,6 +40,7 @@ export const AlertTriageLab: React.FC<AlertTriageLabProps> = ({
   onNavigateToCorrelation,
 }) => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
   const BackArrow = isAr ? ArrowRight : ArrowLeft;
 
@@ -63,11 +68,29 @@ export const AlertTriageLab: React.FC<AlertTriageLabProps> = ({
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [alertStatuses, setAlertStatuses] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    registerChallengeValidator('brute-force-triage-challenge', () => {
+      const hasTriaged = Object.keys(alertStatuses).length > 0 || triagedList.length > 0;
+      if (hasTriaged) {
+        return { success: true, score: 100, message: 'SOC alerts prioritized and triaged.' };
+      }
+      return { success: false, score: 0, message: 'Triage security alerts in the queue.' };
+    });
+    return () => {
+      unregisterChallengeValidator('brute-force-triage-challenge');
+    };
+  }, [alertStatuses, triagedList.length]);
+
   const activeTriage =
     triagedList.find((t) => t.alert.id === selectedAlertId) || triagedList[0] || null;
 
   const handleUpdateStatus = (alertId: string, status: 'TRIAGED' | 'INVESTIGATING' | 'CLOSED') => {
     setAlertStatuses((prev) => ({ ...prev, [alertId]: status }));
+    completeChallenge('brute-force-triage-challenge', {
+      success: true,
+      score: 100,
+      message: 'SOC alert triaged and prioritized.',
+    });
   };
 
   return (

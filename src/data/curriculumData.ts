@@ -855,7 +855,7 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
         id: 'mod-9-1',
         titleAr: 'أمن السحابة واصطياد التهديدات',
         titleEn: 'Cloud Security & Threat Hunting',
-        lessonIds: ['lesson-09-01-cloud-identity', 'lesson-09-02-kubernetes-defense', 'lesson-09-03-threat-hunting'],
+        lessonIds: ['lesson-09-01-cloud-identity', 'lesson-09-02-containers', 'lesson-09-03-threat-hunting'],
       },
     ],
   },
@@ -2702,7 +2702,7 @@ Cameras record 24/7 (like raw system logs), and smart alarms ping the guard room
       },
     ],
     nextStep: {
-      nextLessonId: 'lesson-08-forensics',
+      nextLessonId: 'lesson-07-01-forensics-foundations',
       takeawayAr: 'عمل مبهر! أصبحت تعرف كيف يكتشف SOC الهجمات الحية. في الدرس الثامن، سنتقدم خطوة ونقوم بالتحقيق الجنائي الرقمي للبحث عن الآثار المخفية.',
       takeawayEn: 'Outstanding work! You know how SOC analysts detect live attacks. Next, step into digital forensics to investigate deep evidence in Lesson 8.',
     },

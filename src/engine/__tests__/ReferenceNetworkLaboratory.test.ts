@@ -108,30 +108,48 @@ describe('Reference Network Laboratory — OMEGA MAX Verification Suite', () => 
     });
   });
 
-  describe('3. Differentiated Input Validation', () => {
-    it('returns invalid_ip for bad IPv4', () => {
-      const res = evaluatePacketTransmission({
-        hostIp: '999.999.999.999',
-        gatewayIp: '192.168.1.1',
-        cidrPrefix: 26,
-        natEnabled: true,
-      });
-      expect(res.status).toBe('invalid_ip');
-      expect(res.failureHop).toBe('host');
-    });
-
-    it('returns invalid_cidr for bad prefix', () => {
+  describe('3. Differentiated Input Validation (Scenarios A through E)', () => {
+    it('Scenario A: valid IP + invalid CIDR -> status: invalid_cidr', () => {
       const res = evaluatePacketTransmission({
         hostIp: '192.168.1.42',
         gatewayIp: '192.168.1.1',
         cidrPrefix: 35,
         natEnabled: true,
       });
+      expect(res.validInputs).toBe(false);
       expect(res.status).toBe('invalid_cidr');
+      expect(res.packetState).toBe('blocked');
+      expect(res.failureHop).toBe('host');
     });
 
-    it('returns invalid_port for out-of-range port', () => {
+    it('Scenario B: invalid IP + valid CIDR -> status: invalid_ip', () => {
       const res = evaluatePacketTransmission({
+        hostIp: '999.999.999.999',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+      });
+      expect(res.validInputs).toBe(false);
+      expect(res.status).toBe('invalid_ip');
+      expect(res.packetState).toBe('blocked');
+      expect(res.failureHop).toBe('host');
+    });
+
+    it('Scenario C: invalid IP + invalid CIDR -> precedence check returns invalid_ip', () => {
+      const res = evaluatePacketTransmission({
+        hostIp: '999.999.999.999',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 35,
+        natEnabled: true,
+      });
+      expect(res.validInputs).toBe(false);
+      expect(res.status).toBe('invalid_ip');
+      expect(res.packetState).toBe('blocked');
+      expect(res.failureHop).toBe('host');
+    });
+
+    it('Scenario D: invalid port number (> 65535 or <= 0) -> status: invalid_port', () => {
+      const resHigh = evaluatePacketTransmission({
         hostIp: '192.168.1.42',
         gatewayIp: '192.168.1.1',
         cidrPrefix: 26,
@@ -139,19 +157,65 @@ describe('Reference Network Laboratory — OMEGA MAX Verification Suite', () => 
         destPort: 70000,
         protocol: 'TCP',
       });
-      expect(res.status).toBe('invalid_port');
+      expect(resHigh.validInputs).toBe(false);
+      expect(resHigh.status).toBe('invalid_port');
+
+      const resZero = evaluatePacketTransmission({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 0,
+        protocol: 'TCP',
+      });
+      expect(resZero.validInputs).toBe(false);
+      expect(resZero.status).toBe('invalid_port');
     });
 
-    it('ignores port validation for ICMP', () => {
+    it('Scenario E: ICMP ping ignores port validation and succeeds', () => {
       const res = evaluatePacketTransmission({
         hostIp: '192.168.1.42',
         gatewayIp: '192.168.1.1',
         cidrPrefix: 26,
         natEnabled: true,
-        destPort: 70000, // Normally invalid
+        destPort: 70000, // Normally invalid for TCP/UDP
         protocol: 'ICMP',
       });
+      expect(res.validInputs).toBe(true);
       expect(res.status).toBe('success');
+      expect(res.packetState).toBe('success');
+      expect(res.allLogs.some(l => l.includes('ICMP Echo Reply Received'))).toBe(true);
+    });
+  });
+
+  describe('3b. DNS Protocol Handling (UDP vs TCP on Port 53)', () => {
+    it('resolves DNS query over UDP (Port 53)', () => {
+      const res = evaluatePacketTransmission({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 53,
+        protocol: 'UDP',
+      });
+      expect(res.status).toBe('success');
+      expect(res.allLogs.some(l => l.includes('Processed UDP DNS Query for domain'))).toBe(true);
+      expect(res.allLogs.some(l => l.includes('SUCCESS: DNS Query Resolved'))).toBe(true);
+    });
+
+    it('resolves DNS query over TCP (Port 53)', () => {
+      const res = evaluatePacketTransmission({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 53,
+        protocol: 'TCP',
+      });
+      expect(res.status).toBe('success');
+      expect(res.allLogs.some(l => l.includes('TCP 3-Way Handshake Completed'))).toBe(true);
+      expect(res.allLogs.some(l => l.includes('Processed TCP DNS Query'))).toBe(true);
+      expect(res.allLogs.some(l => l.includes('SUCCESS: DNS Query Resolved over TCP'))).toBe(true);
     });
   });
 

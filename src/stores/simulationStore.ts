@@ -12,6 +12,7 @@ import { MacroDomainId, CyberRangeLayer, CyberTimelineEvent } from '../types/uni
 import { globalEventBus } from '../engine/eventBus';
 import { globalSimulationRuntime } from '../engine/runtime/SimulationRuntime';
 import type { LessonProgressState } from '../types/curriculum';
+import { CURRICULUM_LEVELS, CURRICULUM_LESSONS } from '../data/curriculumData';
 
 export type SimulationId =
   | 'landing'
@@ -234,39 +235,18 @@ export const getStoredItem = (key: string): string | null => {
   return null;
 };
 
-export const VALID_CURRICULUM_LESSON_IDS = new Set([
-  'lesson-00-orientation',
-  'lesson-01-cia-triad',
-  'lesson-02-system-internals',
-  'lesson-02-01-ip-addressing-and-binary',
-  'lesson-02-02-subnetting-and-cidr',
-  'lesson-03-subnet-routing',
-  'lesson-04-firewall-rules',
-  'lesson-05-cryptography',
-  'lesson-06-active-directory',
-  'lesson-07-soc-monitoring',
-  'lesson-08-forensics',
-  'lesson-09-devsecops',
-  'lesson-09-cloud-threat-hunting',
-  'lesson-10-cyber-range',
-]);
+// Dynamically derive the canonical curriculum lesson sequence directly from CURRICULUM_LEVELS modules
+export const LESSON_SEQUENCE: string[] = CURRICULUM_LEVELS.flatMap((level) =>
+  level.modules.flatMap((module) => module.lessonIds)
+);
 
-export const LESSON_SEQUENCE = [
-  'lesson-00-orientation',
-  'lesson-01-cia-triad',
-  'lesson-02-system-internals',
-  'lesson-02-01-ip-addressing-and-binary',
-  'lesson-02-02-subnetting-and-cidr',
-  'lesson-03-subnet-routing',
-  'lesson-04-firewall-rules',
-  'lesson-05-cryptography',
-  'lesson-06-active-directory',
-  'lesson-07-soc-monitoring',
-  'lesson-08-forensics',
-  'lesson-09-devsecops',
-  'lesson-09-cloud-threat-hunting',
-  'lesson-10-cyber-range',
-];
+export const VALID_CURRICULUM_LESSON_IDS = new Set<string>(
+  LESSON_SEQUENCE.length > 0 ? LESSON_SEQUENCE : Object.keys(CURRICULUM_LESSONS)
+);
+// Ensure any additional lessons declared in CURRICULUM_LESSONS are also included
+for (const id of Object.keys(CURRICULUM_LESSONS)) {
+  VALID_CURRICULUM_LESSON_IDS.add(id);
+}
 
 export const INSTRUCTIONAL_CHALLENGES = new Set<string>([
   'orientation-guided-challenge',
@@ -282,12 +262,23 @@ export const getChallengeVerificationType = (challengeId: string): ChallengeVeri
 };
 
 export const VALID_CHALLENGE_IDS = new Set([
-  // Curriculum interactive challenges
+  // Core curriculum interactive challenges
   'cia-balance-challenge',
   'internals-memory-challenge',
   'subnet-routing-challenge',
   'firewall-rule-mastery',
   'crypto-avalanche-challenge',
+  'kerberos-ticket-challenge',
+  'brute-force-triage-challenge',
+  'evidence-preservation-challenge',
+  'memory-analysis-challenge',
+  'timeline-mastery-challenge',
+  'web-vulnerability-challenge',
+  'pipeline-gate-challenge',
+  'supply-chain-challenge',
+  'iam-hardening-challenge',
+  'k8s-hardening-challenge',
+  'threat-hunting-hypothesis-challenge',
   // Lab interactive challenges
   'tcp-handshake-mastery',
   'dns-resolution-challenge',
@@ -315,13 +306,24 @@ export const MASTER_HARDENING_CHALLENGE_IDS = new Set([
   'ad_nexora_migration_master',
 ]);
 
-// Map challengeId to the simulationId that must be active to complete it
-export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
+// Map challengeId to the simulationId(s) that must be active to complete it
+export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId | SimulationId[]> = {
   'cia-balance-challenge': 'cia_triad',
   'internals-memory-challenge': 'system_internals',
   'subnet-routing-challenge': 'subnet_routing',
   'firewall-rule-mastery': 'firewall',
   'crypto-avalanche-challenge': 'crypto',
+  'kerberos-ticket-challenge': 'active_directory',
+  'brute-force-triage-challenge': 'soc',
+  'evidence-preservation-challenge': 'forensics',
+  'memory-analysis-challenge': 'forensics',
+  'timeline-mastery-challenge': 'forensics',
+  'web-vulnerability-challenge': 'devsecops',
+  'pipeline-gate-challenge': 'devsecops',
+  'supply-chain-challenge': 'devsecops',
+  'iam-hardening-challenge': ['threat_hunting', 'cloud_iam', 'cloud'],
+  'k8s-hardening-challenge': ['threat_hunting', 'kubernetes', 'containers'],
+  'threat-hunting-hypothesis-challenge': 'threat_hunting',
   'tcp-handshake-mastery': 'tcp',
   'dns-resolution-challenge': 'dns',
   'http-lifecycle-mastery': 'http',
@@ -332,10 +334,11 @@ export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
   'windows_hardening': 'windows',
   'soc_master': 'soc',
   'appsec_master': 'appsec_api',
-  'nexora_master': 'nexora_master',
+  'nexora_master': ['nexora_master', 'range'],
   'ad_nexora_migration_master': 'active_directory',
   'orientation-guided-challenge': 'landing',
 };
+
 
 export const sanitizeCompletedLessonsSequence = (rawLessons: string[]): string[] => {
   const completed: string[] = [];
@@ -868,9 +871,14 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     // 3. Context Verification: Only allow completion if the relevant simulation is active
     const requiredSim = CHALLENGE_TO_SIMULATION_MAP[cleanId];
     const activeSim = get().activeSimulationId;
-    if (requiredSim && activeSim !== requiredSim) {
-      console.warn(`[Integrity] Challenge ${cleanId} cannot be completed in simulation ${activeSim}. Required: ${requiredSim}`);
-      return;
+    if (requiredSim) {
+      const allowedSims = Array.isArray(requiredSim) ? requiredSim : [requiredSim];
+      if (!allowedSims.includes(activeSim)) {
+        console.warn(
+          `[Integrity] Challenge ${cleanId} cannot be completed in simulation ${activeSim}. Required: ${allowedSims.join(' or ')}`
+        );
+        return;
+      }
     }
 
     // 4. Authoritative Verification Mode & Live Validator Binding:
@@ -971,9 +979,17 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
   },
 
   setActiveLessonId: (activeLessonId) => {
-    const safeId = safeParseActiveLessonId(activeLessonId);
-    setStoredItem('omega_active_lesson_id', safeId);
-    set({ activeLessonId: safeId });
+    if (!activeLessonId || typeof activeLessonId !== 'string') {
+      console.warn('[Integrity] setActiveLessonId rejected: invalid format.');
+      return;
+    }
+    const trimmed = activeLessonId.trim();
+    if (!VALID_CURRICULUM_LESSON_IDS.has(trimmed)) {
+      console.warn(`[Integrity] setActiveLessonId rejected: unknown lessonId "${trimmed}".`);
+      return;
+    }
+    setStoredItem('omega_active_lesson_id', trimmed);
+    set({ activeLessonId: trimmed });
   },
   completeLesson: (lessonId) => {
     if (!VALID_CURRICULUM_LESSON_IDS.has(lessonId)) return;

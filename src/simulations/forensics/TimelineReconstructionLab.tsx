@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { useForensicsStore } from '../../stores/forensicsStore';
 import { SYNTHETIC_MASTER_TIMELINE, buildForensicTimeline, validateTimelineContinuity, ForensicTimelineEvent } from './logic/timeline';
-import { History, ShieldCheck, AlertTriangle, Layers, Zap, User, Target, Database } from 'lucide-react';
+import { History, ShieldCheck, AlertTriangle, Layers, Zap, User, Target, Database, CheckCircle2 } from 'lucide-react';
 
 export const TimelineReconstructionLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
   
   const selectedEvidenceId = useForensicsStore((s) => s.selectedEvidenceId);
@@ -13,6 +18,28 @@ export const TimelineReconstructionLab: React.FC = () => {
 
   const [timelineEvents] = useState<ForensicTimelineEvent[]>(buildForensicTimeline(SYNTHETIC_MASTER_TIMELINE));
   const continuity = validateTimelineContinuity(timelineEvents);
+
+  useEffect(() => {
+    registerChallengeValidator('timeline-mastery-challenge', () => {
+      if (continuity.continuous) {
+        return { success: true, score: 100, message: 'Cross-system forensic timeline aligned and verified.' };
+      }
+      return { success: false, score: 0, message: 'Resolve timeline discontinuity gaps.' };
+    });
+    return () => {
+      unregisterChallengeValidator('timeline-mastery-challenge');
+    };
+  }, [continuity.continuous]);
+
+  const handleConfirmTimeline = () => {
+    if (continuity.continuous) {
+      completeChallenge('timeline-mastery-challenge', {
+        success: true,
+        score: 100,
+        message: 'Cross-system forensic timeline aligned and verified.',
+      });
+    }
+  };
 
   return (
     <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
@@ -27,13 +54,23 @@ export const TimelineReconstructionLab: React.FC = () => {
           </h1>
         </div>
 
-        <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border transition-all ${
-          continuity.continuous
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-        }`}>
-          {continuity.continuous ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          <span>{continuity.continuous ? (isAr ? 'التسلسل مستمر' : 'TIMELINE_CONTINUOUS') : (isAr ? 'فجوات زمنية' : 'TIMELINE_INCOMPLETE')}</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleConfirmTimeline}
+            className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-lg shadow-cyan-950 cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{isAr ? 'تأكيد التسلسل واعتماد التحدي' : 'Verify & Master Challenge'}</span>
+          </button>
+
+          <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border transition-all ${
+            continuity.continuous
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+          }`}>
+            {continuity.continuous ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+            <span>{continuity.continuous ? (isAr ? 'التسلسل مستمر' : 'TIMELINE_CONTINUOUS') : (isAr ? 'فجوات زمنية' : 'TIMELINE_INCOMPLETE')}</span>
+          </div>
         </div>
       </div>
 

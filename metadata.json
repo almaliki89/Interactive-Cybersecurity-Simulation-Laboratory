@@ -1,6 +1,6 @@
 {
-  "name": "OMEGA V2 — Interactive Cybersecurity Simulation Laboratory",
-  "description": "Production-grade cybersecurity simulation engine with interactive packet flows, TCP handshakes, DNS resolution, firewall rules, and cause-and-effect laboratories.",
+  "name": "OMEGA MAX — Comprehensive Cybersecurity Simulation & Iraqi Curriculum Laboratory",
+  "description": "An end-to-end interactive cybersecurity simulation engine and 11-level curriculum aligned with Iraqi educational standards. Features 60 living worlds, cause-and-effect laboratories, and evidence-based verification for beginner and advanced tracks.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
