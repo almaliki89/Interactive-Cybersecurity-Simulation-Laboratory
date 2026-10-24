@@ -216,4 +216,97 @@ describe('OMEGA MAX — Challenge Integrity & Technical Validators', () => {
       expect(useSimulationStore.getState().completedChallenges).toContain('k8s-hardening-challenge');
     });
   });
+
+  describe('4. SOC Alert Triage Validation (brute-force-triage-challenge)', () => {
+    it('rejects completing brute-force-triage-challenge when no user triage status has been recorded', () => {
+      useSimulationStore.setState({ activeSimulationId: 'soc' });
+
+      const statuses: Record<string, string> = {}; // Empty user triage status
+      registerChallengeValidator('brute-force-triage-challenge', () => {
+        const userTriagedCount = Object.values(statuses).filter(
+          (s) => s === 'TRIAGED' || s === 'CLOSED' || s === 'INVESTIGATING'
+        ).length;
+        if (userTriagedCount > 0) {
+          return { success: true, score: 100, message: 'Triaged' };
+        }
+        return { success: false, score: 0, message: 'No triage action' };
+      });
+
+      useSimulationStore.getState().completeChallenge('brute-force-triage-challenge', {
+        success: true,
+        score: 100,
+        message: 'Bypass attempt',
+      });
+
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('brute-force-triage-challenge');
+    });
+
+    it('completes brute-force-triage-challenge when user explicitly records triage status', () => {
+      useSimulationStore.setState({ activeSimulationId: 'soc' });
+
+      const statuses: Record<string, string> = { 'alert-1': 'TRIAGED' };
+      registerChallengeValidator('brute-force-triage-challenge', () => {
+        const userTriagedCount = Object.values(statuses).filter(
+          (s) => s === 'TRIAGED' || s === 'CLOSED' || s === 'INVESTIGATING'
+        ).length;
+        if (userTriagedCount > 0) {
+          return { success: true, score: 100, message: 'Triaged' };
+        }
+        return { success: false, score: 0, message: 'No triage action' };
+      });
+
+      useSimulationStore.getState().completeChallenge('brute-force-triage-challenge', {
+        success: true,
+        score: 100,
+        message: 'Triaged',
+      });
+
+      expect(useSimulationStore.getState().completedChallenges).toContain('brute-force-triage-challenge');
+    });
+  });
+
+  describe('5. Reset State Rejection & Re-evaluation', () => {
+    it('rejects completion after environment is reset back to vulnerable state', () => {
+      useSimulationStore.setState({ activeSimulationId: 'cloud_iam', completedChallenges: [] });
+
+      let currentPrincipals = createDefaultCloudIdentities().principals;
+      const groups = createDefaultCloudIdentities().groups;
+
+      registerChallengeValidator('iam-hardening-challenge', () => {
+        const live = auditCloudIamConfiguration(currentPrincipals, groups, ALL_PRESET_POLICIES);
+        return {
+          success: live.isCompliant && live.securityScore >= 100,
+          score: live.securityScore,
+          message: live.messageEn,
+        };
+      });
+
+      // Harden principals
+      currentPrincipals = currentPrincipals.map((p) =>
+        p.id === 'wkl-frontend-app' ? { ...p, attachedPolicyIds: ['pol-finance-reader-least-priv'] } : p
+      );
+
+      // Verify pass on hardened state
+      useSimulationStore.getState().completeChallenge('iam-hardening-challenge', {
+        success: true,
+        score: 100,
+        message: 'Hardened',
+      });
+      expect(useSimulationStore.getState().completedChallenges).toContain('iam-hardening-challenge');
+
+      // Reset principals back to default vulnerable state
+      currentPrincipals = createDefaultCloudIdentities().principals;
+
+      // Un-complete in store for re-evaluation test
+      useSimulationStore.setState({ completedChallenges: [] });
+
+      // Attempt complete after reset -> rejected
+      useSimulationStore.getState().completeChallenge('iam-hardening-challenge', {
+        success: true,
+        score: 100,
+        message: 'Post-reset attempt',
+      });
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('iam-hardening-challenge');
+    });
+  });
 });

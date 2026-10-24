@@ -2,7 +2,7 @@
  * OMEGA V14 — Kubernetes RBAC & Privilege Escalation Interactive Lab
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   useSimulationStore,
   registerChallengeValidator,
@@ -19,12 +19,20 @@ export const K8sRbacLab: React.FC = () => {
 
   const initialData = getInitialClusterRoles();
   const [roles, setRoles] = useState<KubernetesRole[]>(initialData.roles);
+  const rolesRef = useRef(roles);
+  rolesRef.current = roles;
+
+  const updateRolesAndSyncRef = (nextRoles: KubernetesRole[]) => {
+    rolesRef.current = nextRoles;
+    setRoles(nextRoles);
+  };
 
   const audit = auditKubernetesRbac(roles);
 
   useEffect(() => {
     registerChallengeValidator('k8s-hardening-challenge', () => {
-      const liveAudit = auditKubernetesRbac(roles);
+      const liveRoles = rolesRef.current;
+      const liveAudit = auditKubernetesRbac(liveRoles);
       return {
         success: liveAudit.isCompliant && liveAudit.securityScore >= 100,
         score: liveAudit.securityScore,
@@ -37,7 +45,7 @@ export const K8sRbacLab: React.FC = () => {
     return () => {
       unregisterChallengeValidator('k8s-hardening-challenge');
     };
-  }, [roles]);
+  }, []);
 
   const sanitizeRbac = () => {
     const sanitizedRoles: KubernetesRole[] = [
@@ -81,7 +89,7 @@ export const K8sRbacLab: React.FC = () => {
         ],
       },
     ];
-    setRoles(sanitizedRoles);
+    updateRolesAndSyncRef(sanitizedRoles);
 
     const postAudit = auditKubernetesRbac(sanitizedRoles);
     if (postAudit.isCompliant) {
@@ -91,6 +99,10 @@ export const K8sRbacLab: React.FC = () => {
         message: 'Kubernetes container isolation and RBAC verified with zero privilege escalation vectors.',
       });
     }
+  };
+
+  const resetToVulnerable = () => {
+    updateRolesAndSyncRef(initialData.roles);
   };
 
   return (

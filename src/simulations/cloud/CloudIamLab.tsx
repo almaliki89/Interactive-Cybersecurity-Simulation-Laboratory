@@ -7,7 +7,7 @@
  * Integrates live deterministic technical validator for iam-hardening-challenge.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   useSimulationStore,
   registerChallengeValidator,
@@ -39,6 +39,14 @@ export const CloudIamLab: React.FC = () => {
   const isAr = language === 'ar';
 
   const [data, setData] = useState(() => createDefaultCloudIdentities());
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const updateDataAndSyncRef = (nextData: typeof data) => {
+    dataRef.current = nextData;
+    setData(nextData);
+  };
+
   const [selectedPrincipalId, setSelectedPrincipalId] = useState<string>(data.principals[0].id);
 
   const selectedPrincipal = data.principals.find((p) => p.id === selectedPrincipalId) || data.principals[0];
@@ -50,10 +58,11 @@ export const CloudIamLab: React.FC = () => {
     (p) => p.isWildcardAdmin || p.statements.some((s) => s.actions.includes('*') || s.actions.includes('storage:*'))
   );
 
-  // Register live challenge validator bound strictly to current state
+  // Register live challenge validator bound strictly to current state via dataRef
   useEffect(() => {
     registerChallengeValidator('iam-hardening-challenge', () => {
-      const liveAudit = auditCloudIamConfiguration(data.principals, data.groups, ALL_PRESET_POLICIES);
+      const currentData = dataRef.current;
+      const liveAudit = auditCloudIamConfiguration(currentData.principals, currentData.groups, ALL_PRESET_POLICIES);
       return {
         success: liveAudit.isCompliant && liveAudit.securityScore >= 100,
         score: liveAudit.securityScore,
@@ -64,10 +73,11 @@ export const CloudIamLab: React.FC = () => {
     return () => {
       unregisterChallengeValidator('iam-hardening-challenge');
     };
-  }, [data]);
+  }, []);
 
   const sanitizeAndHarden = () => {
-    const updatedPrincipals: CloudPrincipal[] = data.principals.map((p) => {
+    const currentData = dataRef.current;
+    const updatedPrincipals: CloudPrincipal[] = currentData.principals.map((p) => {
       if (p.id === 'wkl-frontend-app') {
         // Replace overly permissive storage:* wildcard policy with scoped least-privilege finance reader
         return {
@@ -78,10 +88,10 @@ export const CloudIamLab: React.FC = () => {
       return p;
     });
 
-    const nextData = { ...data, principals: updatedPrincipals };
-    setData(nextData);
+    const nextData = { ...currentData, principals: updatedPrincipals };
+    updateDataAndSyncRef(nextData);
 
-    const postAudit = auditCloudIamConfiguration(updatedPrincipals, data.groups, ALL_PRESET_POLICIES);
+    const postAudit = auditCloudIamConfiguration(updatedPrincipals, nextData.groups, ALL_PRESET_POLICIES);
     if (postAudit.isCompliant) {
       completeChallenge('iam-hardening-challenge', {
         success: true,
@@ -92,7 +102,7 @@ export const CloudIamLab: React.FC = () => {
   };
 
   const resetToVulnerable = () => {
-    setData(createDefaultCloudIdentities());
+    updateDataAndSyncRef(createDefaultCloudIdentities());
   };
 
   return (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   useSimulationStore,
   registerChallengeValidator,
@@ -67,25 +67,31 @@ export const AlertTriageLab: React.FC<AlertTriageLabProps> = ({
 
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [alertStatuses, setAlertStatuses] = useState<Record<string, string>>({});
+  const alertStatusesRef = useRef(alertStatuses);
+  alertStatusesRef.current = alertStatuses;
 
   useEffect(() => {
     registerChallengeValidator('brute-force-triage-challenge', () => {
-      const hasTriaged = Object.keys(alertStatuses).length > 0 || triagedList.length > 0;
-      if (hasTriaged) {
+      const statuses = alertStatusesRef.current;
+      const userTriagedCount = Object.values(statuses).filter((s) => s === 'TRIAGED' || s === 'CLOSED' || s === 'INVESTIGATING').length;
+      if (userTriagedCount > 0) {
         return { success: true, score: 100, message: 'SOC alerts prioritized and triaged.' };
       }
-      return { success: false, score: 0, message: 'Triage security alerts in the queue.' };
+      return { success: false, score: 0, message: 'Triage security alerts in the queue by setting an investigation status.' };
     });
     return () => {
       unregisterChallengeValidator('brute-force-triage-challenge');
     };
-  }, [alertStatuses, triagedList.length]);
+  }, []);
 
   const activeTriage =
     triagedList.find((t) => t.alert.id === selectedAlertId) || triagedList[0] || null;
 
   const handleUpdateStatus = (alertId: string, status: 'TRIAGED' | 'INVESTIGATING' | 'CLOSED') => {
-    setAlertStatuses((prev) => ({ ...prev, [alertId]: status }));
+    const nextStatuses = { ...alertStatusesRef.current, [alertId]: status };
+    alertStatusesRef.current = nextStatuses;
+    setAlertStatuses(nextStatuses);
+
     completeChallenge('brute-force-triage-challenge', {
       success: true,
       score: 100,

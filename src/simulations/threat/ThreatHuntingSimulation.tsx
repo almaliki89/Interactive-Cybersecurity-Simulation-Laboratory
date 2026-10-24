@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import {
   useSimulationStore,
   registerChallengeValidator,
@@ -25,30 +25,6 @@ export const ThreatHuntingSimulation: React.FC = () => {
   const hunt = hunts[activeHuntId] || hunts['HUNT-01'];
   const hyp = hypotheses[hunt?.hypothesisId || 'HYP-01'] || hypotheses['HYP-01'];
 
-  useEffect(() => {
-    registerChallengeValidator('threat-hunting-hypothesis-challenge', () => {
-      const hasActivity = executedQueryStrings.length > 0 || findings.length > 0;
-      if (hasActivity) {
-        return { success: true, score: 100, message: 'Threat hunting hypothesis tested with telemetry queries.' };
-      }
-      return { success: false, score: 0, message: 'Execute telemetry queries to test threat hypothesis.' };
-    });
-
-    return () => {
-      unregisterChallengeValidator('threat-hunting-hypothesis-challenge');
-    };
-  }, [executedQueryStrings, findings]);
-
-  useEffect(() => {
-    if (executedQueryStrings.length > 0 || findings.length > 0) {
-      completeChallenge('threat-hunting-hypothesis-challenge', {
-        success: true,
-        score: 100,
-        message: 'Threat hunting hypothesis tested with telemetry queries.',
-      });
-    }
-  }, [executedQueryStrings, findings, completeChallenge]);
-
   const validationState = useMemo(() => {
     return {
       hunt,
@@ -62,6 +38,53 @@ export const ThreatHuntingSimulation: React.FC = () => {
       telemetryEvents,
     };
   }, [hunt, hyp, findings, detections, detectionResults, socHandoffs, forensicsHandoffs, executedQueryStrings, telemetryEvents]);
+
+  const validationStateRef = useRef(validationState);
+  validationStateRef.current = validationState;
+
+  useEffect(() => {
+    registerChallengeValidator('threat-hunting-hypothesis-challenge', () => {
+      const state = validationStateRef.current;
+      const hasExecutedQueries = state.executedQueries && state.executedQueries.some((q) => q.trim().length > 0);
+      const isHypothesisSupported = state.hypothesis && state.hypothesis.status === 'SUPPORTED';
+      const hasValidatedFinding = state.findings && state.findings.some((f) => f.status === 'VALIDATED' && f.eventIds.length >= 1);
+
+      // Require query execution AND evidence support (hypothesis supported or validated finding)
+      const meetsCriteria = hasExecutedQueries && (isHypothesisSupported || hasValidatedFinding);
+
+      if (meetsCriteria) {
+        return {
+          success: true,
+          score: 100,
+          message: 'Threat hunting hypothesis tested and verified with telemetry evidence.',
+        };
+      }
+      return {
+        success: false,
+        score: 0,
+        message: 'Execute telemetry queries and validate findings to support the threat hypothesis.',
+      };
+    });
+
+    return () => {
+      unregisterChallengeValidator('threat-hunting-hypothesis-challenge');
+    };
+  }, []);
+
+  useEffect(() => {
+    const state = validationState;
+    const hasExecutedQueries = state.executedQueries && state.executedQueries.some((q) => q.trim().length > 0);
+    const isHypothesisSupported = state.hypothesis && state.hypothesis.status === 'SUPPORTED';
+    const hasValidatedFinding = state.findings && state.findings.some((f) => f.status === 'VALIDATED' && f.eventIds.length >= 1);
+
+    if (hasExecutedQueries && (isHypothesisSupported || hasValidatedFinding)) {
+      completeChallenge('threat-hunting-hypothesis-challenge', {
+        success: true,
+        score: 100,
+        message: 'Threat hunting hypothesis tested and verified with telemetry evidence.',
+      });
+    }
+  }, [validationState, completeChallenge]);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-black select-none">
