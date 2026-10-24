@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { evaluatePacketTransmission } from '../../utils/networkUtils';
+import {
+  evaluatePacketTransmission,
+  validateSubnetRoutingChallengeState,
+  SubnetRoutingChallengeConfig,
+} from '../../utils/networkUtils';
 import {
   registerChallengeValidator,
   unregisterChallengeValidator,
@@ -7,7 +11,7 @@ import {
   clearChallengeValidators,
 } from '../../stores/simulationStore';
 
-describe('Reference Network & Network Security Laboratory Engine', () => {
+describe('Reference Network Laboratory — Correctness & Remediation Suite', () => {
   beforeEach(() => {
     clearChallengeValidators();
     useSimulationStore.setState({
@@ -16,8 +20,114 @@ describe('Reference Network & Network Security Laboratory Engine', () => {
     });
   });
 
-  describe('Multi-Hop Diagnostics & Failure Trace Engine', () => {
-    it('returns full 5-hop success trace when all network & security conditions pass', () => {
+  describe('1 & 2. Firewall Policy & Strict HTTPS Validation', () => {
+    it('1. strict_https policy with TCP/80 blocks packet and fails challenge validation', () => {
+      const val = validateSubnetRoutingChallengeState({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 80,
+        protocol: 'TCP',
+        firewallPolicy: 'strict_https',
+      });
+
+      expect(val.transmissionResult.status).toBe('firewall_blocked');
+      expect(val.transmissionResult.packetState).toBe('blocked');
+      expect(val.transmissionResult.failureHop).toBe('firewall');
+      expect(val.success).toBe(false);
+      expect(val.checks.transmissionSuccess).toBe(false);
+    });
+
+    it('2. strict_https policy with TCP/443 passes packet transmission and succeeds challenge validation', () => {
+      const val = validateSubnetRoutingChallengeState({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 443,
+        protocol: 'TCP',
+        firewallPolicy: 'strict_https',
+      });
+
+      expect(val.transmissionResult.status).toBe('success');
+      expect(val.transmissionResult.packetState).toBe('success');
+      expect(val.transmissionResult.failureHop).toBeNull();
+      expect(val.success).toBe(true);
+      expect(val.checks.transmissionSuccess).toBe(true);
+    });
+  });
+
+  describe('3. NAT Egress Requirement', () => {
+    it('3. NAT disabled blocks egress packet and fails challenge validation', () => {
+      const val = validateSubnetRoutingChallengeState({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: false,
+        destPort: 443,
+        protocol: 'TCP',
+        firewallPolicy: 'allow_all',
+      });
+
+      expect(val.transmissionResult.status).toBe('nat_disabled');
+      expect(val.transmissionResult.packetState).toBe('blocked');
+      expect(val.transmissionResult.failureHop).toBe('nat');
+      expect(val.success).toBe(false);
+      expect(val.checks.natEnabled).toBe(false);
+    });
+  });
+
+  describe('4. Subnet Boundary Alignment', () => {
+    it('4. Mismatched subnet between host and gateway drops packet at router and fails challenge', () => {
+      const val = validateSubnetRoutingChallengeState({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 27, // /27 puts 192.168.1.42 in .32/27 and 192.168.1.1 in .0/27
+        natEnabled: true,
+      });
+
+      expect(val.transmissionResult.status).toBe('subnet_mismatch');
+      expect(val.transmissionResult.packetState).toBe('blocked');
+      expect(val.transmissionResult.failureHop).toBe('router');
+      expect(val.success).toBe(false);
+      expect(val.checks.sameSubnet).toBe(false);
+    });
+  });
+
+  describe('5 & 6. Input Parameter Validation', () => {
+    it('5. Invalid host IP or CIDR prefix returns invalid_ip status and fails challenge', () => {
+      const val = validateSubnetRoutingChallengeState({
+        hostIp: '999.999.999.999',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+      });
+
+      expect(val.transmissionResult.validInputs).toBe(false);
+      expect(val.transmissionResult.status).toBe('invalid_ip');
+      expect(val.transmissionResult.packetState).toBe('blocked');
+      expect(val.transmissionResult.failureHop).toBe('host');
+      expect(val.success).toBe(false);
+    });
+
+    it('6. Invalid port (0 or 70000) is rejected during input validation', () => {
+      const val = validateSubnetRoutingChallengeState({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 70000,
+      });
+
+      expect(val.transmissionResult.validInputs).toBe(false);
+      expect(val.transmissionResult.status).toBe('invalid_ip');
+      expect(val.success).toBe(false);
+    });
+  });
+
+  describe('7, 8 & 9. Service Model Response Differentiation', () => {
+    it('7. TCP to HTTP/HTTPS service returns HTTP 200 OK response log', () => {
       const res = evaluatePacketTransmission({
         hostIp: '192.168.1.42',
         gatewayIp: '192.168.1.1',
@@ -25,100 +135,113 @@ describe('Reference Network & Network Security Laboratory Engine', () => {
         natEnabled: true,
         destPort: 443,
         protocol: 'TCP',
-        firewallPolicy: 'allow_all',
       });
 
-      expect(res.validInputs).toBe(true);
-      expect(res.isSameSubnet).toBe(true);
       expect(res.status).toBe('success');
-      expect(res.packetState).toBe('success');
-      expect(res.failureHop).toBeNull();
-      expect(res.hopTraces).toBeDefined();
-      expect(res.hopTraces?.length).toBe(5);
-      expect(res.hopTraces?.every((h) => h.status === 'ok')).toBe(true);
+      expect(res.allLogs.some((l) => l.includes('HTTP 200 OK'))).toBe(true);
     });
 
-    it('identifies router hop drop when host and gateway are in non-overlapping subnets', () => {
-      const res = evaluatePacketTransmission({
-        hostIp: '192.168.1.42',
-        gatewayIp: '192.168.1.1',
-        cidrPrefix: 27, // /27 host is in .32/27, gateway is in .0/27
-        natEnabled: true,
-      });
-
-      expect(res.validInputs).toBe(true);
-      expect(res.isSameSubnet).toBe(false);
-      expect(res.status).toBe('subnet_mismatch');
-      expect(res.packetState).toBe('blocked');
-      expect(res.failureHop).toBe('router');
-      expect(res.failureReasonAr).toContain('شبكتين فرعيتين مختلفين');
-      expect(res.remediationAr).toContain('ضمن نفس نطاق الشبكة الفرعية');
-      expect(res.hopTraces?.some((h) => h.nodeName === 'Router Ingress' && h.status === 'dropped')).toBe(true);
-    });
-
-    it('identifies firewall hop drop when ACL blocks unencrypted HTTP port 80', () => {
+    it('8. TCP to SSH service returns SSHv2 banner without fake HTTP 200 message', () => {
       const res = evaluatePacketTransmission({
         hostIp: '192.168.1.42',
         gatewayIp: '192.168.1.1',
         cidrPrefix: 26,
         natEnabled: true,
-        destPort: 80,
-        firewallPolicy: 'strict_https',
+        destPort: 22,
+        protocol: 'TCP',
       });
 
-      expect(res.validInputs).toBe(true);
-      expect(res.status).toBe('firewall_blocked');
-      expect(res.packetState).toBe('blocked');
-      expect(res.failureHop).toBe('firewall');
-      expect(res.failureReasonEn).toContain('Firewall dropped packet');
-      expect(res.remediationEn).toContain('Update firewall ACL policy');
-      expect(res.hopTraces?.some((h) => h.nodeName === 'Firewall ACL Engine' && h.status === 'dropped')).toBe(true);
+      expect(res.status).toBe('success');
+      expect(res.allLogs.some((l) => l.includes('SSHv2 Banner Exchanged (OpenSSH 8.9p1)'))).toBe(true);
+      expect(res.allLogs.some((l) => l.includes('HTTP 200 OK'))).toBe(false);
     });
 
-    it('identifies NAT hop drop when egress NAT is disabled on RFC 1918 private address', () => {
+    it('9. UDP to DNS service returns DNS record resolution log without fake TCP 3-Way Handshake', () => {
       const res = evaluatePacketTransmission({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 53,
+        protocol: 'UDP',
+      });
+
+      expect(res.status).toBe('success');
+      expect(res.allLogs.some((l) => l.includes('Crafting UDP Datagram'))).toBe(true);
+      expect(res.allLogs.some((l) => l.includes('DNS Query Resolved (A Record'))).toBe(true);
+      expect(res.allLogs.some((l) => l.includes('3-Way Handshake'))).toBe(false);
+    });
+  });
+
+  describe('10, 11 & 12. Hop Alignment, Stale Prevention, and Closed Ports', () => {
+    it('10. Strict alignment between status, packetState, failureHop, hopTraces, and challenge result', () => {
+      const val = validateSubnetRoutingChallengeState({
         hostIp: '192.168.1.42',
         gatewayIp: '192.168.1.1',
         cidrPrefix: 26,
         natEnabled: false,
       });
 
-      expect(res.validInputs).toBe(true);
-      expect(res.status).toBe('nat_disabled');
-      expect(res.packetState).toBe('blocked');
-      expect(res.failureHop).toBe('nat');
-      expect(res.failureReasonEn).toContain('Egress NAT is disabled');
-      expect(res.hopTraces?.some((h) => h.nodeName === 'NAT Gateway' && h.status === 'dropped')).toBe(true);
+      expect(val.transmissionResult.status).toBe('nat_disabled');
+      expect(val.transmissionResult.packetState).toBe('blocked');
+      expect(val.transmissionResult.failureHop).toBe('nat');
+      expect(val.transmissionResult.hopTraces?.find((h) => h.status === 'dropped')?.nodeName).toBe('NAT Gateway');
+      expect(val.success).toBe(false);
     });
-  });
 
-  describe('Authoritative Challenge Validator Binding', () => {
-    it('validates subnet-routing-challenge correctly through simulationStore', () => {
-      registerChallengeValidator('subnet-routing-challenge', () => ({
-        success: true,
-        score: 100,
-        details: { cidrValid: true, natValid: true },
-      }));
+    it('11. Changing settings to invalid configuration causes validator to reject store completion', () => {
+      // Register live validator with active state
+      let config: SubnetRoutingChallengeConfig = {
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 443,
+        protocol: 'TCP',
+        firewallPolicy: 'allow_all',
+      };
+
+      registerChallengeValidator('subnet-routing-challenge', () => {
+        const val = validateSubnetRoutingChallengeState(config);
+        return { success: val.success, score: val.score, details: val };
+      });
 
       const store = useSimulationStore.getState();
-      store.completeChallenge('subnet-routing-challenge', { success: true });
 
+      // First attempt with valid config succeeds
+      store.completeChallenge('subnet-routing-challenge', { success: true });
       expect(useSimulationStore.getState().completedChallenges).toContain('subnet-routing-challenge');
+
+      // Now change settings to invalid (e.g. strict_https on port 80)
+      config.destPort = 80;
+      config.firewallPolicy = 'strict_https';
+
+      // Clear completed challenges to simulate new check attempt
+      useSimulationStore.setState({ completedChallenges: [] });
+
+      // Attempt complete challenge with new stale payload
+      store.completeChallenge('subnet-routing-challenge', { success: true });
+
+      // Rejects because live validator evaluates current settings
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('subnet-routing-challenge');
       unregisterChallengeValidator('subnet-routing-challenge');
     });
 
-    it('rejects subnet-routing-challenge completion if validator returns failure', () => {
-      registerChallengeValidator('subnet-routing-challenge', () => ({
-        success: false,
-        score: 50,
-        details: { cidrValid: false, natValid: true },
-      }));
+    it('12. Unsupported service or closed port (e.g. port 9999) returns port_unreachable and TCP RST log', () => {
+      const res = evaluatePacketTransmission({
+        hostIp: '192.168.1.42',
+        gatewayIp: '192.168.1.1',
+        cidrPrefix: 26,
+        natEnabled: true,
+        destPort: 9999,
+        protocol: 'TCP',
+      });
 
-      const store = useSimulationStore.getState();
-      store.completeChallenge('subnet-routing-challenge', { success: true });
-
-      expect(store.completedChallenges).not.toContain('subnet-routing-challenge');
-      unregisterChallengeValidator('subnet-routing-challenge');
+      expect(res.status).toBe('port_unreachable');
+      expect(res.packetState).toBe('blocked');
+      expect(res.failureHop).toBe('service');
+      expect(res.allLogs.some((l) => l.includes('Connection Refused (TCP RST'))).toBe(true);
+      expect(res.remediationEn).toContain('Target an open port');
     });
   });
 });

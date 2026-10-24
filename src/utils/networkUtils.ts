@@ -139,7 +139,7 @@ export interface PacketTransmissionResult {
 }
 
 /**
- * Pure evaluation function for network packet transmission and NAT egress routing.
+ * Pure, deterministic evaluation function for network packet transmission, firewall ACL, NAT egress, and service model.
  */
 export const evaluatePacketTransmission = (
   params: PacketTransmissionParams
@@ -156,10 +156,19 @@ export const evaluatePacketTransmission = (
     firewallPolicy = 'allow_all',
   } = params;
 
-  if (!isValidIpv4(hostIp) || !isValidIpv4(gatewayIp) || !isValidCidrPrefix(cidrPrefix)) {
+  // 1. Strict Input Validation (IPv4 format, CIDR range, Port range, Protocol, Firewall Policy)
+  const isHostValid = isValidIpv4(hostIp);
+  const isGatewayValid = isValidIpv4(gatewayIp);
+  const isWanServerValid = isValidIpv4(wanServerIp);
+  const isCidrValid = isValidCidrPrefix(cidrPrefix);
+  const isPortValid = typeof destPort === 'number' && Number.isInteger(destPort) && destPort >= 1 && destPort <= 65535;
+  const isProtocolValid = protocol === 'TCP' || protocol === 'UDP' || protocol === 'ICMP';
+  const isPolicyValid = firewallPolicy === 'allow_all' || firewallPolicy === 'strict_https' || firewallPolicy === 'block_http' || firewallPolicy === 'drop_all';
+
+  if (!isHostValid || !isGatewayValid || !isWanServerValid || !isCidrValid || !isPortValid || !isProtocolValid || !isPolicyValid) {
     const errorLogs = [
       `[00:00.000] HOST_PC (${hostIp}) -> [ERROR] Invalid IPv4 or CIDR prefix configuration (/${cidrPrefix})`,
-      `[ERROR] Packet crafting failed: Check IP address format and CIDR range (0-32).`,
+      `[ERROR] Packet crafting failed: Verify IP address syntax, CIDR range (0-32), Port range (1-65535), and Protocol.`,
     ];
     return {
       validInputs: false,
@@ -170,10 +179,10 @@ export const evaluatePacketTransmission = (
       hopLogs: [],
       allLogs: errorLogs,
       failureHop: 'host',
-      failureReasonAr: 'عنوان IP المضيف أو قناع CIDR يحتوي على صيغة غير صالحة.',
-      failureReasonEn: 'Invalid host IPv4 address or CIDR prefix configuration.',
-      remediationAr: 'تأكد من إدخال عنوان IPv4 ثنائي عشري صحيح (مثال 192.168.1.42) وقناع بين 0 و32.',
-      remediationEn: 'Ensure a valid dotted-decimal IPv4 address (e.g., 192.168.1.42) and CIDR prefix (0-32).',
+      failureReasonAr: 'أحد عناصر التكوين (عنوان IP، قناع CIDR، رقم المنفذ، أو البرتوكول) يحتوي صيغة غير صالحة.',
+      failureReasonEn: 'Invalid network configuration parameters (IPv4 address, CIDR prefix, port number, or protocol).',
+      remediationAr: 'تأكد من إدخال عنوان IPv4 صحيح، وقناع بين 0 و32، ومنفذ بين 1 و65535، وبروتوكول قياسي.',
+      remediationEn: 'Ensure valid IPv4 addresses, CIDR prefix (0-32), port number (1-65535), and valid protocol.',
       hopTraces: [
         {
           hopIndex: 1,
@@ -181,18 +190,27 @@ export const evaluatePacketTransmission = (
           nodeIp: hostIp,
           action: 'DROPPED',
           status: 'dropped',
-          descriptionAr: 'فشل بناء الحزمة بسبب صيغة عنوان غير صحيحة.',
-          descriptionEn: 'Packet crafting failed due to invalid address syntax.',
+          descriptionAr: 'فشل بناء الحزمة بسبب مدخلات غير صالحة.',
+          descriptionEn: 'Packet crafting failed due to invalid configuration parameters.',
         },
       ],
     };
   }
 
+  // Crafting Initial Trace Logs according to Protocol
+  let craftDescription = `Crafting TCP SYN (Port ${destPort} -> Destination ${wanServerIp})`;
+  if (protocol === 'UDP') {
+    craftDescription = `Crafting UDP Datagram (Port ${destPort} -> Destination ${wanServerIp})`;
+  } else if (protocol === 'ICMP') {
+    craftDescription = `Crafting ICMP Echo Request (Type 8 Code 0 -> Destination ${wanServerIp})`;
+  }
+
   const initialLogs = [
-    `[00:00.000] HOST_PC (${hostIp}) -> Crafting ${protocol} SYN (Port ${destPort} -> Destination ${wanServerIp})`,
+    `[00:00.000] HOST_PC (${hostIp}) -> [محاكاة افتراضية] ${craftDescription}`,
     `[00:00.015] ARP Table -> Resolving Gateway ${gatewayIp} (MAC 00:1A:2B:3C:4D:01)`,
   ];
 
+  // 2. Subnet Boundary Check (Host vs Gateway)
   const sameSubnet = isSameSubnet(hostIp, gatewayIp, cidrPrefix);
 
   if (!sameSubnet) {
@@ -220,8 +238,8 @@ export const evaluatePacketTransmission = (
           nodeIp: hostIp,
           action: 'FORWARDED',
           status: 'ok',
-          descriptionAr: 'تم إنشاء الحزمة وإطلاق استعلام ARP للبوابة.',
-          descriptionEn: 'Packet created and ARP query sent for default gateway.',
+          descriptionAr: 'تم إنشاء الحزمة وإرسال استعلام ARP عن الموجه.',
+          descriptionEn: 'Packet created and ARP query transmitted for gateway.',
         },
         {
           hopIndex: 2,
@@ -229,17 +247,31 @@ export const evaluatePacketTransmission = (
           nodeIp: gatewayIp,
           action: 'DROPPED',
           status: 'dropped',
-          descriptionAr: 'تم إسقاط الحزمة: المضيف والبوابة غير متواجدين في نفس نطاق الشبكة الفرعية.',
+          descriptionAr: 'تم إسقاط الحزمة: المضيف والبوابة ينتميان لشبكتين فرعيتين غير متطابقتين.',
           descriptionEn: 'Packet dropped: Host and Gateway belong to non-overlapping subnets.',
         },
       ],
     };
   }
 
-  if (firewallPolicy === 'drop_all' || (firewallPolicy === 'strict_https' && destPort !== 443) || (firewallPolicy === 'block_http' && destPort === 80)) {
+  // 3. Firewall Policy ACL Evaluation
+  let isFirewallBlocked = false;
+  if (firewallPolicy === 'drop_all') {
+    isFirewallBlocked = true;
+  } else if (firewallPolicy === 'strict_https') {
+    if (protocol !== 'TCP' || destPort !== 443) {
+      isFirewallBlocked = true;
+    }
+  } else if (firewallPolicy === 'block_http') {
+    if (destPort === 80) {
+      isFirewallBlocked = true;
+    }
+  }
+
+  if (isFirewallBlocked) {
     const hopLogs = [
       `[00:00.040] ROUTER_HOP (${gatewayIp}) -> Forwarding packet to Firewall Egress Interface (${firewallIp})`,
-      `[00:00.080] FIREWALL (${firewallIp}) -> DROPPED: Security ACL Rule Matched [DENY Port ${destPort}].`,
+      `[00:00.080] FIREWALL (${firewallIp}) -> DROPPED: Security ACL Rule Matched [DENY ${protocol} Port ${destPort}].`,
       `[ERROR] Egress traffic blocked by perimeter firewall policy (${firewallPolicy}).`,
     ];
     return {
@@ -251,9 +283,9 @@ export const evaluatePacketTransmission = (
       hopLogs,
       allLogs: [...initialLogs, ...hopLogs],
       failureHop: 'firewall',
-      failureReasonAr: `جدار الحماية أقصى الحزمة وفق سياسة الأمن ACL المحددة (منفذ ${destPort} محظور).`,
-      failureReasonEn: `Firewall dropped packet matching ACL deny rule (Port ${destPort} restricted).`,
-      remediationAr: 'عدّل قواعد جدار الحماية لتسمية مرور منفذ الخدمة المطلوبة (مثال: السماح برقم المنفذ 443).',
+      failureReasonAr: `جدار الحماية أقصى الحزمة وفق سياسة الأمن ACL المحددة (${firewallPolicy}: حظر ${protocol} على المنفذ ${destPort}).`,
+      failureReasonEn: `Firewall dropped packet matching ACL deny rule (${firewallPolicy}: DENY ${protocol} on Port ${destPort}).`,
+      remediationAr: 'عدّل قواعد جدار الحماية لتسمية مرور منفذ الخدمة المطلوبة (مثل السماح برقم المنفذ 443 للاتصال المشفر).',
       remediationEn: 'Update firewall ACL policy to permit desired service port (e.g. allow HTTPS 443).',
       hopTraces: [
         {
@@ -287,6 +319,7 @@ export const evaluatePacketTransmission = (
     };
   }
 
+  // 4. Egress NAT Translation Check
   if (!natEnabled) {
     const hopLogs = [
       `[00:00.040] ROUTER_HOP (${gatewayIp}) -> Forwarding packet to Firewall Egress Interface (${firewallIp})`,
@@ -338,11 +371,112 @@ export const evaluatePacketTransmission = (
     };
   }
 
+  // 5. Remote Server Daemon & Service Model Evaluation
+  // Supported open services on simulated WAN Server 93.184.216.34:
+  // - TCP / 443: Web HTTPS Daemon
+  // - TCP / 80: Web HTTP Daemon
+  // - TCP / 22: SSH Daemon
+  // - UDP / 53 or TCP / 53: DNS Name Server Daemon
+  // - ICMP: Kernel ICMP Echo Responder Daemon
+  let isServiceSupported = false;
+  let serviceResponseLog = '';
+  let successSummaryLog = '';
+
+  if (protocol === 'TCP' && (destPort === 443 || destPort === 80)) {
+    isServiceSupported = true;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:${destPort}) -> Received TCP SYN, responded TCP SYN-ACK`;
+    successSummaryLog = `[00:00.150] SUCCESS: 3-Way Handshake Completed (HTTP 200 OK) via /${cidrPrefix} Subnet & NAT Gateway!`;
+  } else if (protocol === 'TCP' && destPort === 22) {
+    isServiceSupported = true;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:22) -> Received TCP SYN, responded TCP SYN-ACK`;
+    successSummaryLog = `[00:00.150] SUCCESS: 3-Way Handshake Completed & SSHv2 Banner Exchanged (OpenSSH 8.9p1) via /${cidrPrefix} Subnet & NAT Gateway!`;
+  } else if ((protocol === 'UDP' || protocol === 'TCP') && destPort === 53) {
+    isServiceSupported = true;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:53) -> Processed DNS Query for domain`;
+    successSummaryLog = `[00:00.150] SUCCESS: DNS Query Resolved (A Record 93.184.216.34) via /${cidrPrefix} Subnet & NAT Gateway!`;
+  } else if (protocol === 'ICMP') {
+    isServiceSupported = true;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}) -> Received ICMP Echo Request, responded ICMP Echo Reply`;
+    successSummaryLog = `[00:00.150] SUCCESS: ICMP Echo Reply Received (0ms RTT, TTL=64) via /${cidrPrefix} Subnet & NAT Gateway!`;
+  }
+
+  // Handling Closed Port / Unsupported Service -> port_unreachable
+  if (!isServiceSupported) {
+    const hopLogs = [
+      `[00:00.040] ROUTER_HOP (${gatewayIp}) -> Forwarding packet to Firewall Egress Interface (${firewallIp})`,
+      `[00:00.080] NAT_TABLE -> Translated ${hostIp}:54201 -> ${firewallIp}:50001`,
+      `[00:00.120] WAN_SERVER (${wanServerIp}:${destPort}) -> DROPPED: Connection Refused (TCP RST / Port Closed / No Active Daemon).`,
+      `[ERROR] Destination port ${destPort} unreachable: No active service daemon listening for ${protocol} traffic on remote host.`,
+    ];
+    return {
+      validInputs: true,
+      isSameSubnet: true,
+      status: 'port_unreachable',
+      packetState: 'blocked',
+      initialLogs,
+      hopLogs,
+      allLogs: [...initialLogs, ...hopLogs],
+      failureHop: 'service',
+      failureReasonAr: `الخادم البعيد أرجع رفضاً للاتصال (TCP RST / Port Closed): لا توجد خدمة نشطة تستمع على المنفذ ${destPort} عبر بروتوكول ${protocol}.`,
+      failureReasonEn: `Remote server refused connection (TCP RST / Port Closed): No active service listening on port ${destPort} for ${protocol}.`,
+      remediationAr: 'استهدف منفذاً مفتوحاً تدعمه خوادم المحاكاة (مثل 443 لـ HTTPS، 80 لـ HTTP، 22 لـ SSH، 53 لـ DNS، أو ICMP).',
+      remediationEn: 'Target an open port supported by simulated daemons (e.g. 443 HTTPS, 80 HTTP, 22 SSH, 53 DNS, ICMP).',
+      hopTraces: [
+        {
+          hopIndex: 1,
+          nodeName: 'Host PC',
+          nodeIp: hostIp,
+          action: 'FORWARDED',
+          status: 'ok',
+          descriptionAr: 'تم إنشاء الحزمة بنجاح.',
+          descriptionEn: 'Packet created successfully.',
+        },
+        {
+          hopIndex: 2,
+          nodeName: 'Router Gateway',
+          nodeIp: gatewayIp,
+          action: 'FORWARDED',
+          status: 'ok',
+          descriptionAr: 'تم التوجيه نحو جدار الحماية.',
+          descriptionEn: 'Routed to egress firewall.',
+        },
+        {
+          hopIndex: 3,
+          nodeName: 'Firewall ACL Engine',
+          nodeIp: firewallIp,
+          action: 'FORWARDED',
+          status: 'ok',
+          descriptionAr: 'اجتياز جدار الحماية بنجاح.',
+          descriptionEn: 'Passed firewall inspection.',
+        },
+        {
+          hopIndex: 4,
+          nodeName: 'NAT Gateway',
+          nodeIp: `${firewallIp}:50001`,
+          action: 'FORWARDED',
+          status: 'ok',
+          descriptionAr: 'ترجمة العنوان الخاص إلى عنوان عام.',
+          descriptionEn: 'SNAT translation created.',
+        },
+        {
+          hopIndex: 5,
+          nodeName: 'WAN Remote Server',
+          nodeIp: `${wanServerIp}:${destPort}`,
+          action: 'DROPPED',
+          status: 'dropped',
+          descriptionAr: `الخدمة غير مجهزة على المنفذ ${destPort}: أرجع الخادم استجابة TCP RST.`,
+          descriptionEn: `Service closed on port ${destPort}: Remote host returned TCP RST / Connection Refused.`,
+        },
+      ],
+    };
+  }
+
+  // Full Success Path
   const hopLogs = [
     `[00:00.040] ROUTER_HOP (${gatewayIp}) -> Forwarding packet to Firewall Egress Interface (${firewallIp})`,
     `[00:00.080] NAT_TABLE -> Translated ${hostIp}:54201 -> ${firewallIp}:50001`,
-    `[00:00.120] WAN_SERVER (${wanServerIp}:${destPort}) -> Received TCP SYN, responded TCP SYN-ACK`,
-    `[00:00.150] SUCCESS: 3-Way Handshake Completed (HTTP 200 OK) via /${cidrPrefix} Subnet & NAT Gateway!`,
+    serviceResponseLog,
+    successSummaryLog,
   ];
 
   return {
@@ -397,9 +531,97 @@ export const evaluatePacketTransmission = (
         nodeIp: `${wanServerIp}:${destPort}`,
         action: 'PROCESSED',
         status: 'ok',
-        descriptionAr: 'استلام الحزمة واكتمال المصافحة بنجاح.',
-        descriptionEn: 'Packet processed and successful response returned.',
+        descriptionAr: 'استلام الحزمة واكتمال استجابة الخدمة بنجاح.',
+        descriptionEn: 'Packet processed and successful service response returned.',
       },
     ],
   };
 };
+
+/**
+ * Shared, authoritative challenge validation configuration interface and function.
+ */
+export interface SubnetRoutingChallengeConfig {
+  hostIp: string;
+  gatewayIp: string;
+  cidrPrefix: number;
+  natEnabled: boolean;
+  wanServerIp?: string;
+  destPort?: number;
+  protocol?: 'TCP' | 'UDP' | 'ICMP';
+  firewallPolicy?: 'allow_all' | 'strict_https' | 'block_http' | 'drop_all';
+}
+
+export interface SubnetRoutingChallengeValidation {
+  success: boolean;
+  score: number;
+  messageAr: string;
+  messageEn: string;
+  transmissionResult: PacketTransmissionResult;
+  checks: {
+    cidrValid: boolean;
+    sameSubnet: boolean;
+    natEnabled: boolean;
+    transmissionSuccess: boolean;
+  };
+}
+
+export function validateSubnetRoutingChallengeState(
+  config: SubnetRoutingChallengeConfig
+): SubnetRoutingChallengeValidation {
+  const transmissionResult = evaluatePacketTransmission({
+    hostIp: config.hostIp,
+    gatewayIp: config.gatewayIp,
+    cidrPrefix: config.cidrPrefix,
+    natEnabled: config.natEnabled,
+    wanServerIp: config.wanServerIp || '93.184.216.34',
+    destPort: config.destPort ?? 443,
+    protocol: config.protocol || 'TCP',
+    firewallPolicy: config.firewallPolicy || 'allow_all',
+  });
+
+  const cidrValid = config.cidrPrefix === 26;
+  const sameSubnet = isSameSubnet(config.hostIp, config.gatewayIp, config.cidrPrefix);
+  const natEnabled = config.natEnabled === true;
+  const transmissionSuccess = transmissionResult.status === 'success' && transmissionResult.packetState === 'success';
+
+  // Overall success ONLY when CIDR is /26, Host & Gateway in same subnet, NAT enabled, AND transmission simulation succeeds!
+  const success = cidrValid && sameSubnet && natEnabled && transmissionSuccess;
+
+  let score = 0;
+  if (cidrValid) score += 25;
+  if (sameSubnet) score += 25;
+  if (natEnabled) score += 25;
+  if (transmissionSuccess) score += 25;
+
+  let messageAr = 'ممتاز! تم تصميم الشبكة الفرعية /26، وتطابق البوابة مع المضيف، وتفعيل NAT وإرسال الحزم بنجاح.';
+  let messageEn = 'Subnet /26 topology, host-gateway alignment, NAT egress, and packet transmission verified successfully!';
+
+  if (!cidrValid) {
+    messageAr = 'قناع CIDR يجب أن يكون /26 (لتوليد 62 مضيف صالح لكل شبكة فرعية).';
+    messageEn = 'CIDR mask must be set to /26 for 62 usable hosts per subnet.';
+  } else if (!sameSubnet) {
+    messageAr = 'المضيف والبوابة الافتراضية غير متواجدين في نفس نطاق الشبكة الفرعية.';
+    messageEn = 'Host IP and Gateway IP belong to non-overlapping subnets.';
+  } else if (!natEnabled) {
+    messageAr = 'بوابة ترجمة العناوين NAT معطلة؛ يجب تفعيل NAT لترجمة العناوين الخاصة.';
+    messageEn = 'NAT Gateway is disabled; enable NAT to route private addresses to WAN.';
+  } else if (!transmissionSuccess) {
+    messageAr = `فشل إرسال الحزمة: ${transmissionResult.failureReasonAr || 'الحزمة محظورة بواسطة جدار الحماية أو الخدمة'}`;
+    messageEn = `Packet transmission failed: ${transmissionResult.failureReasonEn || 'Packet blocked by firewall or service'}`;
+  }
+
+  return {
+    success,
+    score,
+    messageAr,
+    messageEn,
+    transmissionResult,
+    checks: {
+      cidrValid,
+      sameSubnet,
+      natEnabled,
+      transmissionSuccess,
+    },
+  };
+}

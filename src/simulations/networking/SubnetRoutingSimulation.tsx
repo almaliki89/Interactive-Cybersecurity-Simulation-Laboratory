@@ -28,6 +28,7 @@ import {
   evaluatePacketTransmission,
   PacketTransmissionResult,
   calculateSubnetDetails,
+  validateSubnetRoutingChallengeState,
 } from '../../utils/networkUtils';
 
 export const SubnetRoutingSimulation: React.FC = () => {
@@ -57,33 +58,37 @@ export const SubnetRoutingSimulation: React.FC = () => {
   const totalIps = subnetDetails?.totalIps || Math.pow(2, 32 - cidrPrefix);
   const usableHosts = subnetDetails?.usableHosts || Math.max(0, totalIps - 2);
 
+  // Reset execution state whenever parameters change so stale success cannot validate new settings
+  useEffect(() => {
+    setPacketState('idle');
+    setTransmissionResult(null);
+  }, [hostIp, gatewayIp, cidrPrefix, natEnabled, destPort, protocol, firewallPolicy]);
+
   // Authoritative Challenge Validator Registration
   useEffect(() => {
     registerChallengeValidator('subnet-routing-challenge', () => {
-      const isSubnet26 = cidrPrefix === 26;
-      const isNatActive = natEnabled;
-      const sameSubnet = isSameSubnet(hostIp, gatewayIp, cidrPrefix);
-      const isFirewallPermissive = firewallPolicy === 'allow_all' || firewallPolicy === 'strict_https';
-      
-      const success = isSubnet26 && isNatActive && sameSubnet && isFirewallPermissive;
-      const score = (isSubnet26 ? 25 : 0) + (isNatActive ? 25 : 0) + (sameSubnet ? 25 : 0) + (isFirewallPermissive ? 25 : 0);
+      const val = validateSubnetRoutingChallengeState({
+        hostIp,
+        gatewayIp,
+        cidrPrefix,
+        natEnabled,
+        wanServerIp,
+        destPort,
+        protocol,
+        firewallPolicy,
+      });
 
       return {
-        success,
-        score,
-        details: {
-          cidrValid: isSubnet26,
-          natValid: isNatActive,
-          sameSubnet,
-          firewallValid: isFirewallPermissive,
-        },
+        success: val.success,
+        score: val.score,
+        details: val,
       };
     });
 
     return () => {
       unregisterChallengeValidator('subnet-routing-challenge');
     };
-  }, [cidrPrefix, natEnabled, hostIp, gatewayIp, firewallPolicy]);
+  }, [hostIp, gatewayIp, cidrPrefix, natEnabled, wanServerIp, destPort, protocol, firewallPolicy]);
 
   const challenge: Challenge = {
     id: 'subnet-routing-challenge',
@@ -93,8 +98,8 @@ export const SubnetRoutingSimulation: React.FC = () => {
     category: isAr ? 'الشبكات وتوجيه الحزم' : 'Networking',
     mission:
       isAr
-        ? 'قسم الشبكة إلى نطاقات فرعية بحجم /26 (62 مضيف صالح)، واضبط البوابة ضمن نفس النطاق، وفعل بوابة NAT مع سياسة جدار حماية تسمح بمرور حركة المرور.'
-        : 'Design a /26 subnet topology with 62 usable hosts per segment, bind gateway inside host subnet, and enforce NAT gateway egress.',
+        ? 'قسم الشبكة إلى نطاقات فرعية بحجم /26 (62 مضيف صالح)، واضبط البوابة ضمن نفس النطاق، وفعل بوابة NAT مع سياسة جدار حماية واسلحة تضمن نجاح نقل الحزم.'
+        : 'Design a /26 subnet topology with 62 usable hosts per segment, bind gateway inside host subnet, enable NAT, and ensure successful packet egress.',
     initialExplanation:
       isAr
         ? 'التقسيم الفرعي (Subnetting) يعزل الأجهزة ويقلل نطاق البث، بينما بوابة NAT تخفي عناوين IP الداخلية عند خروجها إلى الإنترنت.'
@@ -121,29 +126,34 @@ export const SubnetRoutingSimulation: React.FC = () => {
         isCompleted: natEnabled,
         validationKey: 'nat_ok',
       },
+      {
+        id: 'obj-transmission',
+        title: isAr ? 'نجاح وصول وتوليد استجابة الخدمة' : 'Packet Egress Transmission Verified',
+        description: isAr ? 'تأكيد وصول الحزمة عبر القفزات دون حظر' : 'Verify multi-hop packet delivery and server response',
+        isCompleted: transmissionResult?.packetState === 'success',
+        validationKey: 'transmission_ok',
+      },
     ],
     hints: [
-      isAr ? 'اختر البادئة /26، واضبط المضيف (192.168.1.42) والبوابة (192.168.1.1) ضمن نفس الفرع، وفعل خيار NAT.' : 'Select prefix /26, align host and gateway in same subnet, and enable NAT toggle.',
+      isAr ? 'اختر البادئة /26، واضبط المضيف (192.168.1.42) والبوابة (192.168.1.1)، وفعل NAT وسياسة تسمح بمرور المنفذ المختار.' : 'Select prefix /26, align host and gateway in same subnet, enable NAT, and allow port on firewall.',
     ],
   };
 
   const validateChallenge = () => {
-    const isSubnet26 = cidrPrefix === 26;
-    const isNatActive = natEnabled;
-    const sameSubnet = isSameSubnet(hostIp, gatewayIp, cidrPrefix);
+    const val = validateSubnetRoutingChallengeState({
+      hostIp,
+      gatewayIp,
+      cidrPrefix,
+      natEnabled,
+      wanServerIp,
+      destPort,
+      protocol,
+      firewallPolicy,
+    });
 
-    if (isSubnet26 && isNatActive && sameSubnet) {
-      return {
-        success: true,
-        message:
-          isAr
-            ? 'ممتاز! تم تصميم الشبكة الفرعية وبوابة NAT والتحقق من القفزات بنجاح!'
-            : 'Subnet topology, routing hops, and NAT gateway verified successfully!',
-      };
-    }
     return {
-      success: false,
-      message: isAr ? 'تحقق من شروط التقسيم الفرعي /26، وتواجد المضيف والبوابة في نفس الشبكة، وتفعيل NAT.' : 'Check /26 CIDR, host-gateway subnet alignment, and NAT status.',
+      success: val.success,
+      message: isAr ? val.messageAr : val.messageEn,
     };
   };
 
@@ -179,12 +189,13 @@ export const SubnetRoutingSimulation: React.FC = () => {
     }, 300);
   };
 
-  const handleApplyPreset = (preset: 'standard_https' | 'blocked_http' | 'mismatched_gateway' | 'nat_off') => {
+  const handleApplyPreset = (preset: 'standard_https' | 'blocked_http' | 'mismatched_gateway' | 'nat_off' | 'ssh_service' | 'dns_service' | 'icmp_ping') => {
     if (preset === 'standard_https') {
       setCidrPrefix(26);
       setHostIp('192.168.1.42');
       setGatewayIp('192.168.1.1');
       setDestPort(443);
+      setProtocol('TCP');
       setNatEnabled(true);
       setFirewallPolicy('allow_all');
     } else if (preset === 'blocked_http') {
@@ -192,6 +203,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
       setHostIp('192.168.1.42');
       setGatewayIp('192.168.1.1');
       setDestPort(80);
+      setProtocol('TCP');
       setNatEnabled(true);
       setFirewallPolicy('strict_https');
     } else if (preset === 'mismatched_gateway') {
@@ -199,16 +211,42 @@ export const SubnetRoutingSimulation: React.FC = () => {
       setHostIp('192.168.1.42');
       setGatewayIp('192.168.1.1');
       setDestPort(443);
+      setProtocol('TCP');
       setNatEnabled(true);
+      setFirewallPolicy('allow_all');
     } else if (preset === 'nat_off') {
       setCidrPrefix(26);
       setHostIp('192.168.1.42');
       setGatewayIp('192.168.1.1');
       setDestPort(443);
+      setProtocol('TCP');
       setNatEnabled(false);
+      setFirewallPolicy('allow_all');
+    } else if (preset === 'ssh_service') {
+      setCidrPrefix(26);
+      setHostIp('192.168.1.42');
+      setGatewayIp('192.168.1.1');
+      setDestPort(22);
+      setProtocol('TCP');
+      setNatEnabled(true);
+      setFirewallPolicy('allow_all');
+    } else if (preset === 'dns_service') {
+      setCidrPrefix(26);
+      setHostIp('192.168.1.42');
+      setGatewayIp('192.168.1.1');
+      setDestPort(53);
+      setProtocol('UDP');
+      setNatEnabled(true);
+      setFirewallPolicy('allow_all');
+    } else if (preset === 'icmp_ping') {
+      setCidrPrefix(26);
+      setHostIp('192.168.1.42');
+      setGatewayIp('192.168.1.1');
+      setDestPort(443);
+      setProtocol('ICMP');
+      setNatEnabled(true);
+      setFirewallPolicy('allow_all');
     }
-    setPacketState('idle');
-    setTransmissionResult(null);
   };
 
   return (
@@ -227,10 +265,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
               </span>
               <select
                 value={cidrPrefix}
-                onChange={(e) => {
-                  setCidrPrefix(Number(e.target.value));
-                  setPacketState('idle');
-                }}
+                onChange={(e) => setCidrPrefix(Number(e.target.value))}
                 className="bg-slate-900 border border-slate-700 text-white text-xs font-mono rounded px-2.5 py-1 focus:outline-hidden"
               >
                 <option value={24}>/24 (254 Hosts · 255.255.255.0)</option>
@@ -241,37 +276,48 @@ export const SubnetRoutingSimulation: React.FC = () => {
               </select>
             </div>
 
-            {/* Port & Protocol */}
+            {/* Protocol Selector */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-400 font-bold uppercase font-mono">
+                {isAr ? 'البروتوكول:' : 'Proto:'}
+              </span>
+              <select
+                value={protocol}
+                onChange={(e) => setProtocol(e.target.value as any)}
+                className="bg-slate-900 border border-slate-700 text-white text-xs font-mono rounded px-2 py-1 font-bold"
+              >
+                <option value="TCP">TCP</option>
+                <option value="UDP">UDP</option>
+                <option value="ICMP">ICMP</option>
+              </select>
+            </div>
+
+            {/* Port Selector */}
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-slate-400 font-bold uppercase font-mono">
                 {isAr ? 'المنفذ:' : 'Port:'}
               </span>
               <select
                 value={destPort}
-                onChange={(e) => {
-                  setDestPort(Number(e.target.value));
-                  setPacketState('idle');
-                }}
+                onChange={(e) => setDestPort(Number(e.target.value))}
                 className="bg-slate-900 border border-slate-700 text-white text-xs font-mono rounded px-2 py-1"
               >
                 <option value={443}>443 (HTTPS)</option>
                 <option value={80}>80 (HTTP)</option>
                 <option value={22}>22 (SSH)</option>
                 <option value={53}>53 (DNS)</option>
+                <option value={9999}>9999 (Closed Port)</option>
               </select>
             </div>
 
-            {/* Firewall Policy */}
+            {/* Firewall Policy Selector */}
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-slate-400 font-bold uppercase font-mono">
                 {isAr ? 'الجدار:' : 'Firewall:'}
               </span>
               <select
                 value={firewallPolicy}
-                onChange={(e) => {
-                  setFirewallPolicy(e.target.value as any);
-                  setPacketState('idle');
-                }}
+                onChange={(e) => setFirewallPolicy(e.target.value as any)}
                 className="bg-slate-900 border border-slate-700 text-white text-xs font-mono rounded px-2 py-1"
               >
                 <option value="allow_all">{isAr ? 'سماح شامل' : 'Permissive Allow'}</option>
@@ -286,10 +332,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
               <input
                 type="checkbox"
                 checked={natEnabled}
-                onChange={(e) => {
-                  setNatEnabled(e.target.checked);
-                  setPacketState('idle');
-                }}
+                onChange={(e) => setNatEnabled(e.target.checked)}
                 className="rounded border-slate-700 text-cyan-500"
               />
               <span>{isAr ? 'بوابة NAT مفعلة' : 'NAT Egress'}</span>
@@ -318,25 +361,43 @@ export const SubnetRoutingSimulation: React.FC = () => {
               onClick={() => handleApplyPreset('standard_https')}
               className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 hover:border-cyan-500 text-cyan-300 text-[11px] font-mono"
             >
-              {isAr ? '1. اتصل آمن HTTPS' : '1. Standard HTTPS'}
+              {isAr ? '1. اتصل آمن HTTPS' : '1. HTTPS (443)'}
             </button>
             <button
               onClick={() => handleApplyPreset('blocked_http')}
               className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 hover:border-rose-500 text-rose-300 text-[11px] font-mono"
             >
-              {isAr ? '2. حظر HTTP غير مشفر' : '2. Blocked HTTP'}
+              {isAr ? '2. حظر HTTP 80' : '2. Blocked HTTP'}
+            </button>
+            <button
+              onClick={() => handleApplyPreset('ssh_service')}
+              className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 hover:border-emerald-500 text-emerald-300 text-[11px] font-mono"
+            >
+              {isAr ? '3. خدمة SSH (22)' : '3. SSH (22)'}
+            </button>
+            <button
+              onClick={() => handleApplyPreset('dns_service')}
+              className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 hover:border-blue-500 text-blue-300 text-[11px] font-mono"
+            >
+              {isAr ? '4. استعلام DNS (53)' : '4. DNS (53)'}
+            </button>
+            <button
+              onClick={() => handleApplyPreset('icmp_ping')}
+              className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 hover:border-indigo-500 text-indigo-300 text-[11px] font-mono"
+            >
+              {isAr ? '5. اختبار ICMP Ping' : '5. ICMP Ping'}
             </button>
             <button
               onClick={() => handleApplyPreset('mismatched_gateway')}
               className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 hover:border-amber-500 text-amber-300 text-[11px] font-mono"
             >
-              {isAr ? '3. خطأ شبكة البوابة /27' : '3. Mismatched Subnet'}
+              {isAr ? '6. خطأ البوابة /27' : '6. Mismatched Subnet'}
             </button>
             <button
               onClick={() => handleApplyPreset('nat_off')}
               className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 hover:border-purple-500 text-purple-300 text-[11px] font-mono"
             >
-              {isAr ? '4. تعطيل بوابة NAT' : '4. NAT Disabled'}
+              {isAr ? '7. تعطيل NAT' : '7. NAT Disabled'}
             </button>
           </div>
         </div>
@@ -438,7 +499,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
               { id: 'pc', label: 'Host PC', ip: hostIp, icon: Server, hop: 'host' },
               { id: 'router', label: 'L3 Gateway', ip: gatewayIp, icon: Radio, hop: 'router' },
               { id: 'firewall', label: 'Firewall & NAT', ip: '203.0.113.1', icon: Sliders, hop: 'firewall' },
-              { id: 'server', label: 'WAN Web Server', ip: `${wanServerIp}:${destPort}`, icon: Globe, hop: 'service' },
+              { id: 'server', label: 'WAN Remote Server', ip: `${wanServerIp}:${destPort}`, icon: Globe, hop: 'service' },
             ].map((node) => {
               const NodeIcon = node.icon;
               const isSelected = selectedDevice === node.id;
@@ -507,7 +568,7 @@ export const SubnetRoutingSimulation: React.FC = () => {
         <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800 space-y-2">
             <span className="text-xs font-bold text-white block">
-              {isAr ? 'سجل تشخيص حزم البيانات الحية' : 'Live Packet Diagnostic Stream'}
+              {isAr ? 'سجل تشخيص حزم البيانات الحية (محاكاة افتراضية)' : 'Live Packet Diagnostic Stream (Virtual Trace)'}
             </span>
             <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] h-40 overflow-y-auto space-y-1.5 custom-scrollbar">
               {packetLog.length === 0 ? (
