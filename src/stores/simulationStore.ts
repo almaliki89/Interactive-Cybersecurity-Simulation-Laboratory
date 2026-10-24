@@ -223,6 +223,8 @@ export const VALID_CURRICULUM_LESSON_IDS = new Set([
   'lesson-00-orientation',
   'lesson-01-cia-triad',
   'lesson-02-system-internals',
+  'lesson-02-01-ip-addressing-and-binary',
+  'lesson-02-02-subnetting-and-cidr',
   'lesson-03-subnet-routing',
   'lesson-04-firewall-rules',
   'lesson-05-cryptography',
@@ -230,6 +232,7 @@ export const VALID_CURRICULUM_LESSON_IDS = new Set([
   'lesson-07-soc-monitoring',
   'lesson-08-forensics',
   'lesson-09-devsecops',
+  'lesson-09-cloud-threat-hunting',
   'lesson-10-cyber-range',
 ]);
 
@@ -237,6 +240,8 @@ export const LESSON_SEQUENCE = [
   'lesson-00-orientation',
   'lesson-01-cia-triad',
   'lesson-02-system-internals',
+  'lesson-02-01-ip-addressing-and-binary',
+  'lesson-02-02-subnetting-and-cidr',
   'lesson-03-subnet-routing',
   'lesson-04-firewall-rules',
   'lesson-05-cryptography',
@@ -244,6 +249,7 @@ export const LESSON_SEQUENCE = [
   'lesson-07-soc-monitoring',
   'lesson-08-forensics',
   'lesson-09-devsecops',
+  'lesson-09-cloud-threat-hunting',
   'lesson-10-cyber-range',
 ];
 
@@ -318,7 +324,15 @@ export const CHALLENGE_TO_SIMULATION_MAP: Record<string, SimulationId> = {
 
 export const sanitizeCompletedLessonsSequence = (rawLessons: string[]): string[] => {
   const completed: string[] = [];
-  for (const lId of LESSON_SEQUENCE) {
+
+  // If orientation is completed, include it
+  if (rawLessons.includes('lesson-00-orientation')) {
+    completed.push('lesson-00-orientation');
+  }
+
+  // The primary sequential learning chain starts from lesson-01-cia-triad
+  const coreSequence = LESSON_SEQUENCE.filter((id) => id !== 'lesson-00-orientation');
+  for (const lId of coreSequence) {
     if (rawLessons.includes(lId)) {
       completed.push(lId);
     } else {
@@ -957,12 +971,14 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     }
 
     // Integrity Check: Cannot complete if previous lesson is not completed
-    const lessonIdx = LESSON_SEQUENCE.indexOf(lessonId);
-    if (lessonIdx > 0) {
-      const prevLessonId = LESSON_SEQUENCE[lessonIdx - 1];
-      if (!get().completedLessons.includes(prevLessonId)) {
-        console.warn(`[Integrity] Cannot complete lesson ${lessonId} before ${prevLessonId}`);
-        return;
+    if (lessonId !== 'lesson-00-orientation' && lessonId !== 'lesson-01-cia-triad') {
+      const lessonIdx = LESSON_SEQUENCE.indexOf(lessonId);
+      if (lessonIdx > 0) {
+        const prevLessonId = LESSON_SEQUENCE[lessonIdx - 1];
+        if (prevLessonId !== 'lesson-00-orientation' && !get().completedLessons.includes(prevLessonId)) {
+          console.warn(`[Integrity] Cannot complete lesson ${lessonId} before ${prevLessonId}`);
+          return;
+        }
       }
     }
 
@@ -1001,12 +1017,14 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
       }
 
       // Check if trying to advance in a lesson while previous lesson is not done
-      const lessonIdx = LESSON_SEQUENCE.indexOf(lessonId);
-      if (lessonIdx > 0 && stage > 0) {
-        const prevLessonId = LESSON_SEQUENCE[lessonIdx - 1];
-        if (!state.completedLessons.includes(prevLessonId)) {
-          // Allow only stage 0 (Intro) if predecessor not done
-          if (stage > 0) return state;
+      if (lessonId !== 'lesson-00-orientation' && lessonId !== 'lesson-01-cia-triad') {
+        const lessonIdx = LESSON_SEQUENCE.indexOf(lessonId);
+        if (lessonIdx > 0 && stage > 0) {
+          const prevLessonId = LESSON_SEQUENCE[lessonIdx - 1];
+          if (prevLessonId !== 'lesson-00-orientation' && !state.completedLessons.includes(prevLessonId)) {
+            // Allow only stage 0 (Intro) if predecessor not done
+            return state;
+          }
         }
       }
 

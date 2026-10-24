@@ -150,23 +150,33 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await completeLessonBtn.click();
 
     // Lesson 1 is completed and advances to Lesson 2 (System Internals)
-    await expect(page.getByText(/المحطة 1 من 10/i).first()).toBeVisible();
+    await expect(page.getByText(/(المستوى|المحطة) 1 من 10/i).first()).toBeVisible();
 
     // Verify reload persistence after lesson completion
     await page.reload();
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.getByText(/المحطة 1 من 10/i).first()).toBeVisible();
+    await expect(page.getByText(/(المستوى|المحطة) 1 من 10/i).first()).toBeVisible();
 
     // 8. Verify Exploratory Lesson with Honest Guided Manual Confirmation (Lesson 6)
     // NOTE: To jump to Lesson 6, we MUST fulfill prerequisites because of OMEGA MAX integrity rules
     await page.evaluate(() => {
-      localStorage.setItem('omega_completed_lessons', JSON.stringify([
+      const completed = [
+        'lesson-00-orientation',
         'lesson-01-cia-triad',
         'lesson-02-system-internals',
+        'lesson-02-01-ip-addressing-and-binary',
+        'lesson-02-02-subnetting-and-cidr',
         'lesson-03-subnet-routing',
         'lesson-04-firewall-rules',
-        'lesson-05-cryptography'
-      ]));
+        'lesson-05-cryptography',
+      ];
+      localStorage.setItem('omega_completed_lessons', JSON.stringify(completed));
+
+      const progressObj: Record<string, any> = {};
+      completed.forEach((id) => {
+        progressObj[id] = { isQuizPassed: true, isTaskPassed: true, currentStage: 6, furthestUnlockedStage: 6 };
+      });
+      localStorage.setItem('omega_lesson_progress', JSON.stringify(progressObj));
     });
     await page.reload();
 
@@ -174,7 +184,7 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await expect(page.getByText(/11 مستوًى من الصفر إلى الاحتراف/i).first()).toBeVisible({ timeout: 15000 });
 
     // Jump to Lesson 6 (Active Directory & Kerberos) from sidebar
-    const milestone6Btn = page.getByText(/5\. الهوية والمصادقة/i).first();
+    const milestone6Btn = page.getByRole('button', { name: /الدرس السادس: إدارة الهويات والمصادقة/i }).first();
     await expect(milestone6Btn).toBeVisible({ timeout: 15000 });
     await milestone6Btn.click();
 
@@ -216,15 +226,87 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     expect(storedLessonId).toBe('lesson-06-active-directory');
   });
 
-  test('validates direct navigation from Header "Start Here" button', async ({ page }) => {
+  test('validates direct navigation from Header "Start Here" button, Level 0-10 hierarchy, orientation lesson, and networking sequence', async ({ page }) => {
     await page.goto('/#explorer');
     await page.waitForLoadState('domcontentloaded');
 
+    // 1. Header "Start Here" button opens curriculum learning experience
     const startHereNavBtn = page.getByRole('button', { name: /ابدأ هنا \(المبتدئون\)/i });
     await expect(startHereNavBtn).toBeVisible({ timeout: 10000 });
     await startHereNavBtn.click();
 
+    // 2. Curriculum interface renders Level 0-10 hierarchy
     await expect(page.getByText(/11 مستوًى من الصفر إلى الاحتراف/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/المستوى 0/i).first()).toBeVisible();
+    await expect(page.getByText(/المستوى 10/i).first()).toBeVisible();
+
+    // 3. Level 0 orientation lesson can be opened from the sidebar
+    const orientationLessonBtn = page.getByRole('button', { name: /الدرس 0: التوجيه/i }).first();
+    await expect(orientationLessonBtn).toBeVisible();
+    await orientationLessonBtn.click();
+
+    // 4. Expected lesson title and instructional content are visible
+    const orientationTitle = page.getByRole('heading', { name: /الدرس 0: التوجيه/i }).first();
+    await expect(orientationTitle).toBeVisible();
+    await expect(page.getByText(/المتطلبات المسبقة والافتراضات/i).first()).toBeVisible();
+
+    // 5. Navigate sequentially through pedagogical sections and verify independent challenge is rendered
+    // Stage 0 -> Stage 1: Concept
+    const toL0Stage2Btn = page.getByRole('button', { name: /المرحلة 2: المفهوم والتشبيه الحياتي/i });
+    await expect(toL0Stage2Btn).toBeVisible();
+    await toL0Stage2Btn.click();
+
+    // Stage 1 -> Stage 2: Demo
+    const toL0Stage3Btn = page.getByRole('button', { name: /المرحلة 3: المعاينة الحية/i });
+    await expect(toL0Stage3Btn).toBeVisible();
+    await toL0Stage3Btn.click();
+
+    // Stage 2 -> Stage 3: Task
+    const toL0Stage4Btn = page.getByRole('button', { name: /المرحلة 4: المهمة العملية/i });
+    await expect(toL0Stage4Btn).toBeVisible();
+    await toL0Stage4Btn.click();
+
+    // Verify Independent Challenge section is rendered
+    await expect(page.getByText(/التحدي المستقل: فحص وتأمين البيئة المبدئية/i).first()).toBeVisible();
+    await expect(page.getByText(/سيناريو التحدي المستقل/i).first()).toBeVisible();
+
+    // Fulfill guided confirmation for orientation task
+    const confirmToggleBtn = page.getByTestId('guided-confirmation-toggle-btn');
+    await expect(confirmToggleBtn).toBeVisible();
+    await confirmToggleBtn.click();
+
+    // Stage 3 -> Stage 4: Impact
+    const toL0Stage5Btn = page.getByRole('button', { name: /المرحلة 5: شرح النتيجة/i });
+    await expect(toL0Stage5Btn).toBeVisible();
+    await toL0Stage5Btn.click();
+
+    // Stage 4 -> Stage 5: Quiz
+    const toL0Stage6Btn = page.getByRole('button', { name: /المرحلة 6: فحص المعرفة/i });
+    await expect(toL0Stage6Btn).toBeVisible();
+    await toL0Stage6Btn.click();
+
+    // Answer orientation question
+    const optSafe = page.getByRole('button', { name: /التجريب والخطأ بأمان/i });
+    await expect(optSafe).toBeVisible();
+    await optSafe.click();
+
+    // Stage 5 -> Stage 6: Next Step
+    const toL0Stage7Btn = page.getByRole('button', { name: /المرحلة 7: الخطوة التالية والانتقال/i });
+    await expect(toL0Stage7Btn).toBeVisible();
+    await toL0Stage7Btn.click();
+
+    // 6. Navigate from orientation lesson to the next intended lesson (CIA Triad)
+    const completeAndAdvanceBtn = page.getByRole('button', { name: /إكمال والانتقال إلى المحطة التالية/i });
+    await expect(completeAndAdvanceBtn).toBeVisible();
+    await completeAndAdvanceBtn.click();
+
+    // Verify next intended lesson (Lesson 1: CIA Triad) is opened
+    await expect(page.getByText(/الدرس الأول: مدخل إلى ثالوث الحماية الأساسي/i).first()).toBeVisible();
+
+    // 7. Verify networking learning sequence exposes IP-addressing, CIDR, and routing lessons
+    await expect(page.getByRole('button', { name: /الدرس 1: عناوين IPv4/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /الدرس 2: التقسيم الفرعي/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /الدرس الثالث: فهم الشبكات/i }).first()).toBeVisible();
   });
 
   test('executes real browser UI onboarding flow: negative checks, step progression, completion evidence, and reload persistence', async ({ page }) => {

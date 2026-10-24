@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useSimulationStore, SimulationId } from '../../stores/simulationStore';
+import { useSimulationStore, SimulationId, LESSON_SEQUENCE } from '../../stores/simulationStore';
 import { CURRICULUM_MILESTONES, CURRICULUM_LESSONS, CURRICULUM_LEVELS } from '../../data/curriculumData';
 import { CurriculumLesson, CurriculumMilestone } from '../../types/curriculum';
 import {
@@ -126,20 +126,11 @@ export const LessonView: React.FC = () => {
     return set;
   }, [completedLessons, validCurriculumLessonIds]);
 
-  // NEW: Predecessor check for sequence integrity feedback
+  // Predecessor check for sequence integrity feedback
   const predecessorLessonId = useMemo(() => {
-    const LESSON_SEQUENCE = [
-      'lesson-01-cia-triad',
-      'lesson-02-system-internals',
-      'lesson-03-subnet-routing',
-      'lesson-04-firewall-rules',
-      'lesson-05-cryptography',
-      'lesson-06-active-directory',
-      'lesson-07-soc-monitoring',
-      'lesson-08-forensics',
-      'lesson-09-devsecops',
-      'lesson-10-cyber-range',
-    ];
+    if (activeLessonId === 'lesson-00-orientation' || activeLessonId === 'lesson-01-cia-triad') {
+      return null;
+    }
     const idx = LESSON_SEQUENCE.indexOf(activeLessonId);
     return idx > 0 ? LESSON_SEQUENCE[idx - 1] : null;
   }, [activeLessonId]);
@@ -451,8 +442,8 @@ export const LessonView: React.FC = () => {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                     {isAr
-                      ? `المحطة ${currentMilestone.id} من 10`
-                      : `Milestone ${currentMilestone.id} of 10`}
+                      ? `المستوى ${currentMilestone.id} من 10`
+                      : `Level ${currentMilestone.id} of 10`}
                   </span>
                   <span className="text-[11px] font-mono text-slate-400">
                     ~{currentLesson.estimatedMinutes} {isAr ? 'دقيقة' : 'mins'}
