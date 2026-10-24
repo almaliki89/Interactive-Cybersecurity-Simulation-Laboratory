@@ -201,3 +201,127 @@ export function getPrincipalEffectivePolicies(
 
   return allPolicies.filter((p) => policyIds.has(p.id));
 }
+
+export interface CloudIamAuditFinding {
+  principalId: string;
+  principalName: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  reasonEn: string;
+  reasonAr: string;
+  escalationVectorEn: string;
+  escalationVectorAr: string;
+}
+
+export interface CloudIamAuditResult {
+  findings: CloudIamAuditFinding[];
+  wildcardPoliciesCount: number;
+  unscopedWorkloadsCount: number;
+  securityScore: number;
+  isCompliant: boolean;
+  messageEn: string;
+  messageAr: string;
+}
+
+/**
+ * Technical validator for Cloud IAM Least Privilege hardening.
+ * Audits principals, groups, and attached policies to detect wildcard permissions
+ * and unconstrained workload identities.
+ */
+export function auditCloudIamConfiguration(
+  principals: CloudPrincipal[],
+  groups: CloudGroup[],
+  allPolicies: CloudPolicy[] = ALL_PRESET_POLICIES
+): CloudIamAuditResult {
+  const findings: CloudIamAuditFinding[] = [];
+  let wildcardPoliciesCount = 0;
+  let unscopedWorkloadsCount = 0;
+
+  for (const principal of principals) {
+    const effective = getPrincipalEffectivePolicies(principal, groups, allPolicies);
+
+    // Root account is break-glass and expected to have full admin
+    if (principal.id === 'usr-admin-root') {
+      continue;
+    }
+
+    // 1. Check for wildcard admin policies (*:*)
+    const wildcardAdmin = effective.find(
+      (p) => p.isWildcardAdmin || p.statements.some((s) => s.effect === 'ALLOW' && s.actions.includes('*') && s.resources.includes('*'))
+    );
+    if (wildcardAdmin) {
+      wildcardPoliciesCount++;
+      findings.push({
+        principalId: principal.id,
+        principalName: principal.name,
+        severity: 'CRITICAL',
+        reasonEn: `Principal "${principal.name}" has full wildcard admin privileges (${wildcardAdmin.name}).`,
+        reasonAr: `الهوية "${principal.name}" تمتلك صلاحيات مسؤول كاملة مطلقة (${wildcardAdmin.name}).`,
+        escalationVectorEn: 'Complete cloud tenant takeover and resource exfiltration.',
+        escalationVectorAr: 'السيطرة الكاملة على المستأجر السحابي واستخراج الموارد الحساسة.',
+      });
+    }
+
+    // 2. Check for broad service-level wildcards (e.g. storage:* on *)
+    const wildcardService = effective.find(
+      (p) => !p.isWildcardAdmin && p.statements.some((s) => s.effect === 'ALLOW' && s.actions.some((a) => a.endsWith(':*') || a === '*') && s.resources.includes('*'))
+    );
+    if (wildcardService) {
+      wildcardPoliciesCount++;
+      findings.push({
+        principalId: principal.id,
+        principalName: principal.name,
+        severity: 'CRITICAL',
+        reasonEn: `Principal "${principal.name}" has unconstrained wildcard service access (${wildcardService.name}).`,
+        reasonAr: `الهوية "${principal.name}" تمتلك صلاحية واسعة غير مقيدة (${wildcardService.name}).`,
+        escalationVectorEn: 'Unrestricted read/write across all cloud buckets/resources without scoping.',
+        escalationVectorAr: 'قراءة وكتابة غير مقيدة لكافة حاويات التخزين السحابية دون حصر النطاق.',
+      });
+    }
+
+    // 3. Specifically verify workload identities (e.g. wkl-frontend-app)
+    if (principal.type === 'WORKLOAD_IDENTITY') {
+      const hasLeastPrivilege = effective.some(
+        (p) => p.id === 'pol-finance-reader-least-priv' || p.id === 'pol-readonly-all'
+      );
+      const hasWildcard = effective.some(
+        (p) => p.isWildcardAdmin || p.id === 'pol-storage-wildcard' || p.statements.some((s) => s.effect === 'ALLOW' && (s.actions.includes('*') || s.actions.includes('storage:*')))
+      );
+
+      if (hasWildcard || !hasLeastPrivilege) {
+        unscopedWorkloadsCount++;
+        if (!wildcardService && !wildcardAdmin) {
+          findings.push({
+            principalId: principal.id,
+            principalName: principal.name,
+            severity: 'HIGH',
+            reasonEn: `Workload "${principal.name}" lacks scoped least-privilege policy.`,
+            reasonAr: `عبء العمل "${principal.name}" يفتقر إلى سياسة امتياز أدنى محددة النطاق.`,
+            escalationVectorEn: 'Lateral access or pivot from compromised workload.',
+            escalationVectorAr: 'الوصول الجانبي أو التحول عبر عبء العمل المخترق.',
+          });
+        }
+      }
+    }
+  }
+
+  let securityScore = 100;
+  securityScore -= wildcardPoliciesCount * 35;
+  securityScore -= unscopedWorkloadsCount * 25;
+  securityScore = Math.max(0, Math.min(100, securityScore));
+
+  const isCompliant = findings.length === 0 && securityScore === 100;
+
+  return {
+    findings,
+    wildcardPoliciesCount,
+    unscopedWorkloadsCount,
+    securityScore,
+    isCompliant,
+    messageEn: isCompliant
+      ? 'Cloud IAM least privilege configuration verified. Zero dangerous wildcards.'
+      : `IAM Hardening Required: ${findings[0]?.reasonEn || 'Unresolved IAM over-privilege findings'}`,
+    messageAr: isCompliant
+      ? 'تم التحقق من تطبيق مبدأ الامتياز الأدنى في IAM السحابي بنجاح. لا توجد صلاحيات نجوم خطرة.'
+      : `مطلوب تحصين IAM: ${findings[0]?.reasonAr || 'توجد ملاحظات صلاحيات مفرطة غير معالجة'}`,
+  };
+}

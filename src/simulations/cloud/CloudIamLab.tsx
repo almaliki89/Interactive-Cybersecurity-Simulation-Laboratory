@@ -4,29 +4,96 @@
  *
  * Teaches Cloud Principals (Users, Groups, Service Identities, Workload Identities),
  * Policy Attachments, and the Least Privilege blast radius reduction.
+ * Integrates live deterministic technical validator for iam-hardening-challenge.
  */
 
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import {
   createDefaultCloudIdentities,
   getPrincipalEffectivePolicies,
+  auditCloudIamConfiguration,
   CloudPrincipal,
 } from './logic/identity';
 import { ALL_PRESET_POLICIES } from './logic/policies';
-import { Users, KeyRound, Shield, AlertTriangle, CheckCircle2, Lock, ArrowRight, UserCheck } from 'lucide-react';
+import {
+  Users,
+  KeyRound,
+  Shield,
+  AlertTriangle,
+  CheckCircle2,
+  Lock,
+  ArrowRight,
+  UserCheck,
+  Sparkles,
+  RefreshCw,
+} from 'lucide-react';
 
 export const CloudIamLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
 
-  const [data] = useState(createDefaultCloudIdentities());
+  const [data, setData] = useState(() => createDefaultCloudIdentities());
   const [selectedPrincipalId, setSelectedPrincipalId] = useState<string>(data.principals[0].id);
 
   const selectedPrincipal = data.principals.find((p) => p.id === selectedPrincipalId) || data.principals[0];
   const effectivePolicies = getPrincipalEffectivePolicies(selectedPrincipal, data.groups, ALL_PRESET_POLICIES);
 
-  const hasWildcardPolicy = effectivePolicies.some((p) => p.isWildcardAdmin || p.statements.some((s) => s.actions.includes('*') || s.actions.includes('storage:*')));
+  const audit = auditCloudIamConfiguration(data.principals, data.groups, ALL_PRESET_POLICIES);
+
+  const hasWildcardPolicy = effectivePolicies.some(
+    (p) => p.isWildcardAdmin || p.statements.some((s) => s.actions.includes('*') || s.actions.includes('storage:*'))
+  );
+
+  // Register live challenge validator bound strictly to current state
+  useEffect(() => {
+    registerChallengeValidator('iam-hardening-challenge', () => {
+      const liveAudit = auditCloudIamConfiguration(data.principals, data.groups, ALL_PRESET_POLICIES);
+      return {
+        success: liveAudit.isCompliant && liveAudit.securityScore >= 100,
+        score: liveAudit.securityScore,
+        message: liveAudit.isCompliant ? liveAudit.messageEn : liveAudit.messageEn,
+      };
+    });
+
+    return () => {
+      unregisterChallengeValidator('iam-hardening-challenge');
+    };
+  }, [data]);
+
+  const sanitizeAndHarden = () => {
+    const updatedPrincipals: CloudPrincipal[] = data.principals.map((p) => {
+      if (p.id === 'wkl-frontend-app') {
+        // Replace overly permissive storage:* wildcard policy with scoped least-privilege finance reader
+        return {
+          ...p,
+          attachedPolicyIds: ['pol-finance-reader-least-priv'],
+        };
+      }
+      return p;
+    });
+
+    const nextData = { ...data, principals: updatedPrincipals };
+    setData(nextData);
+
+    const postAudit = auditCloudIamConfiguration(updatedPrincipals, data.groups, ALL_PRESET_POLICIES);
+    if (postAudit.isCompliant) {
+      completeChallenge('iam-hardening-challenge', {
+        success: true,
+        score: postAudit.securityScore,
+        message: postAudit.messageEn,
+      });
+    }
+  };
+
+  const resetToVulnerable = () => {
+    setData(createDefaultCloudIdentities());
+  };
 
   return (
     <div className="flex-1 flex flex-col p-6 bg-slate-950 text-slate-100 overflow-y-auto select-none">
@@ -46,7 +113,74 @@ export const CloudIamLab: React.FC = () => {
               : 'Inspect Cloud Principals, Groups, and effective policies to ensure least-privilege scoping and detect wildcard admin vulnerabilities.'}
           </p>
         </div>
+
+        {/* Action Controls & Audit Score */}
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <div className="text-xs text-slate-400">{isAr ? 'نقاط أمان IAM' : 'IAM Security Score'}</div>
+            <div
+              className={`text-2xl font-black ${
+                audit.securityScore >= 100
+                  ? 'text-emerald-400'
+                  : audit.securityScore >= 50
+                  ? 'text-amber-400'
+                  : 'text-rose-400'
+              }`}
+            >
+              {audit.securityScore}%
+            </div>
+          </div>
+
+          <button
+            onClick={sanitizeAndHarden}
+            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-950"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isAr ? 'تطبيق مبدأ أقل الصلاحيات (Least Privilege)' : 'Enforce Least Privilege'}</span>
+          </button>
+
+          <button
+            onClick={resetToVulnerable}
+            title={isAr ? 'إعادة التعيين للحالة الأولية' : 'Reset to Vulnerable State'}
+            className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      {/* Dangerous Findings Panel */}
+      {audit.findings.length > 0 && (
+        <div className="mb-6 space-y-3">
+          <div className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4" />
+            <span>{isAr ? 'الثغرات والصلاحيات المفرطة المكتشفة:' : 'Dangerous IAM Over-Privilege Findings:'}</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {audit.findings.map((f, idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-xl bg-rose-950/20 border border-rose-500/40 text-xs space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-rose-300">{f.principalName}</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                    {f.severity}
+                  </span>
+                </div>
+
+                <div className="text-slate-300 leading-relaxed">{isAr ? f.reasonAr : f.reasonEn}</div>
+
+                <div className="p-2 rounded bg-slate-950 text-[11px] text-amber-300 font-mono">
+                  <span className="text-slate-500">Escalation: </span>
+                  <span>{isAr ? f.escalationVectorAr : f.escalationVectorEn}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
         {/* Left: Principals List */}
@@ -219,3 +353,5 @@ export const CloudIamLab: React.FC = () => {
     </div>
   );
 };
+
+export default CloudIamLab;

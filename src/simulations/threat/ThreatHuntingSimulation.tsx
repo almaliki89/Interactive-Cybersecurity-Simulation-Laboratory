@@ -34,18 +34,8 @@ export const ThreatHuntingSimulation: React.FC = () => {
       return { success: false, score: 0, message: 'Execute telemetry queries to test threat hypothesis.' };
     });
 
-    registerChallengeValidator('iam-hardening-challenge', () => {
-      return { success: true, score: 100, message: 'Cloud IAM least privilege policy verified.' };
-    });
-
-    registerChallengeValidator('k8s-hardening-challenge', () => {
-      return { success: true, score: 100, message: 'Kubernetes container isolation and RBAC verified.' };
-    });
-
     return () => {
       unregisterChallengeValidator('threat-hunting-hypothesis-challenge');
-      unregisterChallengeValidator('iam-hardening-challenge');
-      unregisterChallengeValidator('k8s-hardening-challenge');
     };
   }, [executedQueryStrings, findings]);
 
@@ -55,16 +45,6 @@ export const ThreatHuntingSimulation: React.FC = () => {
         success: true,
         score: 100,
         message: 'Threat hunting hypothesis tested with telemetry queries.',
-      });
-      completeChallenge('iam-hardening-challenge', {
-        success: true,
-        score: 100,
-        message: 'Cloud IAM least privilege policy verified.',
-      });
-      completeChallenge('k8s-hardening-challenge', {
-        success: true,
-        score: 100,
-        message: 'Kubernetes container isolation and RBAC verified.',
       });
     }
   }, [executedQueryStrings, findings, completeChallenge]);

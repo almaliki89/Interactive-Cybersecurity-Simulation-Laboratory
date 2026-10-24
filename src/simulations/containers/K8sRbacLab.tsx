@@ -2,14 +2,19 @@
  * OMEGA V14 — Kubernetes RBAC & Privilege Escalation Interactive Lab
  */
 
-import React, { useState } from 'react';
-import { useSimulationStore } from '../../stores/simulationStore';
+import React, { useState, useEffect } from 'react';
+import {
+  useSimulationStore,
+  registerChallengeValidator,
+  unregisterChallengeValidator,
+} from '../../stores/simulationStore';
 import { getInitialClusterRoles, auditKubernetesRbac } from './logic/rbac';
 import { KubernetesRole } from './logic/types';
 import { Key, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, Sparkles } from 'lucide-react';
 
 export const K8sRbacLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
+  const completeChallenge = useSimulationStore((s) => s.completeChallenge);
   const isAr = language === 'ar';
 
   const initialData = getInitialClusterRoles();
@@ -17,8 +22,25 @@ export const K8sRbacLab: React.FC = () => {
 
   const audit = auditKubernetesRbac(roles);
 
+  useEffect(() => {
+    registerChallengeValidator('k8s-hardening-challenge', () => {
+      const liveAudit = auditKubernetesRbac(roles);
+      return {
+        success: liveAudit.isCompliant && liveAudit.securityScore >= 100,
+        score: liveAudit.securityScore,
+        message: liveAudit.isCompliant
+          ? 'Kubernetes container isolation and RBAC verified with zero privilege escalation vectors.'
+          : `RBAC audit failed: ${liveAudit.findings[0]?.explanationEn || 'Unresolved RBAC security findings'}`,
+      };
+    });
+
+    return () => {
+      unregisterChallengeValidator('k8s-hardening-challenge');
+    };
+  }, [roles]);
+
   const sanitizeRbac = () => {
-    setRoles([
+    const sanitizedRoles: KubernetesRole[] = [
       {
         id: 'role-frontend-sa',
         name: 'frontend-service-role',
@@ -58,7 +80,17 @@ export const K8sRbacLab: React.FC = () => {
           },
         ],
       },
-    ]);
+    ];
+    setRoles(sanitizedRoles);
+
+    const postAudit = auditKubernetesRbac(sanitizedRoles);
+    if (postAudit.isCompliant) {
+      completeChallenge('k8s-hardening-challenge', {
+        success: true,
+        score: postAudit.securityScore,
+        message: 'Kubernetes container isolation and RBAC verified with zero privilege escalation vectors.',
+      });
+    }
   };
 
   return (
