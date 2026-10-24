@@ -321,7 +321,8 @@ export const SubnetRoutingSimulation: React.FC = () => {
                 className="bg-slate-900 border border-slate-700 text-white text-xs font-mono rounded px-2 py-1"
               >
                 <option value="allow_all">{isAr ? 'سماح شامل' : 'Permissive Allow'}</option>
-                <option value="strict_https">{isAr ? 'حظر HTTP 80' : 'Block HTTP Port 80'}</option>
+                <option value="strict_https">{isAr ? 'فرض HTTPS (443 فقط)' : 'Strict HTTPS (443 Only)'}</option>
+                <option value="block_http">{isAr ? 'حظر HTTP (منفذ 80)' : 'Block HTTP (Port 80)'}</option>
                 <option value="drop_all">{isAr ? 'حظر شامل Drop' : 'Deny All'}</option>
               </select>
             </div>

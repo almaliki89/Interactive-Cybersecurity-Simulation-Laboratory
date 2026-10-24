@@ -373,8 +373,8 @@ export const evaluatePacketTransmission = (
 
   // 5. Remote Server Daemon & Service Model Evaluation
   // Supported open services on simulated WAN Server 93.184.216.34:
-  // - TCP / 443: Web HTTPS Daemon
-  // - TCP / 80: Web HTTP Daemon
+  // - TCP / 443: HTTPS Web Daemon (TLS 1.3)
+  // - TCP / 80: HTTP Web Daemon (Plaintext)
   // - TCP / 22: SSH Daemon
   // - UDP / 53 or TCP / 53: DNS Name Server Daemon
   // - ICMP: Kernel ICMP Echo Responder Daemon
@@ -382,31 +382,51 @@ export const evaluatePacketTransmission = (
   let serviceResponseLog = '';
   let successSummaryLog = '';
 
-  if (protocol === 'TCP' && (destPort === 443 || destPort === 80)) {
+  if (protocol === 'TCP' && destPort === 443) {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:${destPort}) -> Received TCP SYN, responded TCP SYN-ACK`;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:443) -> TCP 3-Way Handshake & TLS 1.3 Handshake Completed (ClientHello -> ServerHello -> Encrypted Session)`;
+    successSummaryLog = `[00:00.150] SUCCESS: 3-Way Handshake Completed & Encrypted TLS 1.3 HTTP 200 OK Response Received via /${cidrPrefix} Subnet & NAT Gateway!`;
+  } else if (protocol === 'TCP' && destPort === 80) {
+    isServiceSupported = true;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:80) -> TCP 3-Way Handshake Completed & Plaintext HTTP GET / processed`;
     successSummaryLog = `[00:00.150] SUCCESS: 3-Way Handshake Completed (HTTP 200 OK) via /${cidrPrefix} Subnet & NAT Gateway!`;
   } else if (protocol === 'TCP' && destPort === 22) {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:22) -> Received TCP SYN, responded TCP SYN-ACK`;
-    successSummaryLog = `[00:00.150] SUCCESS: 3-Way Handshake Completed & SSHv2 Banner Exchanged (OpenSSH 8.9p1) via /${cidrPrefix} Subnet & NAT Gateway!`;
-  } else if ((protocol === 'UDP' || protocol === 'TCP') && destPort === 53) {
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:22) -> TCP 3-Way Handshake Completed & SSHv2 Banner Exchanged (OpenSSH 8.9p1)`;
+    successSummaryLog = `[00:00.150] SUCCESS: SSH Key Exchange Completed (Curve25519) & Session Established via /${cidrPrefix} Subnet & NAT Gateway!`;
+  } else if (protocol === 'UDP' && destPort === 53) {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:53) -> Processed DNS Query for domain`;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:53) -> Processed UDP DNS Query for domain`;
     successSummaryLog = `[00:00.150] SUCCESS: DNS Query Resolved (A Record 93.184.216.34) via /${cidrPrefix} Subnet & NAT Gateway!`;
+  } else if (protocol === 'TCP' && destPort === 53) {
+    isServiceSupported = true;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}:53) -> TCP 3-Way Handshake Completed & Processed TCP DNS Query`;
+    successSummaryLog = `[00:00.150] SUCCESS: DNS Query Resolved over TCP via /${cidrPrefix} Subnet & NAT Gateway!`;
   } else if (protocol === 'ICMP') {
     isServiceSupported = true;
-    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}) -> Received ICMP Echo Request, responded ICMP Echo Reply`;
+    serviceResponseLog = `[00:00.120] WAN_SERVER (${wanServerIp}) -> Kernel ICMP Responder processed Echo Request`;
     successSummaryLog = `[00:00.150] SUCCESS: ICMP Echo Reply Received (0ms RTT, TTL=64) via /${cidrPrefix} Subnet & NAT Gateway!`;
   }
 
   // Handling Closed Port / Unsupported Service -> port_unreachable
   if (!isServiceSupported) {
+    const serviceNodeIp = protocol === 'ICMP' ? wanServerIp : `${wanServerIp}:${destPort}`;
+    let dropLog = `[00:00.120] WAN_SERVER (${serviceNodeIp}) -> DROPPED: Connection Refused (TCP RST / Port Closed / No Active Daemon).`;
+    let errorLog = `[ERROR] Destination port ${destPort} unreachable: No active TCP service daemon listening on remote host.`;
+
+    if (protocol === 'UDP') {
+      dropLog = `[00:00.120] WAN_SERVER (${serviceNodeIp}) -> DROPPED: ICMP Destination Unreachable (Type 3 Code 3: Port Unreachable).`;
+      errorLog = `[ERROR] Destination port ${destPort} unreachable: No active UDP service listening on remote host.`;
+    } else if (protocol === 'ICMP') {
+      dropLog = `[00:00.120] WAN_SERVER (${serviceNodeIp}) -> DROPPED: ICMP Responder Disabled / Unreachable.`;
+      errorLog = `[ERROR] Destination host ${wanServerIp} ICMP Echo responder unreachable.`;
+    }
+
     const hopLogs = [
       `[00:00.040] ROUTER_HOP (${gatewayIp}) -> Forwarding packet to Firewall Egress Interface (${firewallIp})`,
       `[00:00.080] NAT_TABLE -> Translated ${hostIp}:54201 -> ${firewallIp}:50001`,
-      `[00:00.120] WAN_SERVER (${wanServerIp}:${destPort}) -> DROPPED: Connection Refused (TCP RST / Port Closed / No Active Daemon).`,
-      `[ERROR] Destination port ${destPort} unreachable: No active service daemon listening for ${protocol} traffic on remote host.`,
+      dropLog,
+      errorLog,
     ];
     return {
       validInputs: true,
@@ -417,8 +437,12 @@ export const evaluatePacketTransmission = (
       hopLogs,
       allLogs: [...initialLogs, ...hopLogs],
       failureHop: 'service',
-      failureReasonAr: `الخادم البعيد أرجع رفضاً للاتصال (TCP RST / Port Closed): لا توجد خدمة نشطة تستمع على المنفذ ${destPort} عبر بروتوكول ${protocol}.`,
-      failureReasonEn: `Remote server refused connection (TCP RST / Port Closed): No active service listening on port ${destPort} for ${protocol}.`,
+      failureReasonAr: protocol === 'UDP'
+        ? `الخادم البعيد أرجع رسالة ICMP Port Unreachable (Type 3 Code 3): لا توجد خدمة UDP تستمع على المنفذ ${destPort}.`
+        : `الخادم البعيد أرجع رفضاً للاتصال (TCP RST / Port Closed): لا توجد خدمة نشطة تستمع على المنفذ ${destPort} عبر بروتوكول ${protocol}.`,
+      failureReasonEn: protocol === 'UDP'
+        ? `Remote server returned ICMP Port Unreachable (Type 3 Code 3): No UDP service listening on port ${destPort}.`
+        : `Remote server refused connection (TCP RST / Port Closed): No active service listening on port ${destPort} for ${protocol}.`,
       remediationAr: 'استهدف منفذاً مفتوحاً تدعمه خوادم المحاكاة (مثل 443 لـ HTTPS، 80 لـ HTTP، 22 لـ SSH، 53 لـ DNS، أو ICMP).',
       remediationEn: 'Target an open port supported by simulated daemons (e.g. 443 HTTPS, 80 HTTP, 22 SSH, 53 DNS, ICMP).',
       hopTraces: [
@@ -461,11 +485,15 @@ export const evaluatePacketTransmission = (
         {
           hopIndex: 5,
           nodeName: 'WAN Remote Server',
-          nodeIp: `${wanServerIp}:${destPort}`,
+          nodeIp: serviceNodeIp,
           action: 'DROPPED',
           status: 'dropped',
-          descriptionAr: `الخدمة غير مجهزة على المنفذ ${destPort}: أرجع الخادم استجابة TCP RST.`,
-          descriptionEn: `Service closed on port ${destPort}: Remote host returned TCP RST / Connection Refused.`,
+          descriptionAr: protocol === 'UDP'
+            ? `الخدمة غير مجهزة على المنفذ ${destPort}: أرجع الخادم رسالة ICMP Port Unreachable.`
+            : `الخدمة غير مجهزة على المنفذ ${destPort}: أرجع الخادم استجابة TCP RST.`,
+          descriptionEn: protocol === 'UDP'
+            ? `Service closed on port ${destPort}: Remote host returned ICMP Destination Unreachable.`
+            : `Service closed on port ${destPort}: Remote host returned TCP RST / Connection Refused.`,
         },
       ],
     };
@@ -478,6 +506,8 @@ export const evaluatePacketTransmission = (
     serviceResponseLog,
     successSummaryLog,
   ];
+
+  const targetNodeIp = protocol === 'ICMP' ? wanServerIp : `${wanServerIp}:${destPort}`;
 
   return {
     validInputs: true,
@@ -528,7 +558,7 @@ export const evaluatePacketTransmission = (
       {
         hopIndex: 5,
         nodeName: 'WAN Remote Server',
-        nodeIp: `${wanServerIp}:${destPort}`,
+        nodeIp: targetNodeIp,
         action: 'PROCESSED',
         status: 'ok',
         descriptionAr: 'استلام الحزمة واكتمال استجابة الخدمة بنجاح.',
