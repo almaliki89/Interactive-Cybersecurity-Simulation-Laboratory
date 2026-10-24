@@ -72,6 +72,41 @@ export interface CurriculumNextStep {
   takeawayEn: string;
 }
 
+export interface IraqiCurriculumAlignment {
+  academicTierAr: string;
+  academicTierEn: string;
+  vocationalTierAr: string;
+  vocationalTierEn: string;
+  subjectMappingAr: string;
+  subjectMappingEn: string;
+  suggestedPrerequisitesAr: string[];
+  suggestedPrerequisitesEn: string[];
+}
+
+export interface TrackAdaptation {
+  vocationalFocus: {
+    titleAr: string;
+    titleEn: string;
+    practicalSkillsAr: string[];
+    practicalSkillsEn: string[];
+    troubleshootingRunbookAr: string[];
+    troubleshootingRunbookEn: string[];
+    labToolingAr: string[];
+    labToolingEn: string[];
+  };
+  academicDepth: {
+    titleAr: string;
+    titleEn: string;
+    theoreticalConceptsAr: string[];
+    theoreticalConceptsEn: string[];
+    algorithmicAnalysisAr: string;
+    algorithmicAnalysisEn: string;
+    researchAndDesignAspectsAr: string[];
+    researchAndDesignAspectsEn: string[];
+  };
+  iraqiCurriculumContext: IraqiCurriculumAlignment;
+}
+
 export interface CurriculumLesson {
   id: string;
   milestoneId: number;
@@ -84,6 +119,9 @@ export interface CurriculumLesson {
   simulationId: SimulationId;
   worldId?: number;
   challengeId?: string;
+  track?: 'common' | 'vocational' | 'academic';
+  trackAdaptation?: TrackAdaptation;
+  relatedSimulationIds?: SimulationId[];
 
   // The 13-Part Pedagogical Framework Properties
   prerequisites?: { textAr: string; textEn: string }[];
@@ -146,6 +184,9 @@ export interface CurriculumLevel {
   iconName: string;
   primarySimulationId: SimulationId;
   modules: CurriculumModule[];
+  iraqiSubjectNameAr?: string;
+  iraqiSubjectNameEn?: string;
+  trackAdaptation?: TrackAdaptation;
 }
 
 export interface CurriculumMilestone {
@@ -161,6 +202,9 @@ export interface CurriculumMilestone {
   iconName: string;
   primarySimulationId: SimulationId;
   lessonIds: string[];
+  iraqiSubjectNameAr?: string;
+  iraqiSubjectNameEn?: string;
+  trackAdaptation?: TrackAdaptation;
 }
 
 export interface LessonProgressState {

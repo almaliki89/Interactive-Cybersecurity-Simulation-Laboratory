@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useSimulationStore, SimulationId, LESSON_SEQUENCE } from '../../stores/simulationStore';
 import { CURRICULUM_MILESTONES, CURRICULUM_LESSONS, CURRICULUM_LEVELS } from '../../data/curriculumData';
-import { CurriculumLesson, CurriculumMilestone } from '../../types/curriculum';
+import { CurriculumLesson, CurriculumMilestone, CurriculumLevel } from '../../types/curriculum';
+import { getRegisteredSimulation } from '../../simulations/registry';
 import {
   Shield,
   Cpu,
@@ -32,6 +33,10 @@ import {
   AlertCircle,
   Info,
   LockKeyhole,
+  GraduationCap,
+  Wrench,
+  Terminal,
+  Sliders,
 } from 'lucide-react';
 
 export const LessonView: React.FC = () => {
@@ -85,6 +90,20 @@ export const LessonView: React.FC = () => {
       CURRICULUM_MILESTONES[0]
     );
   }, [currentLesson.milestoneId]);
+
+  // Active track selection: 'all' | 'vocational' | 'academic'
+  const [activeTrack, setActiveTrack] = useState<'all' | 'vocational' | 'academic'>('all');
+
+  // Current level data
+  const currentLevel: CurriculumLevel = useMemo(() => {
+    return (
+      CURRICULUM_LEVELS.find((lvl) => lvl.levelNumber === currentLesson.milestoneId) ||
+      CURRICULUM_LEVELS[0]
+    );
+  }, [currentLesson.milestoneId]);
+
+  // Combined track adaptation from lesson or parent level
+  const trackAdaptation = currentLesson.trackAdaptation || currentLevel.trackAdaptation;
 
   // Milestone icon helper
   const getMilestoneIcon = (name: string) => {
@@ -208,11 +227,12 @@ export const LessonView: React.FC = () => {
   };
 
   // Launch the corresponding interactive simulation while preserving activeLessonId
-  const handleLaunchSimulation = () => {
+  const handleLaunchSimulation = (simId?: SimulationId | React.MouseEvent) => {
+    const targetSim = typeof simId === 'string' ? simId : currentLesson.simulationId;
     if (currentLesson.worldId) {
       setSelectedWorldId(currentLesson.worldId);
     }
-    setActiveSimulation(currentLesson.simulationId);
+    setActiveSimulation(targetSim);
   };
 
   // Re-check live simulation challenge status
@@ -534,6 +554,72 @@ export const LessonView: React.FC = () => {
               </div>
             </div>
           )}
+          {/* Iraqi Common Curriculum Alignment & Track Depth Selector */}
+          {trackAdaptation && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-950/70 border border-emerald-700/60 text-emerald-400 shrink-0">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold text-white">
+                        {isAr ? 'المنهج المشترك للجامعات والمعاهد العراقية' : 'Iraqi Common Cybersecurity Curriculum'}
+                      </span>
+                      {currentLevel.iraqiSubjectNameAr && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          {isAr ? currentLevel.iraqiSubjectNameAr : currentLevel.iraqiSubjectNameEn}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {isAr
+                        ? `${trackAdaptation.iraqiCurriculumContext.academicTierAr} • ${trackAdaptation.iraqiCurriculumContext.vocationalTierAr}`
+                        : `${trackAdaptation.iraqiCurriculumContext.academicTierEn} • ${trackAdaptation.iraqiCurriculumContext.vocationalTierEn}`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Track Switcher Pills */}
+                <div className="flex items-center gap-1 bg-slate-950/90 p-1 rounded-xl border border-slate-800 shrink-0 self-start sm:self-auto">
+                  <button
+                    onClick={() => setActiveTrack('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      activeTrack === 'all'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {isAr ? 'الأساس المشترك' : 'Common Core'}
+                  </button>
+                  <button
+                    onClick={() => setActiveTrack('vocational')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      activeTrack === 'vocational'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Wrench className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{isAr ? 'المسار المهني' : 'Vocational'}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTrack('academic')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      activeTrack === 'academic'
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-purple-400" />
+                    <span>{isAr ? 'المسار الجامعي' : 'University'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* STAGE 0: Objectives & Why It Matters */}
           {activeStage === 0 && (
             <div className="space-y-6 animate-in fade-in duration-200">
@@ -571,6 +657,155 @@ export const LessonView: React.FC = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Tiered Track Depth Cards */}
+              {trackAdaptation && (
+                <div className="grid gap-4">
+                  {/* Vocational Track Box */}
+                  {(activeTrack === 'all' || activeTrack === 'vocational') && (
+                    <div className="p-5 rounded-2xl bg-amber-950/15 border border-amber-700/40 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-400">
+                          <Wrench className="w-4 h-4 shrink-0" />
+                          <h4 className="text-xs font-bold font-mono uppercase tracking-wider">
+                            {isAr ? trackAdaptation.vocationalFocus.titleAr : trackAdaptation.vocationalFocus.titleEn}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono font-bold">
+                          {isAr ? 'مهارات إعداد وتشخيص' : 'Applied Skills'}
+                        </span>
+                      </div>
+                      
+                      {/* Practical Skills */}
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold text-amber-200">
+                          {isAr ? 'المهارات الميدانية المستهدفة:' : 'Field Competencies:'}
+                        </span>
+                        <ul className="space-y-1">
+                          {(isAr ? trackAdaptation.vocationalFocus.practicalSkillsAr : trackAdaptation.vocationalFocus.practicalSkillsEn).map((skill, sIdx) => (
+                            <li key={sIdx} className="flex items-start gap-2 text-xs text-slate-300">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                              <span>{skill}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Troubleshooting Runbook */}
+                      <div className="pt-2 border-t border-amber-800/30 space-y-1.5">
+                        <span className="text-[11px] font-bold text-amber-200">
+                          {isAr ? 'دليل استكشاف الأخطاء والتشخيص (Troubleshooting Runbook):' : 'Frontline Troubleshooting Runbook:'}
+                        </span>
+                        <ul className="space-y-1">
+                          {(isAr ? trackAdaptation.vocationalFocus.troubleshootingRunbookAr : trackAdaptation.vocationalFocus.troubleshootingRunbookEn).map((rb, rIdx) => (
+                            <li key={rIdx} className="flex items-start gap-2 text-xs text-amber-100/80">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+                              <span>{rb}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Lab Tooling */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {isAr ? 'الأدوات التطبيقية:' : 'Lab Tools:'}
+                        </span>
+                        {(isAr ? trackAdaptation.vocationalFocus.labToolingAr : trackAdaptation.vocationalFocus.labToolingEn).map((tool, tIdx) => (
+                          <span key={tIdx} className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-900 border border-slate-700 text-slate-300">
+                            {tool}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Academic University Track Box */}
+                  {(activeTrack === 'all' || activeTrack === 'academic') && (
+                    <div className="p-5 rounded-2xl bg-purple-950/15 border border-purple-700/40 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-purple-400">
+                          <BookOpen className="w-4 h-4 shrink-0" />
+                          <h4 className="text-xs font-bold font-mono uppercase tracking-wider">
+                            {isAr ? trackAdaptation.academicDepth.titleAr : trackAdaptation.academicDepth.titleEn}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono font-bold">
+                          {isAr ? 'عمق نظري وخوارزميات' : 'Academic Rigor'}
+                        </span>
+                      </div>
+
+                      {/* Theoretical Concepts */}
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold text-purple-200">
+                          {isAr ? 'المفاهيم والنماذج النظرية الأساسية:' : 'Theoretical Concepts & Models:'}
+                        </span>
+                        <ul className="space-y-1">
+                          {(isAr ? trackAdaptation.academicDepth.theoreticalConceptsAr : trackAdaptation.academicDepth.theoreticalConceptsEn).map((concept, cIdx) => (
+                            <li key={cIdx} className="flex items-start gap-2 text-xs text-slate-300">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 mt-1.5" />
+                              <span>{concept}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Algorithmic Analysis */}
+                      <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-800/40">
+                        <span className="text-[10px] font-mono font-bold text-purple-300 uppercase block mb-1">
+                          {isAr ? 'التحليل الخوارزمي والرياضي:' : 'Algorithmic & Mathematical Analysis:'}
+                        </span>
+                        <p className="text-xs text-purple-100 font-mono">
+                          {isAr ? trackAdaptation.academicDepth.algorithmicAnalysisAr : trackAdaptation.academicDepth.algorithmicAnalysisEn}
+                        </p>
+                      </div>
+
+                      {/* Research & Design Aspects */}
+                      <div className="pt-2 border-t border-purple-800/30 space-y-1.5">
+                        <span className="text-[11px] font-bold text-purple-200">
+                          {isAr ? 'دراسات التصميم والأبحاث المعمارية:' : 'Architectural Design & Research Aspects:'}
+                        </span>
+                        <ul className="space-y-1">
+                          {(isAr ? trackAdaptation.academicDepth.researchAndDesignAspectsAr : trackAdaptation.academicDepth.researchAndDesignAspectsEn).map((res, rIdx) => (
+                            <li key={rIdx} className="flex items-start gap-2 text-xs text-slate-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0 mt-1.5" />
+                              <span>{res}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Related Interactive Simulation Labs */}
+              {currentLesson.relatedSimulationIds && currentLesson.relatedSimulationIds.length > 0 && (
+                <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-bold text-slate-300 flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-cyan-400" />
+                      <span>{isAr ? 'محاكيات ومختبرات تفاعلية ذات صلة بهذا المستوى:' : 'Related Interactive Simulation Labs:'}</span>
+                    </h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {currentLesson.relatedSimulationIds.map((simId) => {
+                      const reg = getRegisteredSimulation(simId);
+                      return (
+                        <button
+                          key={simId}
+                          onClick={() => handleLaunchSimulation(simId)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-cyan-950/60 border border-slate-800 hover:border-cyan-700/60 text-xs font-semibold text-slate-300 hover:text-cyan-300 flex items-center gap-2 transition-all cursor-pointer"
+                        >
+                          <Play className="w-3 h-3 text-cyan-400 fill-current" />
+                          <span>{isAr ? reg.nameAr : reg.nameEn}</span>
+                          <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Prerequisites & Assumptions */}
               {currentLesson.prerequisites && currentLesson.prerequisites.length > 0 && (

@@ -14,6 +14,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 10,
     iconName: 'Compass',
     primarySimulationId: 'cia_triad',
+    iraqiSubjectNameAr: 'أساسيات الحاسوب وتقنية المعلومات والأمن الرقمي',
+    iraqiSubjectNameEn: 'Fundamentals of IT, Computer Literacy & Digital Safety',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني والتقني: فحص الأجهزة ونظافة الأمن المكتبي',
+        titleEn: 'Vocational Track: Endpoint Checkups & Workplace Hygiene',
+        practicalSkillsAr: [
+          'فحص تفعيل جدار حماية ويندوز وتحديثات النظام الدورية.',
+          'تفعيل تشفير الأقراص بواسطة BitLocker وتخزين مفتاح الاسترداد.',
+          'التعرف على رسائل البريد التصيدي وتجنب الروابط المشبوهة.',
+        ],
+        practicalSkillsEn: [
+          'Verify Windows Firewall activation and schedule regular OS updates.',
+          'Enable BitLocker volume encryption and securely store recovery keys.',
+          'Identify phishing email indicators and avoid untrusted attachments.',
+        ],
+        troubleshootingRunbookAr: [
+          'في حال بطء الجهاز المفاجئ: فحص العمليات النشطة في Task Manager والبحث عن استهلاك غير مبرر للمعالج.',
+          'في حال ظهور إشعارات أمنية متكررة: عزل كابل الشبكة وإجراء فحص كامل بمضاد الفيروسات.',
+        ],
+        troubleshootingRunbookEn: [
+          'If system slows abruptly: Check Task Manager processes for abnormal CPU usage.',
+          'If persistent security warnings appear: Disconnect network cable and execute full offline scan.',
+        ],
+        labToolingAr: ['Windows Security Settings', 'Task Manager', 'Control Panel / Security & Maintenance'],
+        labToolingEn: ['Windows Security Settings', 'Task Manager', 'Control Panel / Security & Maintenance'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: نماذج أمن المعلومات ونظرية التهديدات',
+        titleEn: 'University Track: Information Security Models & Threat Theory',
+        theoreticalConceptsAr: [
+          'نموذج تصنيف التهديدات STRIDE وتحليل سطوح الهجوم (Attack Surfaces).',
+          'مفهوم الدفاع المتعمق (Defense in Depth) ومبدأ الامتياز الأدنى (Least Privilege).',
+          'الأخلاقيات الرقمية والإطار التشريعي لجرائم المعلوماتية في البيئة العراقية.',
+        ],
+        theoreticalConceptsEn: [
+          'STRIDE threat classification framework and attack surface minimization.',
+          'Defense-in-depth architectural layering and principle of least privilege.',
+          'Cyber ethics and legal frameworks in contemporary digital jurisdictions.',
+        ],
+        algorithmicAnalysisAr: 'حساب مصفوفة المخاطر الكمية: المخاطرة = الاحتمالية × التأثير (Risk = Likelihood × Impact).',
+        algorithmicAnalysisEn: 'Quantitative Risk Calculation: Risk Score = Likelihood × Business Impact Matrix.',
+        researchAndDesignAspectsAr: [
+          'دراسة أثر سياسات الأمان المؤسسية على إنتاجية الموظفين والتوازن بين الأمن وسهولة الاستخدام.',
+          'تحليل متطلبات الامتثال للمعايير الدولية (ISO/IEC 27001 و NIST Cybersecurity Framework).',
+        ],
+        researchAndDesignAspectsEn: [
+          'Trade-off analysis between strict endpoint security controls and organizational usability.',
+          'Compliance mapping against international standards (ISO/IEC 27001 and NIST CSF).',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'متطلب جامعي مشترك لكليات الهندسة وعلوم الحاسوب (المرحلة الأولى)',
+        academicTierEn: 'Core University Requirement for Engineering & Computer Science (Year 1)',
+        vocationalTierAr: 'مادة أساسيات الحاسوب والتقنية في الإعداديات المهنية والمعاهد التقنية',
+        vocationalTierEn: 'Computer Fundamentals in Vocational High Schools & Technical Institutes',
+        subjectMappingAr: 'مقدمة في تكنولوجيا المعلومات / أساسيات الأمن السيبراني',
+        subjectMappingEn: 'Introduction to IT / Cybersecurity Fundamentals',
+        suggestedPrerequisitesAr: ['مهارات استخدام الحاسوب العامة ونظام التشغيل'],
+        suggestedPrerequisitesEn: ['General computer literacy and basic operating system usage'],
+      },
+    },
     modules: [
       {
         id: 'mod-0-1',
@@ -36,6 +98,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 25,
     iconName: 'Cpu',
     primarySimulationId: 'system_internals',
+    iraqiSubjectNameAr: 'أنظمة التشغيل وحماية العمليات والذاكرة',
+    iraqiSubjectNameEn: 'Operating Systems & Process Security',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: إدارة مستخدمي وصلاحيات أنظمة Linux و Windows',
+        titleEn: 'Vocational Track: Linux & Windows User & Access Management',
+        practicalSkillsAr: [
+          'ضبط صلاحيات ملفات لينكس بالأرقام والرموز (chmod 755 / 644) وتغيير المالك (chown).',
+          'إدارة المستخدمين والمجموعات في سطر الأوامر (useradd, usermod, passwd).',
+          'فحص أذونات NTFS وقوائم التحكم بالوصول DACL في خوادم ويندوز.',
+        ],
+        practicalSkillsEn: [
+          'Set Linux file permissions using octal/symbolic modes (chmod 755/644) and ownership (chown).',
+          'Manage local users and security groups via CLI (useradd, usermod, passwd).',
+          'Inspect NTFS discretionary access control lists (DACLs) on Windows Server.',
+        ],
+        troubleshootingRunbookAr: [
+          'خطأ "Permission Denied": فحص المالك والمجموعة ونمط الصلاحيات عبر ls -la ومطابقتها مع هوية المستخدم الحالي.',
+          'الاشتباه ببرمجية خبيثة: فحص العمليات التي تعمل بصلاحيات root/SYSTEM ومنافذ الشبكة المفتوحة بواسطة netstat / ss.',
+        ],
+        troubleshootingRunbookEn: [
+          'Permission Denied triage: Check file owner and permissions with ls -la and compare against whoami.',
+          'Suspicious process triage: Audit root/SYSTEM processes and listen sockets using netstat / ss.',
+        ],
+        labToolingAr: ['Bash CLI (chmod, chown, id)', 'PowerShell (Get-Acl, icacls)', 'Process Explorer'],
+        labToolingEn: ['Bash CLI (chmod, chown, id)', 'PowerShell (Get-Acl, icacls)', 'Process Explorer'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: عمارة أنظمة التشغيل ونماذج العزل الصارم',
+        titleEn: 'University Track: OS Architecture & Formal Isolation Models',
+        theoreticalConceptsAr: [
+          'حلقات حماية المعالج x86/ARM (Ring 0 Kernel Mode مقابل Ring 3 User Mode) وعمليات مقاطعة النظام (Syscalls).',
+          'تنظيم الذاكرة الافتراضية، جداول الصفحات (Page Tables)، وآليات الحماية ASLR و DEP/NX.',
+          'نماذج التحكم بالوصول الصارم: نموذج بيبي (Biba) للسلامة ونموذج بيل-لابادولا (Bell-LaPadula) للسرية.',
+        ],
+        theoreticalConceptsEn: [
+          'CPU privilege rings (Ring 0 Kernel vs Ring 3 User Mode) and system call gates.',
+          'Virtual memory segmentation, page tables, Address Space Layout Randomization (ASLR), and DEP/NX.',
+          'Formal access control models: Biba Integrity Model and Bell-LaPadula Confidentiality Model.',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية التحقق من الرموز المميزة (Token Privilege Validation): فحص تقاطع رموز SID مع DACL ACEs.',
+        algorithmicAnalysisEn: 'Access Token Validation Algorithm: Evaluating subject SIDs against DACL Access Control Entries.',
+        researchAndDesignAspectsAr: [
+          'تحليل ثغرات فيض المخزن المؤقت (Buffer Overflow) وكيف تمنع تقنيات ASLR و Canaries استغلالها.',
+          'مقارنة كفاءة النواة المصغرة (Microkernel) مع النواة المتجانسة (Monolithic Kernel) في مقاومة الاختراق.',
+        ],
+        researchAndDesignAspectsEn: [
+          'Buffer overflow mechanics and defensive exploit mitigation via compiler stack canaries and ASLR entropy.',
+          'Security posture comparison between monolithic kernels and capability-based microkernels.',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مادة أساسية لطلبة علوم الحاسوب وهندسة البرمجيات (المرحلة الثانية والثالثة)',
+        academicTierEn: 'Core Subject for Computer Science & Software Engineering (Year 2/3)',
+        vocationalTierAr: 'مادة إدارة وتثبيت أنظمة التشغيل في المعاهد التقنية',
+        vocationalTierEn: 'OS Installation & Administration in Technical Colleges',
+        subjectMappingAr: 'أنظمة التشغيل / أمن النظم وتراكيب الحاسوب',
+        subjectMappingEn: 'Operating Systems / Systems Security & Computer Architecture',
+        suggestedPrerequisitesAr: ['معرفة أساسية بتركيب الحاسوب ووحدة المعالجة المركزية'],
+        suggestedPrerequisitesEn: ['Basic understanding of computer architecture and CPU concepts'],
+      },
+    },
     modules: [
       {
         id: 'mod-1-1',
@@ -64,6 +188,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 35,
     iconName: 'Network',
     primarySimulationId: 'subnet_routing',
+    iraqiSubjectNameAr: 'شبكات الحاسوب وبروتوكولات الإنترنت (Computer Networks & Protocols)',
+    iraqiSubjectNameEn: 'Computer Networks & Internet Protocols',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: توصيل وإعداد عناوين الشبكات وتشخيص الاتصال',
+        titleEn: 'Vocational Track: Network Cabling, IP Configuration & Diagnostic Triage',
+        practicalSkillsAr: [
+          'إعداد عنوان IP الثابت وقناع الشبكة وبوابة العبور الافتراضية على بطاقة الشبكة.',
+          'استخدام أدوات التشخيص الميداني: ping لفحص الاستجابة، traceroute لتتبع مسار القفزات، و ipconfig / ifconfig.',
+          'إعداد خادم DHCP لتوزيع العناوين التلقائية، وحجز العناوين الثابتة (DHCP Reservation).',
+        ],
+        practicalSkillsEn: [
+          'Configure static IP, subnet mask, and default gateway on network interface cards.',
+          'Execute frontline diagnostics: ping connectivity tests, traceroute hop analysis, and ipconfig/ifconfig.',
+          'Deploy DHCP pools for dynamic host addressing and configure static DHCP reservations.',
+        ],
+        troubleshootingRunbookAr: [
+          'فشل الوصول إلى الإنترنت: 1) ping 127.0.0.1 (بطاقة الشبكة)، 2) ping Gateway (الموجه المحلي)، 3) ping 8.8.8.8 (الخارج)، 4) nslookup (خادم DNS).',
+          'تعارض العناوين (IP Conflict): تشغيل arp -a لتحديد عنوان MAC المكرر وتعديل إعدادات الجهاز المخالف.',
+        ],
+        troubleshootingRunbookEn: [
+          'No internet triage: 1) ping 127.0.0.1, 2) ping Default Gateway, 3) ping 8.8.8.8, 4) nslookup hostname.',
+          'IP Conflict resolution: Run arp -a to identify duplicate MAC binding and reassign host lease.',
+        ],
+        labToolingAr: ['Wireshark', 'Packet Tracer / GNS3', 'ip / route / arp / traceroute CLI'],
+        labToolingEn: ['Wireshark', 'Packet Tracer / GNS3', 'ip / route / arp / traceroute CLI'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: نظرية الاتصالات، بروتوكولات التوجيه ونموذج OSI',
+        titleEn: 'University Track: Communication Theory, Routing Protocols & OSI Model',
+        theoreticalConceptsAr: [
+          'طبقات نموذج OSI السبع ومقارنتها بنموذج TCP/IP رباعي الطبقات، مع تفصيل عملية التغليف (Encapsulation/Decapsulation).',
+          'الرياضيات الثنائية لتقسيم الشبكات المتغير VLSM وحساب عناوين الشبكة والبث (Network & Broadcast Addresses).',
+          'خوارزميات التوجيه: خوارزمية ديكسترا للحالة المرتبطة (Dijkstra Link-State / OSPF) وخوارزمية بلمان-فورد لشعاع المسافة (Bellman-Ford / RIP).',
+        ],
+        theoreticalConceptsEn: [
+          'Seven-layer OSI reference model vs 4-layer TCP/IP stack with detailed encapsulation header flow.',
+          'Binary mathematics of Variable Length Subnet Masking (VLSM) and bitwise network/broadcast partitioning.',
+          'Routing algorithms: Dijkstra shortest path first (Link-State/OSPF) and Bellman-Ford (Distance Vector/RIP).',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية التوجيه وفق أطول قناع متطابق (Longest Prefix Match - LPM) في جداول التوجيه السريعة (TCAM).',
+        algorithmicAnalysisEn: 'Longest Prefix Match (LPM) Trie algorithm for packet forwarding in TCAM hardware.',
+        researchAndDesignAspectsAr: [
+          'دراسة استنزاف عناوين IPv4 والتحول إلى IPv6، وآليات التوافق (Dual Stack و Tunneling).',
+          'تحليل أداء بروتوكول TCP في التدفق والتحكم بالازدحام (Congestion Control / Tahoe & Reno).',
+        ],
+        researchAndDesignAspectsEn: [
+          'IPv4 address exhaustion dynamics and transition architectures to IPv6 (Dual-stack and 6to4 tunneling).',
+          'Mathematical modeling of TCP congestion control windows (AIMD algorithm, Slow Start, Fast Recovery).',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'المقرر الإلزامي الأساسي لشبكات الحاسوب في كليات الهندسة وعلوم الحاسوب (المرحلة الثالثة)',
+        academicTierEn: 'Core Computer Networks Course for Engineering & Computer Science (Year 3)',
+        vocationalTierAr: 'مادة شبكات الحاسوب وصيانتها في المعاهد التكنولوجية وإعداديات الصناعة',
+        vocationalTierEn: 'Computer Networks & Maintenance in Technological Institutes',
+        subjectMappingAr: 'شبكات الحاسوب 1 / بروتوكولات الاتصال ونقل البيانات',
+        subjectMappingEn: 'Computer Networks I / Data Communications & Protocols',
+        suggestedPrerequisitesAr: ['أساسيات النظام الثنائي وتراكيب الحاسوب'],
+        suggestedPrerequisitesEn: ['Binary number system and computer organization fundamentals'],
+      },
+    },
     modules: [
       {
         id: 'mod-2-1',
@@ -98,6 +284,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 20,
     iconName: 'ShieldCheck',
     primarySimulationId: 'firewall',
+    iraqiSubjectNameAr: 'أمن الشبكات وجدران الحماية وعزل النطاقات (Network Security & Firewalls)',
+    iraqiSubjectNameEn: 'Network Security, Firewalls & Segmentation',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: كتابة قواعد جدران الحماية وتأمين منافذ الخوادم',
+        titleEn: 'Vocational Track: Firewall ACL Rule Crafting & Port Hardening',
+        practicalSkillsAr: [
+          'كتابة قواعد iptables / UFW في خوادم لينكس لحظر المنافذ غير الضرورية (مثل Telnet 23 و SMB 445).',
+          'إعداد سياسة المنع الافتراضي (Default Drop Policy) مع السماح بالاتصالات المنشأة مسبقاً (ESTABLISHED, RELATED).',
+          'إنشاء شبكات محلية افتراضية VLAN لعزل شبكة الإدارة عن شبكة الضيوف وشبكة الإنتاج.',
+        ],
+        practicalSkillsEn: [
+          'Write iptables/UFW rules on Linux servers to block hazardous ports (e.g. Telnet 23, SMB 445).',
+          'Enforce strict Default Drop perimeter stance while permitting ESTABLISHED, RELATED connection states.',
+          'Create 802.1Q VLANs to isolate management subnets from guest WiFi and corporate production segments.',
+        ],
+        troubleshootingRunbookAr: [
+          'توقف خدمة معينة بعد تشغيل الجدار: فحص ترتيب القواعد (Rule Order) عبر iptables -L -v -n والتأكد من عدم وجود قاعدة DROP سابقة تطابق الحزمة.',
+          'فحص الحزم المحظورة: مراقبة سجلات /var/log/ufw.log أو Windows Firewall Log لتحديد المصدر والمنفذ الممنوع.',
+        ],
+        troubleshootingRunbookEn: [
+          'Service unreachable post-firewall: Inspect rule ordering via iptables -L -v -n for premature DROP matches.',
+          'Blocked traffic audit: Tail /var/log/ufw.log or Windows Firewall pfirewall.log for dropped SYN packets.',
+        ],
+        labToolingAr: ['iptables / nftables', 'UFW / pfSense', 'Cisco IOS Access-Lists'],
+        labToolingEn: ['iptables / nftables', 'UFW / pfSense', 'Cisco IOS Access-Lists'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: هندسة جدران الحماية التفاعلية ونماذج تتبع الحالة',
+        titleEn: 'University Track: Stateful Inspection Engines & Connection Tracking',
+        theoreticalConceptsAr: [
+          'مقارنة معمارية الفحص: فحص الحزم عديم الحالة (Stateless Packet Filtering) مقابل فحص تتبع الحالة (Stateful Inspection) وبوابات طبقة التطبيق (Proxy/ALGs).',
+          'بنية جدول تتبع الاتصالات (CONNTRACK Table) ومتابعة الحالات: NEW, ESTABLISHED, RELATED, INVALID.',
+          'تصميم المناطق الأمنية وعزل المنطقة منزوعة السلاح (DMZ Architecture) ونظرية الدفاع في العمق.',
+        ],
+        theoreticalConceptsEn: [
+          'Architectural trade-offs: Stateless filtering vs Stateful inspection vs Application Layer Gateways (ALGs).',
+          'State table mechanics (Netfilter CONNTRACK) and transition states: NEW, ESTABLISHED, RELATED, INVALID.',
+          'De-Militarized Zone (DMZ) perimeter topology, bastion hosts, and layered defence theory.',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية مطابقة قواعد جدار الحماية: مصفوفة القرار المتسلسلة (First-Match-Wins Decision Tree).',
+        algorithmicAnalysisEn: 'Sequential rule evaluation algorithm: First-Match-Wins with early exit optimization.',
+        researchAndDesignAspectsAr: [
+          'دراسة هجمات تجاوز جدران الحماية: تفتيت الحزم (IP Fragmentation Attacks) ونفق البروتوكولات (DNS/ICMP Tunneling).',
+          'تحليل أداء جدران الحماية من الجيل القادم (NGFW) وفحص الحزم العميق (Deep Packet Inspection - DPI).',
+        ],
+        researchAndDesignAspectsEn: [
+          'Firewall evasion techniques: IP packet fragmentation overlap and covert protocol tunneling.',
+          'Next-Generation Firewall (NGFW) performance benchmarking under Deep Packet Inspection (DPI) loads.',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مادة أمن الشبكات والإنترنت لطلبة الهندسة والعلوم (المرحلة الثالثة والرابعة)',
+        academicTierEn: 'Network & Internet Security Course for Engineering & Science (Year 3/4)',
+        vocationalTierAr: 'مادة أمن وحماية الشبكات في المعاهد التقنية',
+        vocationalTierEn: 'Network Security & Protection in Technical Institutes',
+        subjectMappingAr: 'أمن الشبكات وجدران الحماية / حماية النظم المعلوماتية',
+        subjectMappingEn: 'Network Security & Firewalls / Information Systems Defense',
+        suggestedPrerequisitesAr: ['أساسيات شبكات الحاسوب، نموذج TCP/IP، وأرقام المنافذ'],
+        suggestedPrerequisitesEn: ['Computer networking foundations, TCP/IP stack, and port assignments'],
+      },
+    },
     modules: [
       {
         id: 'mod-3-1',
@@ -120,6 +368,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 20,
     iconName: 'Key',
     primarySimulationId: 'crypto',
+    iraqiSubjectNameAr: 'التشفير وأمن المعلومات والبنية التحتية للمفاتيح العامة (Cryptography & PKI)',
+    iraqiSubjectNameEn: 'Applied Cryptography & Public Key Infrastructure',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: إنشاء وتثبيت شهادات SSL/TLS والتحقق من سلامة الملفات',
+        titleEn: 'Vocational Track: Certificate Generation, Web Server SSL & File Integrity Verification',
+        practicalSkillsAr: [
+          'إنشاء أزواج المفاتيح وطلبات توقيع الشهادات CSR باستخدام أداة OpenSSL.',
+          'تثبيت شهادات HTTPS على خوادم الويب (Nginx / Apache) وإيقاف إصدارات SSL/TLS القديمة الضعيفة.',
+          'التحقق من سلامة الملفات المحملة عبر حساب ومقارنة بصمة SHA-256 باستخدام certutil أو sha256sum.',
+        ],
+        practicalSkillsEn: [
+          'Generate cryptographic key pairs and Certificate Signing Requests (CSR) using OpenSSL CLI.',
+          'Install HTTPS certificates on Nginx/Apache web servers and disable obsolete SSL/TLS ciphers.',
+          'Verify downloaded software integrity by calculating and comparing SHA-256 checksums with sha256sum.',
+        ],
+        troubleshootingRunbookAr: [
+          'خطأ "Certificate Not Trusted": التحقق من سلسلة الشهادات (Certificate Chain) وتثبيت الشهادة المتوسطة (Intermediate CA).',
+          'فشل تطابق بصمة التجزئة: حذف الملف فوراً لإمكانية تعرضه للتلاعب أثناء التحميل أو تلوثه ببرمجية خبيثة.',
+        ],
+        troubleshootingRunbookEn: [
+          'Certificate Not Trusted error: Verify full certificate chain bundle and install missing intermediate CA.',
+          'Hash mismatch error: Discard downloaded file immediately due to corruption or tampering.',
+        ],
+        labToolingAr: ['OpenSSL CLI', 'GnuPG', 'certutil / sha256sum'],
+        labToolingEn: ['OpenSSL CLI', 'GnuPG', 'certutil / sha256sum'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: نظرية التشفير، الحساب النمطي، وخواص دوال التجزئة',
+        titleEn: 'University Track: Cryptographic Theory, Modular Arithmetic & Hash Properties',
+        theoreticalConceptsAr: [
+          'الحساب النمطي (Modular Arithmetic)، مبرهنة أويلر ومسألة تحليل الأعداد الأولية كأساس لخوارزمية RSA.',
+          'تبادل المفاتيح الآمن عبر بروتوكول ديفي-هيلمان (Diffie-Hellman) ومنحنيات التشفير الإهليلجية (ECDH).',
+          'خواص دوال التجزئة الرياضية الآمنة: مقاومة الصورة السابقة الأولى والثانية ومقاومة التصادم (Collision Resistance).',
+        ],
+        theoreticalConceptsEn: [
+          'Modular arithmetic, Euler totient theorem, and prime factorization hardness underlying RSA.',
+          'Key exchange cryptography: Diffie-Hellman discrete logarithm problem and Elliptic Curve Diffie-Hellman (ECDHE).',
+          'Cryptographic hash function axioms: Preimage resistance, second preimage resistance, and collision resistance.',
+        ],
+        algorithmicAnalysisAr: 'خاصية الانهيار الجليدي (Avalanche Effect): تغيير بت واحد في المدخل يغير 50% من بتات التجزئة في SHA-256.',
+        algorithmicAnalysisEn: 'Avalanche Effect Criterion: Single input bit flip propagates to >= 50% output bit flips in SHA-256.',
+        researchAndDesignAspectsAr: [
+          'تحليل أمان بروتوكول TLS 1.3 وإلغاء خوارزميات التشفير القديمة وتقليص زمن المصافحة (0-RTT).',
+          'تحديات التشفير ما بعد الحوسبة الكمومية (Post-Quantum Cryptography - PQC / Kyber & Dilithium).',
+        ],
+        researchAndDesignAspectsEn: [
+          'TLS 1.3 protocol security analysis: Deprecation of static RSA/CBC and 0-RTT replay attack mitigations.',
+          'Post-Quantum Cryptography (PQC) paradigms: Lattice-based cryptography (CRYSTALS-Kyber and Dilithium).',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مادة التشفير ونظرية المعلومات الإلزامية في كليات علوم الحاسوب والرياضيات التطبيقية (المرحلة الثالثة)',
+        academicTierEn: 'Core Cryptography & Information Theory in CS & Applied Mathematics (Year 3)',
+        vocationalTierAr: 'مادة أمن البيانات والتشفير التطبيقي في المعاهد التقنية',
+        vocationalTierEn: 'Data Security & Applied Cryptography in Technical Institutes',
+        subjectMappingAr: 'التشفير وأمن المعلومات / أمن البيانات الرقمية',
+        subjectMappingEn: 'Cryptography & Information Security / Digital Data Protection',
+        suggestedPrerequisitesAr: ['الجبر الخطي، الحساب النمطي، ونظرية الاحتمالات'],
+        suggestedPrerequisitesEn: ['Linear algebra, modular arithmetic, and probability theory'],
+      },
+    },
     modules: [
       {
         id: 'mod-4-1',
@@ -142,6 +452,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 25,
     iconName: 'Lock',
     primarySimulationId: 'active_directory',
+    iraqiSubjectNameAr: 'إدارة الهويات والأدلة المؤسسية والتحكم في الوصول (Identity & Access Management)',
+    iraqiSubjectNameEn: 'Identity & Access Management (Active Directory)',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: إدارة نطاق ويندوز Active Directory وتطبيق سياسات GPO',
+        titleEn: 'Vocational Track: Domain Controller Administration & Group Policy Hardening',
+        practicalSkillsAr: [
+          'إنشاء وإدارة حسابات المستخدمين والمجموعات الأمنية في Active Directory Users and Computers (ADUC).',
+          'ربط محطات العمل الجديدة بنطاق الدومين وتعيين سياسات كلمات المرور والقفل التلقائي.',
+          'إنشاء كائنات سياسات المجموعة (GPO) لتعطيل وحدات USB وفرض قفل الشاشة وتوزيع البرامج.',
+        ],
+        practicalSkillsEn: [
+          'Create and maintain user objects and security groups via Active Directory Users and Computers (ADUC).',
+          'Join enterprise workstations to the Active Directory domain and configure account lockout thresholds.',
+          'Deploy Group Policy Objects (GPOs) to disable removable USB storage and enforce screen lock timeouts.',
+        ],
+        troubleshootingRunbookAr: [
+          'فشل تسجيل دخول المستخدم: فحص قفل الحساب (Account Locked) في ADUC ومزامنة وقت الجهاز مع Domain Controller (فارق الوقت > 5 دقائق يفشل Kerberos).',
+          'عدم تطبيق سياسة GPO: تشغيل أمر gpupdate /force وفحص النتيجة عبر gpresult /r.',
+        ],
+        troubleshootingRunbookEn: [
+          'Domain login failure: Check account lockout in ADUC and verify NTP time sync with DC (clock skew > 5 min breaks Kerberos).',
+          'GPO policy not applying: Execute gpupdate /force and diagnose applied policies with gpresult /r.',
+        ],
+        labToolingAr: ['Active Directory Admin Center', 'Group Policy Management Console (GPMC)', 'PowerShell ActiveDirectory module'],
+        labToolingEn: ['Active Directory Admin Center', 'Group Policy Management Console (GPMC)', 'PowerShell ActiveDirectory module'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: بروتوكول كيربيروس، خوادم المصادقة ونماذج التفويض',
+        titleEn: 'University Track: Kerberos Authentication Protocol & Formal Authorization Models',
+        theoreticalConceptsAr: [
+          'دورة حياة مصادقة كيربيروس (RFC 4120): تبادل طلبات AS-REQ / AS-REP وتذكرة TGT، ثم TGS-REQ / TGS-REP وتذكرة الخدمة.',
+          'بنية دليل المؤسسة الموزع (LDAP / X.500) وعلاقات الثقة بين النطاقات (Domain Trusts & Forest Architecture).',
+          'مقارنة نماذج التحكم في الوصول: التحكم المعتمد على الأدوار (RBAC) مقابل التحكم المعتمد على السمات (ABAC).',
+        ],
+        theoreticalConceptsEn: [
+          'Kerberos authentication lifecycle (RFC 4120): AS-REQ/AS-REP ticket-granting flow and TGS service ticket granting.',
+          'Distributed directory architectures (LDAP/X.500) and enterprise cross-forest trust relationships.',
+          'Authorization paradigms: Role-Based Access Control (RBAC) vs Attribute-Based Access Control (ABAC).',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية تشفير تذاكر Kerberos: تشفير تذكرة TGT بمفتاح krbtgt لمنع التلاعب وتزوير التذاكر (Golden Ticket).',
+        algorithmicAnalysisEn: 'Kerberos ticket encapsulation algorithm: Symmetric encryption of TGT via krbtgt NTLM/AES master key.',
+        researchAndDesignAspectsAr: [
+          'دراسة هجمات الهوية المتقدمة: هجوم التذاكر الذهبية (Golden Ticket)، وتمرير التجزئة (Pass-the-Hash)، وحقن التذاكر (Pass-the-Ticket).',
+          'الانتقال من المصادقة المحلية في Active Directory إلى الهوية السحابية والهوية الهجينة (Azure AD / Entra ID).',
+        ],
+        researchAndDesignAspectsEn: [
+          'Credential dumping threat vectors: Pass-the-Hash, Pass-the-Ticket, and Golden Ticket persistence analysis.',
+          'Hybrid identity architectures: Directory synchronization (DirSync) and cloud federation protocols (SAML 2.0 / OIDC).',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مادة إدارة الشبكات والأنظمة المؤسسية لطلبة هندسة تقنيات الحاسوب (المرحلة الرابعة)',
+        academicTierEn: 'Enterprise Systems & Network Administration for Computer Engineering (Year 4)',
+        vocationalTierAr: 'مادة إدارة خوادم ويندوز في المعاهد التقنية',
+        vocationalTierEn: 'Windows Server Administration in Technical Colleges',
+        subjectMappingAr: 'إدارة خوادم الشبكات / أمن البنى التحتية المؤسسية',
+        subjectMappingEn: 'Network Server Administration / Enterprise Infrastructure Security',
+        suggestedPrerequisitesAr: ['أساسيات أنظمة التشغيل وشبكات الحاسوب المحلية LAN'],
+        suggestedPrerequisitesEn: ['Operating system fundamentals and Local Area Networking (LAN) concepts'],
+      },
+    },
     modules: [
       {
         id: 'mod-5-1',
@@ -164,6 +536,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 25,
     iconName: 'Activity',
     primarySimulationId: 'soc',
+    iraqiSubjectNameAr: 'مراكز العمليات الأمنية ورصد الأحداث وتحليل التهديدات (SOC & SIEM)',
+    iraqiSubjectNameEn: 'Security Operations Center & SIEM Monitoring',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: رصد تنبيهات SIEM وتصنيف الحوادث في مركز SOC',
+        titleEn: 'Vocational Track: Tier-1 SOC Alert Triaging & Event Log Analysis',
+        practicalSkillsAr: [
+          'قراءة وتحليل معرفات أحداث ويندوز الأساسية (Event ID 4624 للدخول الناجح، 4625 للفاشل، 7045 لإنشاء خدمة جديدة).',
+          'تتبع محاولات التخمين على كلمات المرور (Brute Force) وتحديد عنوان IP المهاجم والحساب المستهدف.',
+          'كتابة تقرير أولي للحادثة الأمنية وتصعيد التذاكر للدرجة الثانية (Tier-2 Incident Escalation).',
+        ],
+        practicalSkillsEn: [
+          'Analyze key Windows Security Event IDs (4624 successful logon, 4625 failed logon, 7045 new service installation).',
+          'Detect and correlate brute-force authentication spikes, extracting adversary IP and target account details.',
+          'Document initial triage findings and escalate verified anomalies to Tier-2 incident responders.',
+        ],
+        troubleshootingRunbookAr: [
+          'ارتفاع مفاجئ في تنبيهات تسجيل الدخول الفاشلة: فحص مصدر الطلبات (Workstation Name / Source IP) وحظر العنوان المشبوه على الجدار الناري.',
+          'تنبيه إيجابي كاذب (False Positive): التحقق مما إذا كان الحدث ناتجاً عن مهمة مجدولة مشروعة (Scheduled Task) وتعديل قاعدة الكشف.',
+        ],
+        troubleshootingRunbookEn: [
+          'Sudden spike in failed logons: Extract Source IP/Workstation Name and apply temporary perimeter block.',
+          'False positive triage: Cross-reference administrative scheduled tasks and tune SIEM correlation threshold.',
+        ],
+        labToolingAr: ['Splunk / Elastic SIEM', 'Wazuh EDR', 'Windows Event Viewer / Sysmon'],
+        labToolingEn: ['Splunk / Elastic SIEM', 'Wazuh EDR', 'Windows Event Viewer / Sysmon'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: هندسة الكشف، خوارزميات الترابط الإحصائي واستخبارات التهديدات',
+        titleEn: 'University Track: Detection Engineering, Statistical Correlation & Threat Intel',
+        theoreticalConceptsAr: [
+          'خوارزميات الترابط الزمني والمكاني (Temporal & Spatial Correlation) في معالجة تدفقات السجلات الضخمة.',
+          'تصميم قواعد الكشف المفتوحة المعيارية باستخدام صيغ سيغما (Sigma Rules) ومطابقة مؤشرات الاختراق (IOCs).',
+          'تطبيق مصفوفة ميتري للأطر الهجومية (MITRE ATT&CK Framework) لتصنيف تكتيكات وتقنيات المهاجمين.',
+        ],
+        theoreticalConceptsEn: [
+          'Temporal and spatial event correlation algorithms in high-throughput distributed log streaming.',
+          'Detection-as-Code engineering utilizing Sigma rule specifications and Indicators of Compromise (IOC) matching.',
+          'Tactics, Techniques, and Procedures (TTP) taxonomy mapping via the MITRE ATT&CK enterprise matrix.',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية الكشف عبر النافذة الزمنية المنزلقة (Sliding Window Thresholding): حساب معدل الأحداث عبر فترة زمنية محددة.',
+        algorithmicAnalysisEn: 'Sliding window event frequency algorithm: Detecting anomalies when count(EventID) in window W exceeds threshold T.',
+        researchAndDesignAspectsAr: [
+          'تحليل تطبيق خوارزميات التعلم الآلي للكشف عن السلوك الشاذ للمستخدمين والكيانات (UEBA).',
+          'استخبارات التهديدات السيبرانية (Cyber Threat Intelligence - CTI) وبروتوكولات تبادل البيانات (STIX/TAXII).',
+        ],
+        researchAndDesignAspectsEn: [
+          'User and Entity Behavior Analytics (UEBA) utilizing unsupervised clustering for anomaly detection.',
+          'Cyber Threat Intelligence (CTI) integration models using standardized STIX 2.1 and TAXII server feeds.',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مادة إدارة ومراقبة الأمن السيبراني لطلبة البكالوريوس والدراسات العليا (المرحلة الرابعة)',
+        academicTierEn: 'Cybersecurity Operations & Monitoring in Senior Undergraduate & Graduate syllabi',
+        vocationalTierAr: 'مادة إدارة مراكز العمليات وتحليل البيانات الأمنية في المعاهد التقنية',
+        vocationalTierEn: 'Security Operations & Log Analysis in Technical Institutes',
+        subjectMappingAr: 'مراكز العمليات الأمنية SOC / التحليل الأمني والإنذار المبكر',
+        subjectMappingEn: 'Security Operations Centers (SOC) / Security Analytics & Early Warning',
+        suggestedPrerequisitesAr: ['أنظمة التشغيل، شبكات الحاسوب، وبروتوكولات السجلات Syslog'],
+        suggestedPrerequisitesEn: ['Operating systems, computer networks, and Syslog logging architecture'],
+      },
+    },
     modules: [
       {
         id: 'mod-6-1',
@@ -186,6 +620,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 25,
     iconName: 'FileSearch',
     primarySimulationId: 'forensics',
+    iraqiSubjectNameAr: 'التحقيق الجنائي الرقمي والاستجابة للحوادث السيبرانية (DFIR)',
+    iraqiSubjectNameEn: 'Digital Forensics & Incident Response',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: جمع الأدلة الرقمية وسلسلة الحيازة وتحليل الصور الجنائية',
+        titleEn: 'Vocational Track: Evidence Acquisition, Chain of Custody & Artifact Triage',
+        practicalSkillsAr: [
+          'أخذ نسخة جنائية من الذاكرة العشوائية (RAM Dump) باستخدام أدوات متخصصة دون تلويث الأدلة.',
+          'حساب بصمة التجزئة (MD5 / SHA-256) الفورية للصورة الجنائية وتوثيقها في استمارة سلسلة الحيازة (Chain of Custody).',
+          'استخراج وفحص ملفات Prefetch ومفتاح تسجيل Run في ويندوز لمعرفة البرامج المنفذة حديثاً.',
+        ],
+        practicalSkillsEn: [
+          'Perform live RAM memory acquisition using trusted forensic tools without contaminating volatile data.',
+          'Compute immediate cryptographic verification hashes (MD5/SHA-256) and record chain-of-custody documentation.',
+          'Extract and parse Windows Prefetch artifacts and Registry Run keys to identify recently executed malware.',
+        ],
+        troubleshootingRunbookAr: [
+          'خطر فقدان البيانات المتطايرة: تطبيق ترتيب التطاير (Order of Volatility)؛ سحب الذاكرة RAM والاتصالات الشبكية أولاً قبل إيقاف تشغيل الجهاز.',
+          'عدم تطابق بصمة النسخة الجنائية: رفض الدليل الجنائي رقمياً وإعادة عملية التصوير الجنائي باستخدام جهاز كتابة محمي (Write Blocker).',
+        ],
+        troubleshootingRunbookEn: [
+          'Volatile data loss mitigation: Adhere strictly to Order of Volatility (capture RAM/network states before powering off).',
+          'Image verification failure: Invalidate compromised evidence image and re-acquire using hardware write-blockers.',
+        ],
+        labToolingAr: ['FTK Imager', 'Autopsy Forensic Browser', 'Volatility Framework', 'WinPmem'],
+        labToolingEn: ['FTK Imager', 'Autopsy Forensic Browser', 'Volatility Framework', 'WinPmem'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: تحليل الذاكرة العشوائية، هياكل أنظمة الملفات، والقبول القضائي',
+        titleEn: 'University Track: Memory Forensics, File System Internals & Legal Admissibility',
+        theoreticalConceptsAr: [
+          'بنية نظام الملفات NTFS وجداول الملفات الرئيسية (Master File Table - MFT) وسجلات المعاملات ($LogFile و $UsnJrnl).',
+          'تحليل الذاكرة المتقدم عبر أطر العمل البرمجية لاستخراج تراكيب النواة (EPROCESS Blocks و VAD Trees).',
+          'المعايير الدولية للأدلة الرقمية (ISO/IEC 27037) وشروط القبول القضائي للأدلة الرقمية في القضاء العراقي والدولي.',
+        ],
+        theoreticalConceptsEn: [
+          'NTFS file system architecture, Master File Table (MFT) record parsing, and journal analysis ($LogFile, $UsnJrnl).',
+          'Advanced memory forensics: Reconstructing kernel structures (EPROCESS blocks and Virtual Address Descriptor trees).',
+          'Digital evidence standards (ISO/IEC 27037) and legal admissibility criteria in judicial jurisprudence.',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية إعادة بناء الخط الزمني للحادثة (Timeline Reconstruction Algorithm): دمج طوابع MACB الزمنية.',
+        algorithmicAnalysisEn: 'Timeline Reconstruction Algorithm: Merging and normalizing Modified-Accessed-Created-Born (MACB) timestamps.',
+        researchAndDesignAspectsAr: [
+          'تقنيات مكافحة التحقيق الجنائي (Anti-Forensics) وكيفية كشف إخفاء البيانات (Steganography) ومسح السجلات (Timestomping).',
+          'التحقيق الجنائي في البيئات السحابية والحاويات الافتراضية سريعة الزوال (Ephemeral Container Forensics).',
+        ],
+        researchAndDesignAspectsEn: [
+          'Anti-forensics detection methodologies: Uncovering timestamp manipulation (timestomping) and log wiping artifacts.',
+          'Forensic challenges in ephemeral cloud microservices and serverless execution environments.',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مادة الأدلة الجنائية الرقمية في كليات علوم الحاسوب وتكنولوجيا المعلومات (المرحلة الرابعة)',
+        academicTierEn: 'Digital Forensics Course in Computer Science & IT Colleges (Year 4)',
+        vocationalTierAr: 'مادة الاستجابة للحوادث والأمن الجنائي في المعاهد التخصصية',
+        vocationalTierEn: 'Incident Response & Cybersecurity Forensics in Specialized Institutes',
+        subjectMappingAr: 'التحقيق الجنائي الرقمي / الأدلة الإلكترونية والاستجابة للحوادث',
+        subjectMappingEn: 'Digital Forensics / Electronic Evidence & Incident Handling',
+        suggestedPrerequisitesAr: ['أنظمة التشغيل، تراكيب الملفات، وأمن المعلومات المتقدم'],
+        suggestedPrerequisitesEn: ['Operating systems, file system structures, and advanced information security'],
+      },
+    },
     modules: [
       {
         id: 'mod-7-1',
@@ -208,6 +704,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 25,
     iconName: 'Workflow',
     primarySimulationId: 'devsecops',
+    iraqiSubjectNameAr: 'أمن البرمجيات وتطبيقات الويب وخطوط التطوير الآمنة (AppSec & DevSecOps)',
+    iraqiSubjectNameEn: 'Web Application Security & DevSecOps',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: فحص ثغرات الويب وإدماج أدوات الفحص في خطوط النشر',
+        titleEn: 'Vocational Track: Web Vulnerability Assessment & Automated CI/CD Gates',
+        practicalSkillsAr: [
+          'فحص واجهات الويب واكتشاف ثغرات حقن SQL (SQLi) وهجمات XSS باستخدام استعلامات آمنة ومُعاملة (Parameterized Queries).',
+          'تأمين مفاتيح API وبيانات الاعتماد ومنع تخزينها كودياً داخل مستودعات Git (Secrets Scanning).',
+          'دمج أدوات الفحص الساكن (SAST) وفحص التبعيات (SCA) داخل خطوط التطوير والبناء الآلي (GitLab CI / GitHub Actions).',
+        ],
+        practicalSkillsEn: [
+          'Test web endpoints for SQL Injection (SQLi) and XSS flaws, mitigating them with parameterized prepared statements.',
+          'Secure API keys and credentials, preventing hardcoded secret leakage in Git repositories via automated hooks.',
+          'Integrate Static Application Security Testing (SAST) and Software Composition Analysis (SCA) into CI/CD pipelines.',
+        ],
+        troubleshootingRunbookAr: [
+          'فشل البناء في CI/CD بسبب ثغرة عالية الخطورة: فحص تقرير الفاحص الأمني وتحديث المكتبة المصابة أو تطبيق حل ترقيعي فوري.',
+          'اكتشاف مفتاح سري مسرب في Git: إلغاء وتدوير المفتاح فوراً (Rotate Secret) ومسح السجل عبر git-filter-repo.',
+        ],
+        troubleshootingRunbookEn: [
+          'Pipeline build break due to critical vulnerability: Triage SAST report and patch/upgrade dependencies.',
+          'Leaked secret in git history: Immediately revoke/rotate credentials and sanitize commit history via git-filter-repo.',
+        ],
+        labToolingAr: ['OWASP ZAP / Burp Suite Community', 'Semgrep / SonarQube', 'TruffleHog / GitGuardian'],
+        labToolingEn: ['OWASP ZAP / Burp Suite Community', 'Semgrep / SonarQube', 'TruffleHog / GitGuardian'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: هندسة البرمجيات الآمنة، نمذجة التهديدات، وتحليل الشفرة البرمجية',
+        titleEn: 'University Track: Secure Software Engineering, Threat Modeling & Code Analysis',
+        theoreticalConceptsAr: [
+          'دورة حياة تطوير البرمجيات الآمنة (Secure SDLC) وتطبيق نموذج STRIDE لنمذجة التهديدات في مرحلة التصميم.',
+          'التحليل الساكن لتدفق البيانات (Taint Analysis & Abstract Syntax Trees - AST) لتتبع المدخلات غير الموثوقة.',
+          'تصنيف ثغرات OWASP Top 10 ومعايير CWE (Common Weakness Enumeration) وأمان واجهات البرمجة REST/GraphQL.',
+        ],
+        theoreticalConceptsEn: [
+          'Secure Software Development Lifecycle (SSDLC) governance and architectural threat modeling via STRIDE.',
+          'Static taint analysis and Abstract Syntax Tree (AST) evaluation for untrusted input tracing to sinks.',
+          'OWASP Top 10 vulnerability classification, Common Weakness Enumeration (CWE), and API security specifications.',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية تحليل التلوث البرمجي (Taint Flow Propagation): التحقق من مرور كل مدخل خارجي عبر دالة تعقيم آمنة قبل الوصول لمصرف البيانات.',
+        algorithmicAnalysisEn: 'Taint Analysis Dataflow Algorithm: Proving all source-to-sink paths traverse sanitization sanitizers.',
+        researchAndDesignAspectsAr: [
+          'تحليل أمان سلاسل توريد البرمجيات (Software Supply Chain Security) والتوقيع الرقمي للحزم (Sigstore / Cosign).',
+          'بنية قائمة مكونات البرمجيات (Software Bill of Materials - SBOM / CycloneDX) وإدارة مخاطر المصادر المفتوحة.',
+        ],
+        researchAndDesignAspectsEn: [
+          'Software supply chain integrity assurance: Cryptographic artifact signing with Sigstore and Cosign.',
+          'Software Bill of Materials (SBOM) generation standards (CycloneDX / SPDX) and third-party risk governance.',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مادة أمن البرمجيات وتطبيقات الويب لطلبة هندسة البرمجيات وتكنولوجيا المعلومات (المرحلة الثالثة والرابعة)',
+        academicTierEn: 'Software Security & Web AppSec for Software Engineering & IT (Year 3/4)',
+        vocationalTierAr: 'مادة تصميم وبرمجة وتأمين مواقع الويب في المعاهد التقنية',
+        vocationalTierEn: 'Web Development & Security in Technical Institutes',
+        subjectMappingAr: 'أمن البرمجيات / أمن تطبيقات الويب وقواعد البيانات',
+        subjectMappingEn: 'Software Security / Web Application & Database Defense',
+        suggestedPrerequisitesAr: ['برمجة الويب (HTML, JS, Backend) وقواعد البيانات SQL'],
+        suggestedPrerequisitesEn: ['Web development fundamentals (HTML, JS, Backend) and SQL relational databases'],
+      },
+    },
     modules: [
       {
         id: 'mod-8-1',
@@ -230,6 +788,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 30,
     iconName: 'Cloud',
     primarySimulationId: 'threat_hunting',
+    iraqiSubjectNameAr: 'أمن البنى السحابية والحاويات واصطياد التهديدات (Cloud, Containers & Threat Hunting)',
+    iraqiSubjectNameEn: 'Cloud Infrastructure, Containers & Threat Hunting',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: تأمين حاويات Docker وسياسات عزل Kubernetes وإدارة IAM',
+        titleEn: 'Vocational Track: Docker Hardening, Kubernetes NetworkPolicy & Cloud IAM',
+        practicalSkillsAr: [
+          'بناء صور حاويات آمنة تعمل بدون امتيازات الجذر (Non-root user) وفحص الثغرات باستخدام Trivy.',
+          'تطبيق سياسات شبكة Kubernetes (NetworkPolicy) لعزل الاتصال بين كبسولات التطبيق وقواعد البيانات.',
+          'مراجعة وتطبيق الامتياز الأدنى على حسابات الخدمة السحابية (IAM Roles & Service Accounts) لمنع الوصول غير المصرح.',
+        ],
+        practicalSkillsEn: [
+          'Build hardened, minimal container images executing as non-root users, scanned via Trivy for CVEs.',
+          'Deploy Kubernetes NetworkPolicy manifests to isolate inter-pod communication and protect database backends.',
+          'Audit and enforce least-privilege IAM policies on cloud service accounts to prevent privilege escalation.',
+        ],
+        troubleshootingRunbookAr: [
+          'توقف اتصال الحاويات ببعضها بعد تطبيق NetworkPolicy: فحص مطابقة محددات التسمية (podSelector / matchLabels) ومنافذ الخدمة المسموحة.',
+          'الاشتباه في اختراق الحاوية: فحص سجلات تدقيق Kubernetes ومقارنة تجزئة العمليات العاملة بالصورة الأصلية.',
+        ],
+        troubleshootingRunbookEn: [
+          'Pod communication failure post-NetworkPolicy: Verify podSelector labels and ingress/egress port allowances.',
+          'Suspected container compromise: Inspect Kubernetes audit logs and diff running processes against pristine image.',
+        ],
+        labToolingAr: ['Docker CLI / Podman', 'Kubectl & Minikube', 'Trivy Container Scanner', 'AWS CLI / CloudTrail'],
+        labToolingEn: ['Docker CLI / Podman', 'Kubectl & Minikube', 'Trivy Container Scanner', 'AWS CLI / CloudTrail'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: عزل أنوية لينكس، أمن الأنظمة الموزعة وصيد التهديدات الاستباقي',
+        titleEn: 'University Track: Kernel Namespaces, Distributed Cloud Security & Threat Hunting',
+        theoreticalConceptsAr: [
+          'آليات عزل أنوية لينكس للحاويات: مساحات الأسماء (Namespaces: PID, NET, MNT, IPC, UTS) ومجموعات التحكم (cgroups).',
+          'معمارية التحكم في الوصول القائمة على الأدوار (RBAC) في كوبرنيتيس ونموذج انعدام الثقة (Zero Trust Architecture - NIST SP 800-207).',
+          'منهجية صيد التهديدات الاستباقية (Threat Hunting Methodology): صياغة الفرضيات، جمع القرائن، وتأكيد أو نفي الاختراق.',
+        ],
+        theoreticalConceptsEn: [
+          'Linux kernel containerization primitives: Namespaces (PID, NET, MNT, IPC, UTS) and Control Groups (cgroups).',
+          'Kubernetes API Server security architecture, RBAC authorization, and Zero Trust Architecture (NIST SP 800-207).',
+          'Proactive threat hunting methodology: Hypothesis formulation, telemetry baseline deviation, and adversary attribution.',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية تقييم سياسات الوصول السحابية (IAM Policy Evaluation Engine): المنع الصريح يسبق أي سماح (Explicit Deny Overrides Allow).',
+        algorithmicAnalysisEn: 'IAM Policy Evaluation Logic: Deterministic evaluation tree where explicit DENY supersedes any permissive ALLOW.',
+        researchAndDesignAspectsAr: [
+          'تحليل تقنيات الهروب من الحاويات (Container Breakout Primitives) واستغلال ثغرات قدرات النواة (Linux Capabilities).',
+          'بناء منصات صيد التهديدات في البيئات السحابية الهجينة والتعامل مع السجلات الموزعة الضخمة.',
+        ],
+        researchAndDesignAspectsEn: [
+          'Container breakout primitives analysis: Exploiting excess Linux capabilities (CAP_SYS_ADMIN) and dirty COW vectors.',
+          'Threat hunting at cloud scale: High-volume telemetry stream ingestion and behavioral anomaly clustering.',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مادة الحوسبة السحابية وأمن النظم الموزعة لطلبة السنة الأخيرة والدراسات العليا',
+        academicTierEn: 'Cloud Computing & Distributed Systems Security in Senior & Graduate programs',
+        vocationalTierAr: 'مادة الحوسبة السحابية الافتراضية وإدارة الخوادم في المعاهد التقنية',
+        vocationalTierEn: 'Virtualization & Cloud Computing Administration in Technical Institutes',
+        subjectMappingAr: 'أمن الحوسبة السحابية / النظم الموزعة وصيد التهديدات المتقدمة',
+        subjectMappingEn: 'Cloud Security / Distributed Systems & Advanced Threat Hunting',
+        suggestedPrerequisitesAr: ['أنظمة تشغيل متقدمة، أمن الشبكات، وأساسيات إدارة الخوادم الافتراضية'],
+        suggestedPrerequisitesEn: ['Advanced operating systems, network security, and virtualization fundamentals'],
+      },
+    },
     modules: [
       {
         id: 'mod-9-1',
@@ -252,6 +872,68 @@ export const CURRICULUM_LEVELS: CurriculumLevel[] = [
     estimatedMinutes: 35,
     iconName: 'Building',
     primarySimulationId: 'range',
+    iraqiSubjectNameAr: 'المشروع التطبيقي الشامل والميدان السيبراني (Cyber Range Capstone)',
+    iraqiSubjectNameEn: 'Enterprise Cyber Range & Capstone Defense',
+    trackAdaptation: {
+      vocationalFocus: {
+        titleAr: 'المسار المهني: الاستجابة الميدانية السريعة وعزل الهجمات وإعادة تشغيل الخدمات',
+        titleEn: 'Vocational Track: Rapid Incident Containment & Critical Infrastructure Recovery',
+        practicalSkillsAr: [
+          'تنفيذ بروتوكول عزل الأجهزة المصابة عن الشبكة المؤسسية دون إيقاف تشغيلها للحفاظ على الأدلة.',
+          'تحديث قواعد جدار الحماية فورياً لحظر خوادم القيادة والسيطرة (C2 Servers) للمهاجم.',
+          'استعادة الخدمات الحيوية من النسخ الاحتياطية النظيفة والتحقق من سلامة قواعد البيانات.',
+        ],
+        practicalSkillsEn: [
+          'Execute immediate network isolation protocols for compromised nodes while maintaining volatile forensic state.',
+          'Deploy hot firewall rules to block adversarial Command and Control (C2) communication channels.',
+          'Restore critical business services from authenticated offline backups and verify database consistency.',
+        ],
+        troubleshootingRunbookAr: [
+          'هجوم فدية نشط (Active Ransomware): عزل مقاطع الشبكة المتأثرة فوراً عبر تعطيل منافذ المبدل (Switch Port Shutdown) وإيقاف خوادم التخزين المشترك SMB.',
+          'اختراق حساب مسؤول النطاق (Compromised Domain Admin): تدوير مفتاح krbtgt مرتين وإعادة تعيين كلمات مرور الحسابات الإدارية وتفعيل المصادقة متعددة العوامل MFA.',
+        ],
+        troubleshootingRunbookEn: [
+          'Active ransomware containment: Sever network VLANs immediately via switch port shutdown and disable SMB file shares.',
+          'Compromised Domain Admin triage: Reset krbtgt password twice, force administrative credential rotation, and mandate MFA.',
+        ],
+        labToolingAr: ['Enterprise Cyber Range Interface', 'Full Telemetry Dashboards', 'Firewall / Switch CLI', 'AD Administration'],
+        labToolingEn: ['Enterprise Cyber Range Interface', 'Full Telemetry Dashboards', 'Firewall / Switch CLI', 'AD Administration'],
+      },
+      academicDepth: {
+        titleAr: 'المسار الجامعي: تقييم المناعة السيبرانية، تحليل سلاسل الهجوم، والتصميم المعماري الصامد',
+        titleEn: 'University Track: Cyber Resilience Metrics, Attack Graph Analysis & Resilient Architecture',
+        theoreticalConceptsAr: [
+          'نمذجة سلاسل القتل السيبراني (Cyber Kill Chain) ومصفوفة ميتري لإعادة بناء تسلسل الهجوم متعدد المراحل.',
+          'حساب مقاييس الصمود السيبراني (Mean Time to Detect - MTTD و Mean Time to Respond - MTTR).',
+          'تصميم البنى التحتية الحرجة المقاومة للكوارث (Cyber Resilient Architecture) والتعافي من الهجمات المعقدة.',
+        ],
+        theoreticalConceptsEn: [
+          'Multi-stage intrusion modeling synthesizing Lockheed Martin Cyber Kill Chain and MITRE ATT&CK kill-chains.',
+          'Quantitative cyber resilience telemetry: Mean Time to Detect (MTTD), Mean Time to Remediate (MTTR), and blast-radius metrics.',
+          'Critical national infrastructure survivability design and formal cyber-resilient architectural synthesis.',
+        ],
+        algorithmicAnalysisAr: 'خوارزمية مسارات الهجوم في الرسوم البيانية (Attack Graph Reachability Algorithm): حساب أقصر مسار يمكن للمهاجم استغلاله للوصول للمحطة الحيوية.',
+        algorithmicAnalysisEn: 'Attack Graph Reachability Algorithm: Finding shortest topological paths from perimeter breach to crown jewels.',
+        researchAndDesignAspectsAr: [
+          'دراسة وتصميم أنظمة الخداع السيبراني التفاعلية (Cyber Deception & Honeypots) للإيقاع بالمهاجمين المتقدمين.',
+          'تقييم أثر الهجمات السيبرانية على الأمن القومي والبنى التحتية الوطنية الحيوية (الطاقة، الاتصالات، والخدمات المصرفية).',
+        ],
+        researchAndDesignAspectsEn: [
+          'Next-generation active cyber deception architectures and distributed honeypot instrumentation.',
+          'National cyber defense strategy synthesis: Protecting critical national infrastructure (energy, banking, healthcare).',
+        ],
+      },
+      iraqiCurriculumContext: {
+        academicTierAr: 'مشروع التخرج العملي والميدان السيبراني التكاملي لطلبة السنة الرابعة في كليات الهندسة وتقنية المعلومات',
+        academicTierEn: 'Senior Capstone Graduation Project & Comprehensive Cyber Range in Engineering & IT Colleges (Year 4)',
+        vocationalTierAr: 'مشروع التخرج التطبيقي والتدريب الميداني لطلبة المعاهد التقنية',
+        vocationalTierEn: 'Applied Capstone Project & Practicum in Technical Institutes',
+        subjectMappingAr: 'مشروع التخرج السيبراني / الميدان والمختبر التطبيقي المتقدم',
+        subjectMappingEn: 'Cybersecurity Capstone / Advanced Simulation Range',
+        suggestedPrerequisitesAr: ['اجتياز جميع المستويات السابقة من 0 إلى 9 بنجاح'],
+        suggestedPrerequisitesEn: ['Successful completion of all prerequisite levels (Level 0 through Level 9)'],
+      },
+    },
     modules: [
       {
         id: 'mod-10-1',
@@ -276,6 +958,9 @@ export const CURRICULUM_MILESTONES: CurriculumMilestone[] = CURRICULUM_LEVELS.ma
   iconName: lvl.iconName,
   primarySimulationId: lvl.primarySimulationId,
   lessonIds: lvl.modules.flatMap((m) => m.lessonIds),
+  iraqiSubjectNameAr: lvl.iraqiSubjectNameAr,
+  iraqiSubjectNameEn: lvl.iraqiSubjectNameEn,
+  trackAdaptation: lvl.trackAdaptation,
 }));
 
 export const CURRICULUM_LESSONS: Record<string, CurriculumLesson> = {
@@ -290,6 +975,8 @@ export const CURRICULUM_LESSONS: Record<string, CurriculumLesson> = {
     estimatedMinutes: 10,
     simulationId: 'cia_triad',
     challengeId: 'cia-balance-challenge',
+    track: 'common',
+    relatedSimulationIds: ['landing', 'cia_triad'],
     prerequisites: [
       {
         textAr: 'قدرة أساسية على استخدام المتصفح والفأرة.',
@@ -427,6 +1114,8 @@ export const CURRICULUM_LESSONS: Record<string, CurriculumLesson> = {
     estimatedMinutes: 15,
     simulationId: 'subnet_routing',
     challengeId: 'subnet-routing-challenge',
+    track: 'common',
+    relatedSimulationIds: ['ipv4', 'subnetting', 'arp', 'subnet_routing'],
     prerequisites: [
       {
         textAr: 'القدرة على إجراء العمليات الحسابية البسيطة (الجمع والضرب).',
@@ -570,6 +1259,8 @@ export const CURRICULUM_LESSONS: Record<string, CurriculumLesson> = {
     estimatedMinutes: 18,
     simulationId: 'subnet_routing',
     challengeId: 'subnet-routing-challenge',
+    track: 'common',
+    relatedSimulationIds: ['subnetting', 'ipv4', 'subnet_routing'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس الأول: عناوين IPv4 والمنطق الثنائي.',
@@ -723,6 +1414,8 @@ export const CURRICULUM_LESSONS: Record<string, CurriculumLesson> = {
     estimatedMinutes: 12,
     simulationId: 'cia_triad',
     challengeId: 'cia-balance-challenge',
+    track: 'common',
+    relatedSimulationIds: ['cia_triad', 'firewall', 'crypto'],
     prerequisites: [
       {
         textAr: 'معرفة أساسية بأساسيات الحاسوب واستخدام المتصفح.',
@@ -959,6 +1652,8 @@ To organize security defenses, professionals use the CIA Triad:
     simulationId: 'system_internals',
     worldId: 2,
     challengeId: 'internals-memory-challenge',
+    track: 'common',
+    relatedSimulationIds: ['system_internals', 'linux', 'windows'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس الأول: ثالوث الحماية الأساسي (CIA Triad).',
@@ -1134,6 +1829,8 @@ To prevent this, CPUs enforce strict rings of protection:
     simulationId: 'subnet_routing',
     worldId: 3,
     challengeId: 'subnet-routing-challenge',
+    track: 'common',
+    relatedSimulationIds: ['subnet_routing', 'routing', 'switching', 'tcp', 'udp', 'dhcp', 'dns', 'ports_services'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس 2: التقسيم الفرعي وقناع البادئة CIDR.',
@@ -1311,6 +2008,8 @@ The shipping box is the packet, the sender address is the source IP, the recipie
     simulationId: 'firewall',
     worldId: 4,
     challengeId: 'firewall-rule-mastery',
+    track: 'common',
+    relatedSimulationIds: ['firewall', 'vlan', 'nat', 'ports_services'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس 3: الشبكات وتوجيه الحزم.',
@@ -1488,6 +2187,8 @@ The officer inspects your ticket and boarding pass; if you have a valid pass you
     simulationId: 'crypto',
     worldId: 5,
     challengeId: 'crypto-avalanche-challenge',
+    track: 'common',
+    relatedSimulationIds: ['crypto', 'tls'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس 4: جدران الحماية وقواعد الفحص.',
@@ -1663,6 +2364,8 @@ Your fingerprint uniquely proves your identity, but nobody can take a fingerprin
     simulationId: 'active_directory',
     worldId: 6,
     challengeId: 'kerberos-ticket-challenge',
+    track: 'common',
+    relatedSimulationIds: ['active_directory', 'windows', 'zero_trust'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس 5: مقدمة إلى التشفير ودوال التجزئة.',
@@ -1842,6 +2545,8 @@ You purchase a master wristband at the front gate (your TGT). Then, whenever you
     simulationId: 'soc',
     worldId: 7,
     challengeId: 'brute-force-triage-challenge',
+    track: 'common',
+    relatedSimulationIds: ['soc', 'siem', 'threat_hunting'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس 6: إدارة الهويات وActive Directory.',
@@ -2015,6 +2720,8 @@ Cameras record 24/7 (like raw system logs), and smart alarms ping the guard room
     simulationId: 'forensics',
     worldId: 8,
     challengeId: 'forensics-root-cause-challenge',
+    track: 'common',
+    relatedSimulationIds: ['forensics', 'soc', 'system_internals'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس 7: مركز العمليات الأمنية SOC.',
@@ -2190,6 +2897,8 @@ Investigators wear gloves to avoid contaminating evidence and photograph everyth
     simulationId: 'devsecops',
     worldId: 9,
     challengeId: 'secure-pipeline-challenge',
+    track: 'common',
+    relatedSimulationIds: ['devsecops', 'http', 'appsec_api', 'containers'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس 8: التحقيق الجنائي الرقمي.',
@@ -2369,6 +3078,8 @@ Rather than waiting for a car to crash on the highway to notice bad brakes, auto
     simulationId: 'threat_hunting',
     worldId: 28,
     challengeId: 'cloud-threat-hunting-challenge',
+    track: 'common',
+    relatedSimulationIds: ['threat_hunting', 'cloud', 'containers', 'zero_trust'],
     prerequisites: [
       {
         textAr: 'إكمال الدرس 8: أمن التطبيقات وخطوط DevSecOps.',
@@ -2547,6 +3258,9 @@ Like a wilderness ranger who doesn't wait for alarm sirens but actively searches
     estimatedMinutes: 25,
     simulationId: 'range',
     worldId: 60,
+    challengeId: 'nexora_master',
+    track: 'common',
+    relatedSimulationIds: ['range', 'nexora_master', 'soc', 'active_directory', 'firewall'],
     prerequisites: [
       {
         textAr: 'إكمال كافة الدروس السابقة من 0 إلى 9.',
