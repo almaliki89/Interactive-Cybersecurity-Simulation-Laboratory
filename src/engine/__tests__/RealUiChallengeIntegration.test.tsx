@@ -1409,7 +1409,12 @@ describe('OMEGA MAX — Real UI Component Integration & Challenge Lifecycle Suit
             summaryAr: 'ربط كامل لسلسلة الهجوم العابرة للنطاقات',
             severity: 'critical',
             eventIds: [masterEvents[0].id, masterEvents[1].id, masterEvents[2].id, masterEvents[3].id],
-            rawEventIds: ['r0', 'r1', 'r2', 'r3'],
+            rawEventIds: [
+              masterEvents[0].rawEventId || masterEvents[0].id,
+              masterEvents[1].rawEventId || masterEvents[1].id,
+              masterEvents[2].rawEventId || masterEvents[2].id,
+              masterEvents[3].rawEventId || masterEvents[3].id,
+            ],
             entityRefs: [],
             confidence: 'HIGH',
             confidenceScore: 95,
@@ -1458,7 +1463,7 @@ describe('OMEGA MAX — Real UI Component Integration & Challenge Lifecycle Suit
             handoffId: 'SOC-MASTER-1',
             huntId: 'HUNT-MASTER',
             findingId: 'FIND-HUNT-MASTER-1',
-            rawEventIds: ['r0', 'r1'],
+            rawEventIds: [masterEvents[0].rawEventId || masterEvents[0].id, masterEvents[1].rawEventId || masterEvents[1].id],
             eventIds: [masterEvents[0].id, masterEvents[1].id],
             summaryEn: 'Dispatched Master Campaign Incident',
             summaryAr: 'إحالة حادثة التحقيق الشامل',
@@ -1473,7 +1478,7 @@ describe('OMEGA MAX — Real UI Component Integration & Challenge Lifecycle Suit
             huntId: 'HUNT-MASTER',
             caseId: 'CASE-NEXORA-MASTER-001',
             findingId: 'FIND-HUNT-MASTER-1',
-            rawEventIds: ['r0', 'r1'],
+            rawEventIds: [masterEvents[0].rawEventId || masterEvents[0].id, masterEvents[1].rawEventId || masterEvents[1].id],
             acquiredAtVirtualTime: 130,
             evidenceList: [
               {
@@ -1537,6 +1542,208 @@ describe('OMEGA MAX — Real UI Component Integration & Challenge Lifecycle Suit
       });
 
       expect(useThreatHuntingStore.getState().executedQueriesByHunt['HUNT-01']).toContain('sourceWorld = WINDOWS');
+    });
+
+    it('6.6 OMEGA MAX Master Investigation Integrity & Evidence Hardening Regression Tests', () => {
+      const masterScenario = HUNT_SCENARIOS['HUNT-MASTER'];
+      const masterEvents = masterScenario.events;
+
+      const baseValidMasterState = {
+        hunt: masterScenario.hunt,
+        hypothesis: { ...masterScenario.hypothesis, status: 'SUPPORTED' as const },
+        findings: [
+          {
+            id: 'FIND-HUNT-MASTER-1',
+            huntId: 'HUNT-MASTER',
+            titleEn: 'Cross-World Operation Nexus Breach Chain',
+            titleAr: 'سلسلة اختراق عملية نيكسورا عابرة العوالم',
+            summaryEn: 'Full cross-domain attack chain correlated',
+            summaryAr: 'ربط كامل لسلسلة الهجوم العابرة للنطاقات',
+            severity: 'critical' as const,
+            eventIds: [masterEvents[0].id, masterEvents[1].id, masterEvents[2].id, masterEvents[3].id],
+            rawEventIds: [
+              masterEvents[0].rawEventId || masterEvents[0].id,
+              masterEvents[1].rawEventId || masterEvents[1].id,
+              masterEvents[2].rawEventId || masterEvents[2].id,
+              masterEvents[3].rawEventId || masterEvents[3].id,
+            ],
+            entityRefs: [],
+            confidence: 'HIGH' as const,
+            confidenceScore: 95,
+            confidenceBreakdown: { signalCountScore: 30, correlationStrengthScore: 25, intelMatchesScore: 25, sourceDiversityScore: 15 },
+            status: 'VALIDATED' as const,
+            whyEn: 'Correlated across domains',
+            whyAr: 'ربط عبر النطاقات',
+            createdAtVirtualTime: 100,
+          },
+        ],
+        detections: [
+          {
+            id: 'DET-HUNT-MASTER-1',
+            huntId: 'HUNT-MASTER',
+            nameEn: 'Master Rule',
+            nameAr: 'قاعدة شاملة',
+            descriptionEn: 'Detects APT',
+            descriptionAr: 'كشف الهجوم',
+            severity: 'HIGH' as const,
+            dataSources: ['WINDOWS', 'CLOUD'] as any,
+            conditions: [],
+            mitreTechniques: ['T1110'],
+            status: 'VALIDATED' as const,
+            ruleType: 'SINGLE_EVENT' as const,
+            createdAtVirtualTime: 0,
+          },
+        ],
+        detectionResults: {
+          'DET-HUNT-MASTER-1': {
+            ruleId: 'DET-HUNT-MASTER-1',
+            totalEvaluated: 50,
+            matchedEventIds: [masterEvents[0].id],
+            truePositives: 1,
+            falsePositives: 0,
+            benignMatches: [],
+            maliciousMatches: [masterEvents[0].id],
+            precision: 1.0,
+            recall: 1.0,
+            isValid: true,
+            tuningAdviceEn: 'Tuned',
+            tuningAdviceAr: 'مضبوطة',
+          },
+        },
+        socHandoffs: [
+          {
+            handoffId: 'SOC-HANDOFF-HUNT-MASTER-1',
+            huntId: 'HUNT-MASTER',
+            findingId: 'FIND-HUNT-MASTER-1',
+            rawEventIds: [masterEvents[0].rawEventId || masterEvents[0].id, masterEvents[1].rawEventId || masterEvents[1].id],
+            eventIds: [masterEvents[0].id, masterEvents[1].id],
+            summaryEn: 'Dispatched Master Campaign Incident',
+            summaryAr: 'إحالة حادثة التحقيق الشامل',
+            priority: 'P1_CRITICAL' as const,
+            timestampVirtual: 120,
+            status: 'DISPATCHED' as const,
+          },
+        ],
+        forensicsHandoffs: [
+          {
+            handoffId: 'FOR-HANDOFF-HUNT-MASTER-1',
+            huntId: 'HUNT-MASTER',
+            caseId: 'CASE-NEXORA-MASTER-001',
+            findingId: 'FIND-HUNT-MASTER-1',
+            rawEventIds: [masterEvents[0].rawEventId || masterEvents[0].id, masterEvents[1].rawEventId || masterEvents[1].id],
+            acquiredAtVirtualTime: 130,
+            evidenceList: [
+              {
+                id: 'EVD-01',
+                type: 'LOG_EXPORT' as const,
+                sourceHost: 'FIN-WS-01',
+                sourceUser: 'sara',
+                acquiredAtVirtualTime: 100,
+                originalHash: 'hash1',
+                currentHash: 'hash1',
+                preserved: true,
+                integrityStatus: 'VERIFIED' as const,
+                metadata: {},
+              },
+              {
+                id: 'EVD-02',
+                type: 'LOG_EXPORT' as const,
+                sourceHost: 'DC-01',
+                sourceUser: 'admin',
+                acquiredAtVirtualTime: 110,
+                originalHash: 'hash2',
+                currentHash: 'hash2',
+                preserved: true,
+                integrityStatus: 'VERIFIED' as const,
+                metadata: {},
+              },
+            ],
+          },
+        ],
+        executedQueries: ['sourceWorld = WINDOWS', 'sourceWorld = CLOUD'],
+        telemetryEvents: masterEvents,
+      };
+
+      // Sanity check: valid state passes
+      expect(ThreatHuntValidator.validateMasterChallenge(baseValidMasterState).success).toBe(true);
+
+      // Case 1: Conflicting explicit huntId on finding (huntId: 'HUNT-01', id: 'FIND-HUNT-MASTER-1')
+      const invalidFindingOwnership = {
+        ...baseValidMasterState,
+        findings: [
+          {
+            ...baseValidMasterState.findings[0],
+            huntId: 'HUNT-01', // Conflicting explicit huntId!
+          },
+        ],
+      };
+      expect(ThreatHuntValidator.validateMasterChallenge(invalidFindingOwnership).success).toBe(false);
+
+      // Case 2: Duplicate event IDs resulting in < 4 distinct events
+      const duplicateEventsState = {
+        ...baseValidMasterState,
+        findings: [
+          {
+            ...baseValidMasterState.findings[0],
+            eventIds: [masterEvents[0].id, masterEvents[1].id, masterEvents[0].id, masterEvents[1].id], // Only 2 distinct events!
+          },
+        ],
+      };
+      expect(ThreatHuntValidator.validateMasterChallenge(duplicateEventsState).success).toBe(false);
+
+      // Case 3: Conflicting explicit huntId on detection rule
+      const invalidRuleOwnership = {
+        ...baseValidMasterState,
+        detections: [
+          {
+            ...baseValidMasterState.detections[0],
+            huntId: 'HUNT-01', // Conflicting explicit huntId!
+          },
+        ],
+      };
+      expect(ThreatHuntValidator.validateMasterChallenge(invalidRuleOwnership).success).toBe(false);
+
+      // Case 4: Conflicting explicit huntId on SOC handoff
+      const invalidSocOwnership = {
+        ...baseValidMasterState,
+        socHandoffs: [
+          {
+            ...baseValidMasterState.socHandoffs[0],
+            huntId: 'HUNT-02', // Conflicting explicit huntId!
+          },
+        ],
+      };
+      expect(ThreatHuntValidator.validateMasterChallenge(invalidSocOwnership).success).toBe(false);
+
+      // Case 5: Conflicting explicit huntId on Forensics handoff
+      const invalidForOwnership = {
+        ...baseValidMasterState,
+        forensicsHandoffs: [
+          {
+            ...baseValidMasterState.forensicsHandoffs[0],
+            huntId: 'HUNT-03', // Conflicting explicit huntId!
+          },
+        ],
+      };
+      expect(ThreatHuntValidator.validateMasterChallenge(invalidForOwnership).success).toBe(false);
+
+      // Case 6: Forensics evidence with unverified integrity status
+      const unverifiedEvidenceState = {
+        ...baseValidMasterState,
+        forensicsHandoffs: [
+          {
+            ...baseValidMasterState.forensicsHandoffs[0],
+            evidenceList: [
+              baseValidMasterState.forensicsHandoffs[0].evidenceList[0],
+              {
+                ...baseValidMasterState.forensicsHandoffs[0].evidenceList[1],
+                integrityStatus: 'MISMATCH' as const, // TAMPERED EVIDENCE!
+              },
+            ],
+          },
+        ],
+      };
+      expect(ThreatHuntValidator.validateMasterChallenge(unverifiedEvidenceState).success).toBe(false);
     });
   });
 });

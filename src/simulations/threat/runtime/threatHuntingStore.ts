@@ -305,7 +305,7 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     const newFinding: HuntFinding = {
       ...findingData,
       id: findingId,
-      huntId: findingData.huntId || state.activeHuntId,
+      huntId: state.activeHuntId,
       createdAtVirtualTime: vTime,
       confidence: confidenceLevel,
       confidenceScore: totalConfidenceScore,
