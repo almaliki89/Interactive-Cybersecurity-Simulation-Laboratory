@@ -166,6 +166,7 @@ export interface DetectionConditionRule {
 
 export interface DetectionRule {
   id: string;
+  huntId?: string;
   nameEn: string;
   nameAr: string;
   descriptionEn: string;

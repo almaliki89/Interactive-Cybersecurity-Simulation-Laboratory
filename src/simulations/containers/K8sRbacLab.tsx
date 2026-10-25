@@ -143,6 +143,7 @@ export const K8sRbacLab: React.FC = () => {
 
             <button
               onClick={sanitizeRbac}
+              data-testid="btn-harden-k8s"
               className="px-3.5 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -150,8 +151,10 @@ export const K8sRbacLab: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setRoles(initialData.roles)}
-              className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              onClick={resetToVulnerable}
+              data-testid="btn-reset-k8s"
+              title={isAr ? 'إعادة التعيين للحالة الأولية' : 'Reset to Vulnerable Roles'}
+              className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
             </button>

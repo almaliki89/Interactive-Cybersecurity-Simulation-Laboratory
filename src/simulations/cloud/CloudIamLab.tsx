@@ -143,6 +143,7 @@ export const CloudIamLab: React.FC = () => {
 
           <button
             onClick={sanitizeAndHarden}
+            data-testid="btn-harden-iam"
             className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-950"
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -151,6 +152,7 @@ export const CloudIamLab: React.FC = () => {
 
           <button
             onClick={resetToVulnerable}
+            data-testid="btn-reset-iam"
             title={isAr ? 'إعادة التعيين للحالة الأولية' : 'Reset to Vulnerable State'}
             className="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
           >

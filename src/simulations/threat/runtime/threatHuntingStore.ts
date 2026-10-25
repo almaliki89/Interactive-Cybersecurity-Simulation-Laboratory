@@ -45,6 +45,7 @@ export interface ThreatHuntingState {
   currentQueryResult: QueryResult | null;
   queryHistory: QueryResult[];
   executedQueryStrings: string[];
+  executedQueriesByHunt: Record<string, string[]>;
 
   // Selection
   selectedEventId: string | null;
@@ -143,6 +144,7 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
   currentQueryResult: null,
   queryHistory: [],
   executedQueryStrings: [],
+  executedQueriesByHunt: {},
 
   selectedEventId: null,
   selectedEntity: null,
@@ -212,12 +214,20 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     const query = queryStr !== undefined ? queryStr : get().rawQueryString;
     const events = get().telemetryEvents;
     const result = ThreatHuntQueryEngine.execute(query, events);
+    const activeId = get().activeHuntId;
 
-    set((state) => ({
-      currentQueryResult: result,
-      queryHistory: [result, ...state.queryHistory.slice(0, 19)],
-      executedQueryStrings: Array.from(new Set([...state.executedQueryStrings, query])),
-    }));
+    set((state) => {
+      const prevHuntQueries = state.executedQueriesByHunt?.[activeId] || [];
+      return {
+        currentQueryResult: result,
+        queryHistory: [result, ...state.queryHistory.slice(0, 19)],
+        executedQueryStrings: Array.from(new Set([...state.executedQueryStrings, query])),
+        executedQueriesByHunt: {
+          ...(state.executedQueriesByHunt || {}),
+          [activeId]: Array.from(new Set([...prevHuntQueries, query])),
+        },
+      };
+    });
 
     return result;
   },
@@ -325,6 +335,7 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     const ruleId = `DET-${state.activeHuntId}-${state.detections.length + 1}`;
     const newRule: DetectionRule = {
       id: ruleId,
+      huntId: state.activeHuntId,
       ...ruleData,
       createdAtVirtualTime: 0,
     };

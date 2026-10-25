@@ -37,18 +37,19 @@ export class ThreatHuntValidator {
     const missingAr: string[] = [];
     const completedObjs: string[] = [];
 
-    // 1. Verify Hypothesis
-    if (state.hypothesis.status !== 'SUPPORTED') {
-      missingEn.push('Hypothesis must be supported by telemetry evidence.');
-      missingAr.push('يجب تأكيد الفرضية بالأدلة المستخلصة من السجلات.');
+    // 1. Verify Hypothesis belongs to active hunt and is supported
+    if (!state.hypothesis || state.hypothesis.huntId !== huntId || state.hypothesis.status !== 'SUPPORTED') {
+      missingEn.push('Hypothesis must belong to active hunt and be supported by telemetry evidence.');
+      missingAr.push('يجب أن تنتمي الفرضية للتحقيق النشط وتكون مؤكدة بأدلة السجلات.');
     } else {
       completedObjs.push('obj-hypothesis');
     }
 
-    // 2. Verify Query Execution
-    if (!state.executedQueries || state.executedQueries.length === 0) {
-      missingEn.push('Must execute at least one query against telemetry.');
-      missingAr.push('يجب تنفيذ استعلام واحد على الأقل ضد السجلات.');
+    // 2. Verify Query Execution for the active hunt
+    const huntQueries = (state.executedQueries || []).filter((q) => typeof q === 'string' && q.trim().length > 0);
+    if (huntQueries.length === 0) {
+      missingEn.push('Must execute at least one query against telemetry for the active hunt.');
+      missingAr.push('يجب تنفيذ استعلام واحد على الأقل ضد السجلات للتحقيق النشط.');
     } else {
       completedObjs.push('obj-query');
     }
@@ -74,24 +75,33 @@ export class ThreatHuntValidator {
       }
     }
 
-    // 4. Verify Detection Rule
+    // 4. Verify Detection Rule belongs to active hunt
     const validDetection = state.detections.find((d) => {
+      const belongsToHunt = d.huntId
+        ? d.huntId === huntId
+        : (d.id.includes(huntId) || !d.id.includes('HUNT-'));
+      if (!belongsToHunt) return false;
       const result = state.detectionResults[d.id];
       return result && result.isValid && result.truePositives >= 1 && result.falsePositives === 0;
     });
 
     if (!validDetection) {
-      missingEn.push('Must author and tune a detection rule with 0 false positives.');
-      missingAr.push('يجب تصميم وضبط قاعدة كشف تحقق 0 إنذارات كاذبة.');
+      missingEn.push('Must author and tune a detection rule for the active hunt with 0 false positives.');
+      missingAr.push('يجب تصميم وضبط قاعدة كشف للتحقيق النشط تحقق 0 إنذارات كاذبة.');
     } else {
       completedObjs.push('obj-detection');
     }
 
-    // 5. Verify SOC Handoff
-    const hasSocHandoff = state.socHandoffs.some((h) => h.huntId === huntId && h.eventIds.length >= 1);
-    if (!hasSocHandoff) {
-      missingEn.push('Must complete SOC Handoff for the verified threat finding.');
-      missingAr.push('يجب إتمام إحالة النتيجة المؤكدة إلى مركز العمليات SOC.');
+    // 5. Verify SOC Handoff for active hunt with valid telemetry events
+    const validHandoff = state.socHandoffs.find(
+      (h) =>
+        h.huntId === huntId &&
+        h.eventIds.length >= 1 &&
+        h.eventIds.every((id) => state.telemetryEvents.some((e) => e.id === id))
+    );
+    if (!validHandoff) {
+      missingEn.push('Must complete SOC Handoff with valid telemetry events for the active hunt.');
+      missingAr.push('يجب إتمام إحالة النتيجة المؤكدة مع أحداث سجلات صالحة إلى مركز العمليات SOC.');
     } else {
       completedObjs.push('obj-soc-handoff');
     }

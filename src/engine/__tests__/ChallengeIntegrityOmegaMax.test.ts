@@ -221,12 +221,16 @@ describe('OMEGA MAX — Challenge Integrity & Technical Validators', () => {
     it('rejects completing brute-force-triage-challenge when no user triage status has been recorded', () => {
       useSimulationStore.setState({ activeSimulationId: 'soc' });
 
+      const currentAlerts = [{ id: 'alert-1' }];
       const statuses: Record<string, string> = {}; // Empty user triage status
       registerChallengeValidator('brute-force-triage-challenge', () => {
-        const userTriagedCount = Object.values(statuses).filter(
-          (s) => s === 'TRIAGED' || s === 'CLOSED' || s === 'INVESTIGATING'
+        const currentAlertIds = new Set(currentAlerts.map((a) => a.id));
+        const validTriagedCount = Object.entries(statuses).filter(
+          ([alertId, status]) =>
+            currentAlertIds.has(alertId) &&
+            (status === 'TRIAGED' || status === 'CLOSED' || status === 'INVESTIGATING')
         ).length;
-        if (userTriagedCount > 0) {
+        if (validTriagedCount > 0) {
           return { success: true, score: 100, message: 'Triaged' };
         }
         return { success: false, score: 0, message: 'No triage action' };
@@ -241,15 +245,79 @@ describe('OMEGA MAX — Challenge Integrity & Technical Validators', () => {
       expect(useSimulationStore.getState().completedChallenges).not.toContain('brute-force-triage-challenge');
     });
 
-    it('completes brute-force-triage-challenge when user explicitly records triage status', () => {
+    it('rejects completing brute-force-triage-challenge when status contains a stale alert not in active queue', () => {
       useSimulationStore.setState({ activeSimulationId: 'soc' });
 
+      const currentAlerts = [{ id: 'alert-current-real' }];
+      // Stale status from an old/disappeared alert
+      const statuses: Record<string, string> = { 'stale-alert-disappeared': 'TRIAGED' };
+
+      registerChallengeValidator('brute-force-triage-challenge', () => {
+        const currentAlertIds = new Set(currentAlerts.map((a) => a.id));
+        const validTriagedCount = Object.entries(statuses).filter(
+          ([alertId, status]) =>
+            currentAlertIds.has(alertId) &&
+            (status === 'TRIAGED' || status === 'CLOSED' || status === 'INVESTIGATING')
+        ).length;
+        if (validTriagedCount > 0) {
+          return { success: true, score: 100, message: 'Triaged' };
+        }
+        return { success: false, score: 0, message: 'Stale status rejected' };
+      });
+
+      useSimulationStore.getState().completeChallenge('brute-force-triage-challenge', {
+        success: true,
+        score: 100,
+        message: 'Attempt with stale status',
+      });
+
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('brute-force-triage-challenge');
+    });
+
+    it('rejects completing brute-force-triage-challenge when active queue is empty', () => {
+      useSimulationStore.setState({ activeSimulationId: 'soc' });
+
+      const currentAlerts: { id: string }[] = []; // Empty queue
+      const statuses: Record<string, string> = { 'alert-1': 'TRIAGED' };
+
+      registerChallengeValidator('brute-force-triage-challenge', () => {
+        if (!currentAlerts || currentAlerts.length === 0) {
+          return { success: false, score: 0, message: 'No active alerts in queue' };
+        }
+        const currentAlertIds = new Set(currentAlerts.map((a) => a.id));
+        const validTriagedCount = Object.entries(statuses).filter(
+          ([alertId, status]) =>
+            currentAlertIds.has(alertId) &&
+            (status === 'TRIAGED' || status === 'CLOSED' || status === 'INVESTIGATING')
+        ).length;
+        if (validTriagedCount > 0) {
+          return { success: true, score: 100, message: 'Triaged' };
+        }
+        return { success: false, score: 0, message: 'No triage action' };
+      });
+
+      useSimulationStore.getState().completeChallenge('brute-force-triage-challenge', {
+        success: true,
+        score: 100,
+        message: 'Attempt on empty queue',
+      });
+
+      expect(useSimulationStore.getState().completedChallenges).not.toContain('brute-force-triage-challenge');
+    });
+
+    it('completes brute-force-triage-challenge when user explicitly records triage status on current active alert', () => {
+      useSimulationStore.setState({ activeSimulationId: 'soc' });
+
+      const currentAlerts = [{ id: 'alert-1' }];
       const statuses: Record<string, string> = { 'alert-1': 'TRIAGED' };
       registerChallengeValidator('brute-force-triage-challenge', () => {
-        const userTriagedCount = Object.values(statuses).filter(
-          (s) => s === 'TRIAGED' || s === 'CLOSED' || s === 'INVESTIGATING'
+        const currentAlertIds = new Set(currentAlerts.map((a) => a.id));
+        const validTriagedCount = Object.entries(statuses).filter(
+          ([alertId, status]) =>
+            currentAlertIds.has(alertId) &&
+            (status === 'TRIAGED' || status === 'CLOSED' || status === 'INVESTIGATING')
         ).length;
-        if (userTriagedCount > 0) {
+        if (validTriagedCount > 0) {
           return { success: true, score: 100, message: 'Triaged' };
         }
         return { success: false, score: 0, message: 'No triage action' };

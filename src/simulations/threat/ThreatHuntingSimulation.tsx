@@ -11,6 +11,8 @@ import { ThreatHuntValidator } from './logic/validators';
 export const ThreatHuntingSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const completeChallenge = useSimulationStore((s) => s.completeChallenge);
+  const isAr = language === 'ar';
+
   const activeHuntId = useThreatHuntingStore((s) => s.activeHuntId);
   const hunts = useThreatHuntingStore((s) => s.hunts);
   const hypotheses = useThreatHuntingStore((s) => s.hypotheses);
@@ -20,10 +22,22 @@ export const ThreatHuntingSimulation: React.FC = () => {
   const socHandoffs = useThreatHuntingStore((s) => s.socHandoffs);
   const forensicsHandoffs = useThreatHuntingStore((s) => s.forensicsHandoffs);
   const executedQueryStrings = useThreatHuntingStore((s) => s.executedQueryStrings);
+  const executedQueriesByHunt = useThreatHuntingStore((s) => s.executedQueriesByHunt);
   const telemetryEvents = useThreatHuntingStore((s) => s.telemetryEvents);
 
   const hunt = hunts[activeHuntId] || hunts['HUNT-01'];
   const hyp = hypotheses[hunt?.hypothesisId || 'HYP-01'] || hypotheses['HYP-01'];
+
+  // Scope queries strictly to the active hunt
+  const huntQueries = useMemo(() => {
+    const scoped = executedQueriesByHunt?.[hunt.id];
+    if (scoped && scoped.length > 0) return scoped;
+    // Backward-compatibility: only fall back to executedQueryStrings if on default HUNT-01
+    if (hunt.id === 'HUNT-01' && executedQueryStrings.length > 0) {
+      return executedQueryStrings;
+    }
+    return [];
+  }, [executedQueriesByHunt, hunt.id, executedQueryStrings]);
 
   const validationState = useMemo(() => {
     return {
@@ -34,10 +48,10 @@ export const ThreatHuntingSimulation: React.FC = () => {
       detectionResults,
       socHandoffs,
       forensicsHandoffs,
-      executedQueries: executedQueryStrings,
+      executedQueries: huntQueries,
       telemetryEvents,
     };
-  }, [hunt, hyp, findings, detections, detectionResults, socHandoffs, forensicsHandoffs, executedQueryStrings, telemetryEvents]);
+  }, [hunt, hyp, findings, detections, detectionResults, socHandoffs, forensicsHandoffs, huntQueries, telemetryEvents]);
 
   const validationStateRef = useRef(validationState);
   validationStateRef.current = validationState;
@@ -45,24 +59,13 @@ export const ThreatHuntingSimulation: React.FC = () => {
   useEffect(() => {
     registerChallengeValidator('threat-hunting-hypothesis-challenge', () => {
       const state = validationStateRef.current;
-      const hasExecutedQueries = state.executedQueries && state.executedQueries.some((q) => q.trim().length > 0);
-      const isHypothesisSupported = state.hypothesis && state.hypothesis.status === 'SUPPORTED';
-      const hasValidatedFinding = state.findings && state.findings.some((f) => f.status === 'VALIDATED' && f.eventIds.length >= 1);
+      const targetHuntId = state.hunt?.id || 'HUNT-01';
+      const outcome = ThreatHuntValidator.validateScenario(targetHuntId, state);
 
-      // Require query execution AND evidence support (hypothesis supported or validated finding)
-      const meetsCriteria = hasExecutedQueries && (isHypothesisSupported || hasValidatedFinding);
-
-      if (meetsCriteria) {
-        return {
-          success: true,
-          score: 100,
-          message: 'Threat hunting hypothesis tested and verified with telemetry evidence.',
-        };
-      }
       return {
-        success: false,
-        score: 0,
-        message: 'Execute telemetry queries and validate findings to support the threat hypothesis.',
+        success: outcome.success,
+        score: outcome.success ? 100 : 0,
+        message: outcome.messageEn,
       };
     });
 
@@ -71,23 +74,52 @@ export const ThreatHuntingSimulation: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const state = validationState;
-    const hasExecutedQueries = state.executedQueries && state.executedQueries.some((q) => q.trim().length > 0);
-    const isHypothesisSupported = state.hypothesis && state.hypothesis.status === 'SUPPORTED';
-    const hasValidatedFinding = state.findings && state.findings.some((f) => f.status === 'VALIDATED' && f.eventIds.length >= 1);
+  const validationOutcome = useMemo(() => {
+    return ThreatHuntValidator.validateScenario(hunt.id, validationState);
+  }, [hunt.id, validationState]);
 
-    if (hasExecutedQueries && (isHypothesisSupported || hasValidatedFinding)) {
+  useEffect(() => {
+    if (validationOutcome.success) {
       completeChallenge('threat-hunting-hypothesis-challenge', {
         success: true,
         score: 100,
-        message: 'Threat hunting hypothesis tested and verified with telemetry evidence.',
+        message: validationOutcome.messageEn,
       });
     }
-  }, [validationState, completeChallenge]);
+  }, [validationOutcome, completeChallenge]);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-black select-none">
+      {/* Authoritative Challenge Status & Guidance Bar */}
+      <div
+        data-testid="threat-hunt-challenge-status"
+        className={`px-4 py-2 border-b text-xs flex items-center justify-between font-mono shrink-0 transition-colors ${
+          validationOutcome.success
+            ? 'bg-emerald-950/80 border-emerald-800 text-emerald-300'
+            : 'bg-slate-900/90 border-slate-800 text-slate-300'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <span className="font-bold text-white uppercase tracking-wider">
+            {isAr ? 'تحدي الصيد:' : 'Hunt Challenge:'}
+          </span>
+          <span className="truncate">
+            {isAr ? validationOutcome.messageAr : validationOutcome.messageEn}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+              validationOutcome.success
+                ? 'bg-emerald-900 text-emerald-200 border border-emerald-600'
+                : 'bg-slate-800 text-amber-300 border border-slate-700'
+            }`}
+          >
+            {validationOutcome.completedObjectives.length}/5 {isAr ? 'أهداف' : 'Objectives'}
+          </span>
+        </div>
+      </div>
+
       <ThreatHuntingWorkspace language={language} />
     </div>
   );

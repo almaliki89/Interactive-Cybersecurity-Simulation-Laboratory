@@ -251,6 +251,7 @@ describe('OMEGA V16 — Threat Hunting Logic Suite', () => {
         detections: [
           {
             id: 'DET-01',
+            huntId: 'HUNT-01',
             nameEn: 'Rule',
             nameAr: 'قاعدة',
             descriptionEn: '',

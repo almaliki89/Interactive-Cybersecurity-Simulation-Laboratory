@@ -70,14 +70,36 @@ export const AlertTriageLab: React.FC<AlertTriageLabProps> = ({
   const alertStatusesRef = useRef(alertStatuses);
   alertStatusesRef.current = alertStatuses;
 
+  const alertsRef = useRef(alerts);
+  alertsRef.current = alerts;
+
   useEffect(() => {
     registerChallengeValidator('brute-force-triage-challenge', () => {
+      const currentAlerts = alertsRef.current;
+      if (!currentAlerts || currentAlerts.length === 0) {
+        return {
+          success: false,
+          score: 0,
+          message: 'No active alerts in queue to triage.',
+        };
+      }
+
+      const currentAlertIds = new Set(currentAlerts.map((a) => a.id));
       const statuses = alertStatusesRef.current;
-      const userTriagedCount = Object.values(statuses).filter((s) => s === 'TRIAGED' || s === 'CLOSED' || s === 'INVESTIGATING').length;
-      if (userTriagedCount > 0) {
+      const validTriagedCount = Object.entries(statuses).filter(
+        ([alertId, status]) =>
+          currentAlertIds.has(alertId) &&
+          (status === 'TRIAGED' || status === 'CLOSED' || status === 'INVESTIGATING')
+      ).length;
+
+      if (validTriagedCount > 0) {
         return { success: true, score: 100, message: 'SOC alerts prioritized and triaged.' };
       }
-      return { success: false, score: 0, message: 'Triage security alerts in the queue by setting an investigation status.' };
+      return {
+        success: false,
+        score: 0,
+        message: 'Triage security alerts in the current queue by setting an investigation status.',
+      };
     });
     return () => {
       unregisterChallengeValidator('brute-force-triage-challenge');
@@ -88,6 +110,11 @@ export const AlertTriageLab: React.FC<AlertTriageLabProps> = ({
     triagedList.find((t) => t.alert.id === selectedAlertId) || triagedList[0] || null;
 
   const handleUpdateStatus = (alertId: string, status: 'TRIAGED' | 'INVESTIGATING' | 'CLOSED') => {
+    if (!alertsRef.current.some((a) => a.id === alertId)) {
+      console.warn('[Integrity] Attempted to triage alert not present in current queue:', alertId);
+      return;
+    }
+
     const nextStatuses = { ...alertStatusesRef.current, [alertId]: status };
     alertStatusesRef.current = nextStatuses;
     setAlertStatuses(nextStatuses);
@@ -97,6 +124,11 @@ export const AlertTriageLab: React.FC<AlertTriageLabProps> = ({
       score: 100,
       message: 'SOC alert triaged and prioritized.',
     });
+  };
+
+  const handleResetTriage = () => {
+    alertStatusesRef.current = {};
+    setAlertStatuses({});
   };
 
   return (
@@ -249,6 +281,7 @@ export const AlertTriageLab: React.FC<AlertTriageLabProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleUpdateStatus(activeTriage.alert.id, 'INVESTIGATING')}
+                    data-testid="btn-triage-investigate"
                     className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5"
                   >
                     <Send className="w-3.5 h-3.5" />
@@ -256,15 +289,26 @@ export const AlertTriageLab: React.FC<AlertTriageLabProps> = ({
                   </button>
                   <button
                     onClick={() => handleUpdateStatus(activeTriage.alert.id, 'TRIAGED')}
+                    data-testid="btn-triage-triaged"
                     className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold"
                   >
                     <span>{isAr ? 'تم الفرز' : 'Mark Triaged'}</span>
                   </button>
                   <button
                     onClick={() => handleUpdateStatus(activeTriage.alert.id, 'CLOSED')}
+                    data-testid="btn-triage-close"
                     className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white text-xs"
                   >
                     <span>{isAr ? 'إغلاق (سليم)' : 'Close Benign'}</span>
+                  </button>
+                  <button
+                    onClick={handleResetTriage}
+                    data-testid="btn-reset-triage"
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 text-xs flex items-center gap-1 transition-colors"
+                    title={isAr ? 'إعادة ضبط فرز التنبيهات' : 'Reset All Triage Statuses'}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{isAr ? 'إعادة ضبط' : 'Reset'}</span>
                   </button>
                 </div>
               </div>
