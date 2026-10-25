@@ -165,12 +165,13 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
   isMobileNavOpen: false,
   isMobileInspectorOpen: false,
 
-  setActiveHunt: (huntId: string) => {
-    const scenario = HUNT_SCENARIOS[huntId] || HUNT_SCENARIOS['HUNT-01'];
+  setActiveHunt: (rawHuntId: string) => {
+    const scenarioKey = HUNT_SCENARIOS[rawHuntId] ? rawHuntId : 'HUNT-01';
+    const scenario = HUNT_SCENARIOS[scenarioKey];
     const matchedIntel = ThreatIntelMatcher.matchTelemetry(SIMULATION_THREAT_INDICATORS, scenario.events);
 
     set((state) => ({
-      activeHuntId: huntId,
+      activeHuntId: scenario.hunt.id,
       telemetryEvents: scenario.events,
       intelIndicators: matchedIntel,
       selectedEventId: null,
@@ -185,7 +186,7 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
       isMobileInspectorOpen: false,
       hunts: {
         ...state.hunts,
-        [huntId]: { ...scenario.hunt },
+        [scenario.hunt.id]: { ...scenario.hunt },
       },
       hypotheses: {
         ...state.hypotheses,
@@ -302,8 +303,9 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     else if (totalConfidenceScore >= 40) confidenceLevel = 'MEDIUM';
 
     const newFinding: HuntFinding = {
-      id: findingId,
       ...findingData,
+      id: findingId,
+      huntId: findingData.huntId || state.activeHuntId,
       createdAtVirtualTime: vTime,
       confidence: confidenceLevel,
       confidenceScore: totalConfidenceScore,
@@ -340,9 +342,9 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     const state = get();
     const ruleId = `DET-${state.activeHuntId}-${state.detections.length + 1}`;
     const newRule: DetectionRule = {
+      ...ruleData,
       id: ruleId,
       huntId: state.activeHuntId,
-      ...ruleData,
       createdAtVirtualTime: 0,
     };
 
@@ -355,7 +357,13 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
 
   updateDetectionRule: (rule) => {
     set((state) => ({
-      detections: state.detections.map((d) => (d.id === rule.id ? rule : d)),
+      detections: state.detections.map((d) => {
+        if (d.id !== rule.id) return d;
+        return {
+          ...rule,
+          huntId: d.huntId || rule.huntId || state.activeHuntId,
+        };
+      }),
     }));
   },
 

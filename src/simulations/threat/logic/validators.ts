@@ -54,41 +54,64 @@ export class ThreatHuntValidator {
       completedObjs.push('obj-query');
     }
 
-    // 3. Verify Validated Finding
-    const validatedFinding = state.findings.find(
-      (f) => f.huntId === huntId && f.status === 'VALIDATED' && f.eventIds.length >= 2
-    );
+    // 3. Verify Validated Finding using full candidate eligibility evaluation
+    const validatedFinding = state.findings.find((f) => {
+      if (f.huntId !== huntId) return false;
+      if (f.status !== 'VALIDATED') return false;
+
+      // Must contain at least two distinct non-blank event IDs
+      const distinctEventIds = Array.from(
+        new Set((f.eventIds || []).filter((id) => typeof id === 'string' && id.trim().length > 0))
+      );
+      if (distinctEventIds.length < 2) return false;
+
+      // Event IDs must exist in active hunt telemetry
+      const allEventsExist = distinctEventIds.every((id) =>
+        state.telemetryEvents.some((e) => e.id === id)
+      );
+      if (!allEventsExist) return false;
+
+      // Raw event IDs preserved
+      if (!f.rawEventIds || f.rawEventIds.length === 0) return false;
+
+      return true;
+    });
 
     if (!validatedFinding) {
       missingEn.push('Must create and validate a finding containing at least 2 supporting events.');
       missingAr.push('يجب إنشاء وتأكيد نتيجة تحقيق تحتوي على حدثين داعمين على الأقل.');
     } else {
-      // Check that event references actually exist in telemetry
-      const validEventRefs = validatedFinding.eventIds.every((id) =>
-        state.telemetryEvents.some((e) => e.id === id)
-      );
-      if (!validEventRefs) {
-        missingEn.push('Finding contains invalid or non-existent event references.');
-        missingAr.push('تحتوي نتيجة التحقيق على مراجع أحداث غير موجودة في سجلات المحاكاة.');
-      } else {
-        completedObjs.push('obj-finding');
-      }
+      completedObjs.push('obj-finding');
     }
 
     // 4. Verify Detection Rule belongs to active hunt with trustworthy ownership
     const validDetection = state.detections.find((d) => {
-      const hasTrustworthyOwnership =
-        d.huntId === huntId || d.id.startsWith(`DET-${huntId}-`) || d.id.includes(`-${huntId}-`);
-      if (!hasTrustworthyOwnership) return false;
+      // Explicit huntId must match target huntId
+      if (d.huntId) {
+        if (d.huntId !== huntId) return false;
+      } else {
+        // Legacy ownership inference ONLY if huntId is absent and ID follows canonical format
+        const isCanonicalFormat =
+          d.id.startsWith(`DET-${huntId}-`) || d.id.includes(`-${huntId}-`);
+        if (!isCanonicalFormat) return false;
+      }
 
+      // Result keyed to rule ID and result.ruleId === d.id
       const result = state.detectionResults[d.id];
-      return (
-        result &&
-        result.ruleId === d.id &&
-        result.isValid &&
-        result.truePositives >= 1 &&
-        result.falsePositives === 0
+      if (!result || result.ruleId !== d.id) return false;
+
+      // isValid === true, truePositives >= 1, falsePositives === 0
+      if (!result.isValid || result.truePositives < 1 || result.falsePositives !== 0) return false;
+
+      // Validate event references in result against active telemetry
+      const matchedEvents = result.matchedEventIds || [];
+      if (matchedEvents.length === 0) return false;
+      const validEventRefs = matchedEvents.every((id) =>
+        state.telemetryEvents.some((e) => e.id === id)
       );
+      if (!validEventRefs) return false;
+
+      return true;
     });
 
     if (!validDetection) {
@@ -99,13 +122,59 @@ export class ThreatHuntValidator {
     }
 
     // 5. Verify SOC Handoff for active hunt with valid telemetry events and qualifying dispatch state
-    const validHandoff = state.socHandoffs.find(
-      (h) =>
-        h.huntId === huntId &&
-        (h.status === 'DISPATCHED' || h.status === 'INGESTED') &&
-        h.eventIds.length >= 1 &&
-        h.eventIds.every((id) => state.telemetryEvents.some((e) => e.id === id))
-    );
+    const validHandoff = state.socHandoffs.find((h) => {
+      if (h.huntId !== huntId) return false;
+      if (h.status !== 'DISPATCHED' && h.status !== 'INGESTED') return false;
+
+      // Telemetry events check
+      const validEventIds = (h.eventIds || []).filter(
+        (id) => typeof id === 'string' && id.trim().length > 0
+      );
+      if (validEventIds.length < 1) return false;
+      const eventsExist = validEventIds.every((id) =>
+        state.telemetryEvents.some((e) => e.id === id)
+      );
+      if (!eventsExist) return false;
+
+      // Reference a real finding belonging to the SAME hunt
+      if (!h.findingId) return false;
+      const linkedFinding = state.findings.find(
+        (f) => f.id === h.findingId && f.huntId === huntId
+      );
+      if (!linkedFinding) return false;
+
+      // Evidence consistency: handoff eventIds must be supported by linked finding's eventIds
+      const findingEventSet = new Set(linkedFinding.eventIds);
+      const isConsistentWithFinding = validEventIds.some((id) => findingEventSet.has(id));
+      if (!isConsistentWithFinding) return false;
+
+      // If ruleId is present, must reference eligible detection rule for same hunt
+      if (h.ruleId) {
+        const linkedRule = state.detections.find((d) => d.id === h.ruleId);
+        if (!linkedRule) return false;
+
+        if (linkedRule.huntId && linkedRule.huntId !== huntId) return false;
+        if (!linkedRule.huntId) {
+          const isCanonical =
+            linkedRule.id.startsWith(`DET-${huntId}-`) || linkedRule.id.includes(`-${huntId}-`);
+          if (!isCanonical) return false;
+        }
+
+        const ruleResult = state.detectionResults[linkedRule.id];
+        if (
+          !ruleResult ||
+          ruleResult.ruleId !== linkedRule.id ||
+          !ruleResult.isValid ||
+          ruleResult.truePositives < 1 ||
+          ruleResult.falsePositives !== 0
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
     if (!validHandoff) {
       missingEn.push('Must complete and dispatch SOC Handoff with valid telemetry events for the active hunt.');
       missingAr.push('يجب إتمام وإرسال إحالة النتيجة المؤكدة مع أحداث سجلات صالحة إلى مركز العمليات SOC.');
@@ -137,15 +206,15 @@ export class ThreatHuntValidator {
     const missingAr: string[] = [];
     const completedObjs: string[] = [];
 
-    // 1. Hypothesis Supported
-    if (state.hypothesis.status !== 'SUPPORTED') {
-      missingEn.push('Master Campaign Hypothesis must be supported with cross-world evidence.');
-      missingAr.push('يجب إثبات فرضية الهجوم الشامل بأدلة عابرة للعوالم.');
+    // 1. Hypothesis Supported for Master Investigation
+    if (!state.hypothesis || state.hypothesis.huntId !== 'HUNT-MASTER' || state.hypothesis.status !== 'SUPPORTED') {
+      missingEn.push('Master Campaign Hypothesis must belong to HUNT-MASTER and be supported with cross-world evidence.');
+      missingAr.push('يجب أن تنتمي الفرضية للتحقيق الشامل HUNT-MASTER وتكون مؤكدة بأدلة عابرة للعوالم.');
     } else {
       completedObjs.push('master-obj-hypothesis');
     }
 
-    // 2. Minimum 3 Queries executed
+    // 2. Minimum 2 Queries executed
     if (!state.executedQueries || state.executedQueries.length < 2) {
       missingEn.push('Must execute multi-source telemetry queries across domains.');
       missingAr.push('يجب تنفيذ استعلامات متعددة المصادر عبر نطاقات السجلات.');
@@ -153,54 +222,94 @@ export class ThreatHuntValidator {
       completedObjs.push('master-obj-queries');
     }
 
-    // 3. Multi-world correlated findings with >= 4 events
-    const masterFindings = state.findings.filter((f) => f.status === 'VALIDATED');
-    const totalEventsLinked = masterFindings.reduce((acc, f) => acc + f.eventIds.length, 0);
+    // 3. Multi-world correlated findings with >= 4 events belonging to Master Campaign
+    const masterFindings = state.findings.filter(
+      (f) => (f.huntId === 'HUNT-MASTER' || f.huntId?.includes('MASTER')) && f.status === 'VALIDATED'
+    );
+    const totalEventsLinked = masterFindings.reduce((acc, f) => acc + (f.eventIds || []).length, 0);
 
     if (masterFindings.length < 1 || totalEventsLinked < 4) {
-      missingEn.push('Must create validated findings linking at least 4 correlated attack events.');
-      missingAr.push('يجب تأكيد نتائج تحقيق تربط على الأقل 4 أحداث هجومية مترابطة.');
+      missingEn.push('Must create validated findings for the master campaign linking at least 4 correlated attack events.');
+      missingAr.push('يجب تأكيد نتائج تحقيق للتحقيق الشامل تربط على الأقل 4 أحداث هجومية مترابطة.');
     } else {
-      // Verify rawEventId integrity
-      const hasRawIds = masterFindings.every((f) => f.rawEventIds.length > 0);
-      if (!hasRawIds) {
-        missingEn.push('Findings must preserve canonical rawEventId references.');
-        missingAr.push('يجب أن تحتفظ النتائج بمراجع معرفات الأحداث الأصلية rawEventId.');
+      // Verify rawEventId integrity and telemetry existence
+      const hasValidEvents = masterFindings.every(
+        (f) =>
+          f.rawEventIds &&
+          f.rawEventIds.length > 0 &&
+          f.eventIds.every((id) => state.telemetryEvents.some((e) => e.id === id))
+      );
+      if (!hasValidEvents) {
+        missingEn.push('Master findings contain invalid or unverified telemetry references.');
+        missingAr.push('تحتوي نتائج التحقيق الشامل على مراجع أحداث غير موجودة في سجلات المحاكاة.');
       } else {
         completedObjs.push('master-obj-findings');
       }
     }
 
-    // 4. Validated Detection Rule
+    // 4. Validated Detection Rule for Master Campaign
     const masterDetection = state.detections.find((d) => {
+      const isMasterRule =
+        d.huntId === 'HUNT-MASTER' || d.id.startsWith('DET-HUNT-MASTER-') || d.id.includes('-MASTER-');
+      if (!isMasterRule) return false;
+
       const result = state.detectionResults[d.id];
-      return result && result.isValid && result.truePositives >= 1 && result.falsePositives === 0;
+      return (
+        result &&
+        result.ruleId === d.id &&
+        result.isValid &&
+        result.truePositives >= 1 &&
+        result.falsePositives === 0 &&
+        (result.matchedEventIds || []).every((id) => state.telemetryEvents.some((e) => e.id === id))
+      );
     });
 
     if (!masterDetection) {
-      missingEn.push('Must author and tune a validated detection rule with 0 false positives.');
-      missingAr.push('يجب تصميم وضبط قاعدة كشف محكمة خالية من الإيجابيات الكاذبة.');
+      missingEn.push('Must author and tune a validated detection rule for the master campaign with 0 false positives.');
+      missingAr.push('يجب تصميم وضبط قاعدة كشف محكمة للتحقيق الشامل خالية من الإيجابيات الكاذبة.');
     } else {
       completedObjs.push('master-obj-detection');
     }
 
-    // 5. SOC Handoff Dispatched
-    const hasSocHandoff = state.socHandoffs.some((h) => h.eventIds.length >= 2);
-    if (!hasSocHandoff) {
-      missingEn.push('Must dispatch validated findings to SOC Incident Queue.');
-      missingAr.push('يجب إرسال النتائج المؤكدة إلى قائمة حوادث مركز العمليات SOC.');
+    // 5. SOC Handoff Dispatched for Master Campaign
+    const masterSocHandoff = state.socHandoffs.find((h) => {
+      const isMasterHandoff = h.huntId === 'HUNT-MASTER' || h.handoffId.includes('MASTER');
+      if (!isMasterHandoff) return false;
+      if (h.status !== 'DISPATCHED' && h.status !== 'INGESTED') return false;
+      if (!h.findingId) return false;
+
+      const linkedFinding = masterFindings.find((f) => f.id === h.findingId);
+      if (!linkedFinding) return false;
+
+      return (
+        h.eventIds &&
+        h.eventIds.length >= 2 &&
+        h.eventIds.every((id) => state.telemetryEvents.some((e) => e.id === id))
+      );
+    });
+
+    if (!masterSocHandoff) {
+      missingEn.push('Must dispatch validated campaign findings to SOC Incident Queue with valid telemetry events.');
+      missingAr.push('يجب إرسال النتائج المؤكدة للتحقيق الشامل إلى قائمة حوادث مركز العمليات SOC.');
     } else {
       completedObjs.push('master-obj-soc');
     }
 
-    // 6. Forensics Canonical Evidence Handoff
-    const hasForensicsHandoff = state.forensicsHandoffs.some(
-      (h) => h.evidenceList.length >= 2 && h.evidenceList.every((e) => e.id.startsWith('EVD-') && e.preserved)
-    );
+    // 6. Forensics Canonical Evidence Handoff for Master Campaign
+    const masterForensicsHandoff = state.forensicsHandoffs.find((h) => {
+      const isMasterForensics = h.huntId === 'HUNT-MASTER' || h.handoffId.includes('MASTER');
+      if (!isMasterForensics) return false;
 
-    if (!hasForensicsHandoff) {
-      missingEn.push('Must complete Forensics Handoff generating canonical preserved evidence items (EVD-...).');
-      missingAr.push('يجب إتمام إحالة الأدلة الجنائية وتوليد عناصر أدلة محفوظة رسمية (EVD-...).');
+      return (
+        h.evidenceList &&
+        h.evidenceList.length >= 2 &&
+        h.evidenceList.every((e) => e.id.startsWith('EVD-') && e.preserved && e.integrityStatus === 'VERIFIED')
+      );
+    });
+
+    if (!masterForensicsHandoff) {
+      missingEn.push('Must complete Forensics Handoff for master campaign generating canonical preserved evidence items (EVD-...).');
+      missingAr.push('يجب إتمام إحالة الأدلة الجنائية للتحقيق الشامل وتوليد عناصر أدلة محفوظة رسمية (EVD-...).');
     } else {
       completedObjs.push('master-obj-forensics');
     }
