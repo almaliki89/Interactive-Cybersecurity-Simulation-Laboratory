@@ -12,6 +12,7 @@ import { CloudIamLab } from '../../simulations/cloud/CloudIamLab';
 import { K8sRbacLab } from '../../simulations/containers/K8sRbacLab';
 import { AlertTriageLab } from '../../simulations/soc/AlertTriageLab';
 import { ThreatHuntValidator } from '../../simulations/threat/logic/validators';
+import { DetectionRule } from '../../simulations/threat/logic/types';
 
 describe('OMEGA MAX — Real UI Component Integration & Challenge Lifecycle Suite', () => {
   beforeEach(() => {
@@ -710,6 +711,294 @@ describe('OMEGA MAX — Real UI Component Integration & Challenge Lifecycle Suit
         });
       });
       expect(useSimulationStore.getState().completedChallenges).not.toContain('brute-force-triage-challenge');
+    });
+  });
+
+  /* -------------------------------------------------------------------------
+   * 5. Mandatory Ownership & Transition Sequence Regression Suite (Section 5)
+   * ------------------------------------------------------------------------- */
+  describe('5. Mandatory Ownership & Transition Sequence Regression Suite', () => {
+    it('5.1 Strict Query Ownership: Query executed in HUNT-02 does NOT qualify for HUNT-01 when HUNT-01 query list is empty', () => {
+      useSimulationStore.setState({ activeSimulationId: 'threat_hunting' });
+      render(<ThreatHuntingSimulation />);
+
+      // Execute query while active hunt is HUNT-02
+      act(() => {
+        useThreatHuntingStore.getState().setActiveHunt('HUNT-02');
+        useThreatHuntingStore.getState().executeQuery('eventType = KERNEL_EXPLOIT');
+        useThreatHuntingStore.getState().setActiveHunt('HUNT-01');
+      });
+
+      // HUNT-01 executed queries must remain empty
+      const hunt01Queries = useThreatHuntingStore.getState().executedQueriesByHunt['HUNT-01'] || [];
+      expect(hunt01Queries.length).toBe(0);
+
+      // Validation for HUNT-01 must fail query execution requirement
+      const events = useThreatHuntingStore.getState().telemetryEvents;
+      const validation = ThreatHuntValidator.validateScenario('HUNT-01', {
+        hunt: useThreatHuntingStore.getState().hunts['HUNT-01'],
+        hypothesis: { ...useThreatHuntingStore.getState().hypotheses['HYP-01'], status: 'SUPPORTED' },
+        findings: [
+          {
+            id: 'F1',
+            huntId: 'HUNT-01',
+            titleEn: 'F1',
+            titleAr: 'F1',
+            summaryEn: 'S1',
+            summaryAr: 'S1',
+            severity: 'threat',
+            eventIds: [events[0].id, events[1].id],
+            rawEventIds: ['r0', 'r1'],
+            entityRefs: [],
+            confidence: 'HIGH',
+            confidenceScore: 85,
+            confidenceBreakdown: { signalCountScore: 20, correlationStrengthScore: 25, intelMatchesScore: 20, sourceDiversityScore: 20 },
+            status: 'VALIDATED',
+            whyEn: '',
+            whyAr: '',
+            createdAtVirtualTime: 100,
+          },
+        ],
+        detections: [],
+        detectionResults: {},
+        socHandoffs: [],
+        forensicsHandoffs: [],
+        executedQueries: hunt01Queries,
+        telemetryEvents: events,
+      });
+
+      expect(validation.success).toBe(false);
+      expect(validation.missingRequirementsEn).toContain(
+        'Must execute at least one query against telemetry for the active hunt.'
+      );
+    });
+
+    it('5.2 Strict Detection Ownership: Detection rule without huntId or canonical prefix fails validation for HUNT-01', () => {
+      const events = useThreatHuntingStore.getState().telemetryEvents;
+      const genericDetectionRule: DetectionRule = {
+        id: 'DET-GENERIC-999', // Missing huntId and missing DET-HUNT-01- prefix!
+        nameEn: 'Generic Rule',
+        nameAr: 'قاعدة عامة',
+        descriptionEn: 'Generic',
+        descriptionAr: 'عامة',
+        severity: 'HIGH',
+        dataSources: ['WINDOWS'],
+        conditions: [],
+        mitreTechniques: [],
+        status: 'VALIDATED',
+        ruleType: 'SINGLE_EVENT',
+        createdAtVirtualTime: 0,
+      };
+
+      const validation = ThreatHuntValidator.validateScenario('HUNT-01', {
+        hunt: useThreatHuntingStore.getState().hunts['HUNT-01'],
+        hypothesis: { ...useThreatHuntingStore.getState().hypotheses['HYP-01'], status: 'SUPPORTED' },
+        findings: [
+          {
+            id: 'FIND-HUNT-01-1',
+            huntId: 'HUNT-01',
+            titleEn: 'F1',
+            titleAr: 'F1',
+            summaryEn: 'S1',
+            summaryAr: 'S1',
+            severity: 'threat',
+            eventIds: [events[0].id, events[1].id],
+            rawEventIds: ['r0', 'r1'],
+            entityRefs: [],
+            confidence: 'HIGH',
+            confidenceScore: 85,
+            confidenceBreakdown: { signalCountScore: 20, correlationStrengthScore: 25, intelMatchesScore: 20, sourceDiversityScore: 20 },
+            status: 'VALIDATED',
+            whyEn: '',
+            whyAr: '',
+            createdAtVirtualTime: 100,
+          },
+        ],
+        detections: [genericDetectionRule],
+        detectionResults: {
+          'DET-GENERIC-999': {
+            ruleId: 'DET-GENERIC-999',
+            totalEvaluated: 10,
+            matchedEventIds: [events[0].id],
+            truePositives: 1,
+            falsePositives: 0,
+            benignMatches: [],
+            maliciousMatches: [events[0].id],
+            precision: 1.0,
+            recall: 1.0,
+            isValid: true,
+            tuningAdviceEn: '',
+            tuningAdviceAr: '',
+          },
+        },
+        socHandoffs: [],
+        forensicsHandoffs: [],
+        executedQueries: ['sourceWorld = WINDOWS'],
+        telemetryEvents: events,
+      });
+
+      expect(validation.success).toBe(false);
+      expect(validation.missingRequirementsEn).toContain(
+        'Must author and tune a detection rule for the active hunt with 0 false positives.'
+      );
+    });
+
+    it('5.3 Strict Finding & Handoff Ownership: Finding or Handoff belonging to HUNT-02 fails validation for HUNT-01', () => {
+      const events = useThreatHuntingStore.getState().telemetryEvents;
+
+      // Finding belonging to HUNT-02
+      const validationFinding = ThreatHuntValidator.validateScenario('HUNT-01', {
+        hunt: useThreatHuntingStore.getState().hunts['HUNT-01'],
+        hypothesis: { ...useThreatHuntingStore.getState().hypotheses['HYP-01'], status: 'SUPPORTED' },
+        findings: [
+          {
+            id: 'FIND-HUNT-02-1',
+            huntId: 'HUNT-02', // Belongs to HUNT-02!
+            titleEn: 'Cross hunt finding',
+            titleAr: 'نتيجة من سيناريو آخر',
+            summaryEn: 'Summary',
+            summaryAr: 'ملخص',
+            severity: 'threat',
+            eventIds: [events[0].id, events[1].id],
+            rawEventIds: ['r0', 'r1'],
+            entityRefs: [],
+            confidence: 'HIGH',
+            confidenceScore: 85,
+            confidenceBreakdown: { signalCountScore: 20, correlationStrengthScore: 25, intelMatchesScore: 20, sourceDiversityScore: 20 },
+            status: 'VALIDATED',
+            whyEn: '',
+            whyAr: '',
+            createdAtVirtualTime: 100,
+          },
+        ],
+        detections: [],
+        detectionResults: {},
+        socHandoffs: [],
+        forensicsHandoffs: [],
+        executedQueries: ['sourceWorld = WINDOWS'],
+        telemetryEvents: events,
+      });
+
+      expect(validationFinding.success).toBe(false);
+      expect(validationFinding.missingRequirementsEn).toContain(
+        'Must create and validate a finding containing at least 2 supporting events.'
+      );
+
+      // Handoff belonging to HUNT-02
+      const validationHandoff = ThreatHuntValidator.validateScenario('HUNT-01', {
+        hunt: useThreatHuntingStore.getState().hunts['HUNT-01'],
+        hypothesis: { ...useThreatHuntingStore.getState().hypotheses['HYP-01'], status: 'SUPPORTED' },
+        findings: [
+          {
+            id: 'FIND-HUNT-01-1',
+            huntId: 'HUNT-01',
+            titleEn: 'HUNT-01 finding',
+            titleAr: 'نتيجة سيناريو 1',
+            summaryEn: 'Summary',
+            summaryAr: 'ملخص',
+            severity: 'threat',
+            eventIds: [events[0].id, events[1].id],
+            rawEventIds: ['r0', 'r1'],
+            entityRefs: [],
+            confidence: 'HIGH',
+            confidenceScore: 85,
+            confidenceBreakdown: { signalCountScore: 20, correlationStrengthScore: 25, intelMatchesScore: 20, sourceDiversityScore: 20 },
+            status: 'VALIDATED',
+            whyEn: '',
+            whyAr: '',
+            createdAtVirtualTime: 100,
+          },
+        ],
+        detections: [
+          {
+            id: 'DET-HUNT-01-1',
+            huntId: 'HUNT-01',
+            nameEn: 'Detection',
+            nameAr: 'كشف',
+            descriptionEn: '',
+            descriptionAr: '',
+            severity: 'HIGH',
+            dataSources: ['WINDOWS'],
+            conditions: [],
+            mitreTechniques: [],
+            status: 'VALIDATED',
+            ruleType: 'SINGLE_EVENT',
+            createdAtVirtualTime: 0,
+          },
+        ],
+        detectionResults: {
+          'DET-HUNT-01-1': {
+            ruleId: 'DET-HUNT-01-1',
+            totalEvaluated: 10,
+            matchedEventIds: [events[0].id],
+            truePositives: 1,
+            falsePositives: 0,
+            benignMatches: [],
+            maliciousMatches: [events[0].id],
+            precision: 1.0,
+            recall: 1.0,
+            isValid: true,
+            tuningAdviceEn: '',
+            tuningAdviceAr: '',
+          },
+        },
+        socHandoffs: [
+          {
+            handoffId: 'SOC-HUNT-02-1',
+            huntId: 'HUNT-02', // Belongs to HUNT-02!
+            findingId: 'FIND-HUNT-02-1',
+            rawEventIds: ['r0'],
+            eventIds: [events[0].id],
+            summaryEn: 'Handoff 2',
+            summaryAr: 'إحالة 2',
+            priority: 'P2_HIGH',
+            timestampVirtual: 100,
+            status: 'DISPATCHED',
+          },
+        ],
+        forensicsHandoffs: [],
+        executedQueries: ['sourceWorld = WINDOWS'],
+        telemetryEvents: events,
+      });
+
+      expect(validationHandoff.success).toBe(false);
+      expect(validationHandoff.missingRequirementsEn).toContain(
+        'Must complete and dispatch SOC Handoff with valid telemetry events for the active hunt.'
+      );
+    });
+
+    it('5.4 Multi-Hunt Transition Sequence: Completing HUNT-01, switching to HUNT-02, executing queries, ensuring queries are strictly partitioned', () => {
+      useSimulationStore.setState({ activeSimulationId: 'threat_hunting' });
+      render(<ThreatHuntingSimulation />);
+
+      // Step 1: Execute query in HUNT-01
+      act(() => {
+        useThreatHuntingStore.getState().setActiveHunt('HUNT-01');
+        useThreatHuntingStore.getState().executeQuery('sourceWorld = WINDOWS');
+      });
+
+      expect(useThreatHuntingStore.getState().executedQueriesByHunt['HUNT-01']).toEqual([
+        'sourceWorld = WINDOWS',
+      ]);
+      expect(useThreatHuntingStore.getState().executedQueriesByHunt['HUNT-02'] || []).toEqual([]);
+
+      // Step 2: Switch to HUNT-02 and execute query
+      act(() => {
+        useThreatHuntingStore.getState().setActiveHunt('HUNT-02');
+        useThreatHuntingStore.getState().executeQuery('sourceWorld = LINUX');
+      });
+
+      expect(useThreatHuntingStore.getState().executedQueriesByHunt['HUNT-01']).toEqual([
+        'sourceWorld = WINDOWS',
+      ]);
+      expect(useThreatHuntingStore.getState().executedQueriesByHunt['HUNT-02']).toEqual([
+        'sourceWorld = LINUX',
+      ]);
+
+      // Step 3: Ensure query executed in HUNT-01 is NOT listed in HUNT-02
+      expect(useThreatHuntingStore.getState().executedQueriesByHunt['HUNT-02']).not.toContain(
+        'sourceWorld = WINDOWS'
+      );
     });
   });
 });

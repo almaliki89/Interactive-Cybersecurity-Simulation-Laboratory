@@ -30,14 +30,8 @@ export const ThreatHuntingSimulation: React.FC = () => {
 
   // Scope queries strictly to the active hunt
   const huntQueries = useMemo(() => {
-    const scoped = executedQueriesByHunt?.[hunt.id];
-    if (scoped && scoped.length > 0) return scoped;
-    // Backward-compatibility: only fall back to executedQueryStrings if on default HUNT-01
-    if (hunt.id === 'HUNT-01' && executedQueryStrings.length > 0) {
-      return executedQueryStrings;
-    }
-    return [];
-  }, [executedQueriesByHunt, hunt.id, executedQueryStrings]);
+    return executedQueriesByHunt?.[hunt.id] || [];
+  }, [executedQueriesByHunt, hunt.id]);
 
   const validationState = useMemo(() => {
     return {

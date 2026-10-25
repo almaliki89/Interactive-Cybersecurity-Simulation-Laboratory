@@ -75,14 +75,20 @@ export class ThreatHuntValidator {
       }
     }
 
-    // 4. Verify Detection Rule belongs to active hunt
+    // 4. Verify Detection Rule belongs to active hunt with trustworthy ownership
     const validDetection = state.detections.find((d) => {
-      const belongsToHunt = d.huntId
-        ? d.huntId === huntId
-        : (d.id.includes(huntId) || !d.id.includes('HUNT-'));
-      if (!belongsToHunt) return false;
+      const hasTrustworthyOwnership =
+        d.huntId === huntId || d.id.startsWith(`DET-${huntId}-`) || d.id.includes(`-${huntId}-`);
+      if (!hasTrustworthyOwnership) return false;
+
       const result = state.detectionResults[d.id];
-      return result && result.isValid && result.truePositives >= 1 && result.falsePositives === 0;
+      return (
+        result &&
+        result.ruleId === d.id &&
+        result.isValid &&
+        result.truePositives >= 1 &&
+        result.falsePositives === 0
+      );
     });
 
     if (!validDetection) {
@@ -92,16 +98,17 @@ export class ThreatHuntValidator {
       completedObjs.push('obj-detection');
     }
 
-    // 5. Verify SOC Handoff for active hunt with valid telemetry events
+    // 5. Verify SOC Handoff for active hunt with valid telemetry events and qualifying dispatch state
     const validHandoff = state.socHandoffs.find(
       (h) =>
         h.huntId === huntId &&
+        (h.status === 'DISPATCHED' || h.status === 'INGESTED') &&
         h.eventIds.length >= 1 &&
         h.eventIds.every((id) => state.telemetryEvents.some((e) => e.id === id))
     );
     if (!validHandoff) {
-      missingEn.push('Must complete SOC Handoff with valid telemetry events for the active hunt.');
-      missingAr.push('يجب إتمام إحالة النتيجة المؤكدة مع أحداث سجلات صالحة إلى مركز العمليات SOC.');
+      missingEn.push('Must complete and dispatch SOC Handoff with valid telemetry events for the active hunt.');
+      missingAr.push('يجب إتمام وإرسال إحالة النتيجة المؤكدة مع أحداث سجلات صالحة إلى مركز العمليات SOC.');
     } else {
       completedObjs.push('obj-soc-handoff');
     }

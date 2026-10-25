@@ -216,15 +216,21 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     const result = ThreatHuntQueryEngine.execute(query, events);
     const activeId = get().activeHuntId;
 
+    const isValidQuery = typeof query === 'string' && query.trim().length > 0 && !result.error;
+
     set((state) => {
       const prevHuntQueries = state.executedQueriesByHunt?.[activeId] || [];
+      const updatedHuntQueries = isValidQuery
+        ? Array.from(new Set([...prevHuntQueries, query.trim()]))
+        : prevHuntQueries;
+
       return {
         currentQueryResult: result,
         queryHistory: [result, ...state.queryHistory.slice(0, 19)],
         executedQueryStrings: Array.from(new Set([...state.executedQueryStrings, query])),
         executedQueriesByHunt: {
           ...(state.executedQueriesByHunt || {}),
-          [activeId]: Array.from(new Set([...prevHuntQueries, query])),
+          [activeId]: updatedHuntQueries,
         },
       };
     });
