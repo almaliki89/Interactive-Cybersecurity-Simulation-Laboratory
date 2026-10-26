@@ -8,7 +8,7 @@ import {
   verifyCustodyLedgerTamperResistance,
   CustodyRecord,
 } from '../../simulations/forensics/logic/custody';
-import { calculateEvidenceHash, canonicalSerialize } from '../../simulations/forensics/logic/hashing';
+import { calculateEvidenceHash, canonicalSerialize, sha256Bytes } from '../../simulations/forensics/logic/hashing';
 
 describe('OMEGA MAX — Deep Security Audit & Integrity Guardrails', () => {
   beforeEach(() => {
@@ -535,15 +535,20 @@ describe('OMEGA MAX — Deep Security Audit & Integrity Guardrails', () => {
     });
 
     it('verifies standard NIST SHA-256 test vectors, Arabic UTF-8, and block boundaries', () => {
-      // Empty string standard vector
+      // Test raw byte SHA-256 function against NIST vectors
+      const rawEmptyHash = sha256Bytes(new Uint8Array(0));
+      expect(rawEmptyHash).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+
+      const rawAbcHash = sha256Bytes(new TextEncoder().encode('abc'));
+      expect(rawAbcHash).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+
+      // Test calculateEvidenceHash for tagged canonical strings
       const emptyHash = calculateEvidenceHash('');
-      expect(emptyHash).toBe('sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
       expect(emptyHash).toMatch(/^sha256:[a-f0-9]{64}$/);
 
-      // Standard 'abc' vector
       const abcHash = calculateEvidenceHash('abc');
-      expect(abcHash).toBe('sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
       expect(abcHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(abcHash).not.toBe(emptyHash);
 
       // Arabic Unicode string UTF-8 encoding verification
       const arabicText = 'دليل جنائي رقمي - محاكاة نكسورا الأمنية';
@@ -563,19 +568,24 @@ describe('OMEGA MAX — Deep Security Audit & Integrity Guardrails', () => {
     });
 
     it('canonicalSerialize produces distinct representations for null, undefined, NaN, and Infinity', () => {
-      expect(canonicalSerialize(null)).toBe('null');
-      expect(canonicalSerialize(undefined)).toBe('"__undefined__"');
-      expect(canonicalSerialize(NaN)).toBe('"__NaN__"');
-      expect(canonicalSerialize(Infinity)).toBe('"__Infinity__"');
-      expect(canonicalSerialize(-Infinity)).toBe('"__-Infinity__"');
+      expect(canonicalSerialize(null)).toBe('{"$t":"null"}');
+      expect(canonicalSerialize(undefined)).toBe('{"$t":"undefined"}');
+      expect(canonicalSerialize(NaN)).toBe('{"$t":"NaN"}');
+      expect(canonicalSerialize(Infinity)).toBe('{"$t":"+Inf"}');
+      expect(canonicalSerialize(-Infinity)).toBe('{"$t":"-Inf"}');
 
       // Ensure objects with null vs undefined vs NaN produce distinct serialized representations
       const objNull = { val: null };
       const objUndefined = { val: undefined };
       const objNaN = { val: NaN };
+      const objStrNull = { val: 'null' };
+      const objStrUndefined = { val: 'undefined' };
+
       expect(canonicalSerialize(objNull)).not.toBe(canonicalSerialize(objUndefined));
       expect(canonicalSerialize(objNull)).not.toBe(canonicalSerialize(objNaN));
       expect(canonicalSerialize(objUndefined)).not.toBe(canonicalSerialize(objNaN));
+      expect(canonicalSerialize(objNull)).not.toBe(canonicalSerialize(objStrNull));
+      expect(canonicalSerialize(objUndefined)).not.toBe(canonicalSerialize(objStrUndefined));
     });
 
     it('rejects tamper verification when expected baseline hash is missing or ledger is empty', () => {
