@@ -46,6 +46,30 @@ export function addCustodyRecord(
 }
 
 /**
+ * Evaluates actor identity authorization against the simulation forensic role model.
+ * Rejects empty, unknown, guest, or suspicious actor identifiers.
+ */
+export function isAuthorizedActor(actor: string): boolean {
+  if (!actor || typeof actor !== 'string') return false;
+  const trimmed = actor.trim();
+  if (trimmed === '' || trimmed.length < 3) return false;
+  const lower = trimmed.toLowerCase();
+
+  // Reject unauthorized / unauthenticated / untrusted keywords
+  const unauthorizedKeywords = ['anonymous', 'unknown', 'attacker', 'hacker', 'malicious', 'untrusted', 'guest', 'none'];
+  if (unauthorizedKeywords.some((kw) => lower.includes(kw))) {
+    return false;
+  }
+
+  // Authorized roles or recognized personnel patterns in Nexora simulation
+  const authorizedRolePatterns = [
+    'investigator', 'officer', 'analyst', 'lead', 'admin', 'dfir', 'sec', 'forensics',
+    'sara', 'ahmed', 'tariq', 'mona', 'operator', 'auditor', 'examiner'
+  ];
+  return authorizedRolePatterns.some((pattern) => lower.includes(pattern));
+}
+
+/**
  * Validates chain of custody completeness and integrity for a given evidence item
  */
 export function validateCustodyChain(
@@ -66,6 +90,7 @@ export function validateCustodyChain(
   const missingIntegrityVerification = !verifiedRecord;
   const unauthorizedModification = originalHash !== currentHash;
   const missingActor = itemRecords.some((r) => !r.actor || r.actor.trim() === '');
+  const unauthorizedActor = itemRecords.some((r) => !r.actor || !isAuthorizedActor(r.actor));
 
   const invalidVirtualTime = itemRecords.some(
     (r) => typeof r.virtualTime !== 'number' || !Number.isFinite(r.virtualTime) || r.virtualTime < 0

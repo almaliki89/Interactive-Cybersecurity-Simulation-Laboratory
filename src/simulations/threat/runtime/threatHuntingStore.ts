@@ -287,7 +287,13 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
   addFinding: (findingData) => {
     const state = get();
     const vTime = state.telemetryEvents.length > 0 ? state.telemetryEvents[0].virtualTime : 0;
-    const findingId = `FIND-${state.activeHuntId}-${state.findings.length + 1}`;
+    
+    let count = state.findings.length + 1;
+    let findingId = `FIND-${state.activeHuntId}-${count}`;
+    while (state.findings.some((f) => f.id === findingId)) {
+      count++;
+      findingId = `FIND-${state.activeHuntId}-${count}`;
+    }
 
     // Sanitize and deduplicate event IDs against active telemetry to prevent artificial score inflation
     const distinctEventIds = Array.from(new Set(findingData.eventIds || []));
@@ -393,7 +399,12 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
 
   addDetectionRule: (ruleData) => {
     const state = get();
-    const ruleId = `DET-${state.activeHuntId}-${state.detections.length + 1}`;
+    let count = state.detections.length + 1;
+    let ruleId = `DET-${state.activeHuntId}-${count}`;
+    while (state.detections.some((d) => d.id === ruleId)) {
+      count++;
+      ruleId = `DET-${state.activeHuntId}-${count}`;
+    }
     const newRule: DetectionRule = {
       ...ruleData,
       id: ruleId,
@@ -409,15 +420,23 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
   },
 
   updateDetectionRule: (rule) => {
-    set((state) => ({
-      detections: state.detections.map((d) => {
-        if (d.id !== rule.id) return d;
-        return {
-          ...rule,
-          huntId: d.huntId || rule.huntId || state.activeHuntId,
-        };
-      }),
-    }));
+    set((state) => {
+      // Invalidate previous test result so modified rules cannot be published with stale validation data
+      const updatedResults = { ...state.detectionResults };
+      delete updatedResults[rule.id];
+
+      return {
+        detections: state.detections.map((d) => {
+          if (d.id !== rule.id) return d;
+          return {
+            ...rule,
+            status: 'TESTING' as const,
+            huntId: d.huntId || rule.huntId || state.activeHuntId,
+          };
+        }),
+        detectionResults: updatedResults,
+      };
+    });
   },
 
   validateDetectionRule: (ruleId) => {

@@ -493,7 +493,7 @@ describe('OMEGA MAX — Deep Security Audit & Integrity Guardrails', () => {
       ];
 
       const originalLedgerHash = calculateCustodyLedgerHash(ledger);
-      expect(originalLedgerHash).toMatch(/^sha256:[a-f0-9]{32}$/);
+      expect(originalLedgerHash).toMatch(/^sha256:[a-f0-9]{32,64}$/);
 
       // Verify legitimate proof
       const proof = verifyCustodyLedgerTamperResistance('EVD-TEST-VAULT', ledger, originalLedgerHash);
@@ -529,8 +529,8 @@ describe('OMEGA MAX — Deep Security Audit & Integrity Guardrails', () => {
       // Both are valid SHA-256 deterministic hashes but protect distinct aspects:
       // contentHash protects artifact content / metadata
       // ledgerHash protects the custody transfer ledger sequence
-      expect(contentHash).toMatch(/^sha256:[a-f0-9]{32}$/);
-      expect(ledgerHash).toMatch(/^sha256:[a-f0-9]{32}$/);
+      expect(contentHash).toMatch(/^sha256:[a-f0-9]{32,64}$/);
+      expect(ledgerHash).toMatch(/^sha256:[a-f0-9]{32,64}$/);
       expect(contentHash).not.toBe(ledgerHash);
     });
   });

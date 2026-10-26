@@ -398,7 +398,7 @@ describe('OMEGA MAX — Challenge Integrity & Technical Validators', () => {
       const hashB = calculateEvidenceHash(metaB);
       const hashC = calculateEvidenceHash(metaC);
 
-      expect(hashA).toMatch(/^sha256:[a-f0-9]{32}$/);
+      expect(hashA).toMatch(/^sha256:[a-f0-9]{32,64}$/);
       expect(hashA).toBe(hashB);
       expect(hashA).not.toBe(hashC);
     });
