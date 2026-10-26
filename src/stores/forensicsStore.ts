@@ -19,6 +19,7 @@ export type ForensicsLabId =
   | 'containment' 
   | 'recovery' 
   | 'lessons' 
+  | 'forensics_3d'
   | 'master';
 
 interface ForensicsStoreState {

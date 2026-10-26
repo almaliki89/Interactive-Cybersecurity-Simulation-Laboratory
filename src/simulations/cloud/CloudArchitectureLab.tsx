@@ -10,7 +10,8 @@
 import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { createDefaultCloudArchitectures, CloudBlueprint } from './logic/architecture';
-import { Layers, Shield, CheckCircle2, Network, ArrowRight, Check } from 'lucide-react';
+import { Layers, Shield, CheckCircle2, Network, ArrowRight, Check, Box } from 'lucide-react';
+import { Cloud3DArchitectureCanvas } from './components/Cloud3DArchitectureCanvas';
 
 export const CloudArchitectureLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -18,6 +19,7 @@ export const CloudArchitectureLab: React.FC = () => {
 
   const [blueprints] = useState<CloudBlueprint[]>(createDefaultCloudArchitectures());
   const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>(blueprints[0].id);
+  const [viewMode, setViewMode] = useState<'3d' | 'ascii'>('3d');
 
   const selectedBlueprint = blueprints.find((b) => b.id === selectedBlueprintId) || blueprints[0];
 
@@ -75,18 +77,50 @@ export const CloudArchitectureLab: React.FC = () => {
 
         {/* Center & Right: Architecture Diagram & Control Layers */}
         <div className="lg:col-span-2 flex flex-col gap-6">
-          {/* ASCII Diagram Viewer */}
-          <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold text-cyan-400">
-                {isAr ? selectedBlueprint.nameAr : selectedBlueprint.nameEn}
+          {/* Diagram / 3D Viewer Container */}
+          <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg flex flex-col">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h3 className="text-xs font-bold text-cyan-400 flex items-center gap-2">
+                <span>{isAr ? selectedBlueprint.nameAr : selectedBlueprint.nameEn}</span>
+                <span className="text-[10px] font-mono text-slate-500 font-normal">({selectedBlueprint.category})</span>
               </h3>
-              <span className="text-[10px] font-mono text-slate-500">{selectedBlueprint.category}</span>
+
+              {/* View Switcher Toggle */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800">
+                <button
+                  onClick={() => setViewMode('3d')}
+                  className={`px-2.5 py-1 text-[10px] font-mono rounded-lg flex items-center gap-1.5 transition-all ${
+                    viewMode === '3d'
+                      ? 'bg-cyan-600 text-white font-bold shadow-md shadow-cyan-950'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Box className="w-3 h-3" />
+                  <span>{isAr ? 'بيئة 3D واقعية' : '3D Cloud Mesh'}</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('ascii')}
+                  className={`px-2.5 py-1 text-[10px] font-mono rounded-lg flex items-center gap-1.5 transition-all ${
+                    viewMode === 'ascii'
+                      ? 'bg-slate-800 text-cyan-300 font-bold border border-slate-700'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3 h-3" />
+                  <span>{isAr ? 'مخطط نصي' : 'ASCII Blueprint'}</span>
+                </button>
+              </div>
             </div>
 
-            <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-cyan-300 overflow-x-auto leading-tight">
-              {selectedBlueprint.diagramAscii}
-            </pre>
+            {viewMode === '3d' ? (
+              <div className="w-full h-[440px] rounded-xl overflow-hidden border border-slate-800">
+                <Cloud3DArchitectureCanvas blueprintId={selectedBlueprint.id} />
+              </div>
+            ) : (
+              <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-cyan-300 overflow-x-auto leading-tight">
+                {selectedBlueprint.diagramAscii}
+              </pre>
+            )}
           </div>
 
           {/* Key Architectural Benefits */}

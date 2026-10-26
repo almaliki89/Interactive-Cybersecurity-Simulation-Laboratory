@@ -22,6 +22,7 @@ import { normalizeRuntimeEvent } from '../soc/logic/normalization';
 import { createForensicEvidenceFromTelemetry } from './logic/evidence';
 import { getInitialCustodyRecords } from './logic/custody';
 import { FileSearch, Map, ArrowLeft } from 'lucide-react';
+import { Forensics3DLab } from './components/Forensics3DLab';
 
 import { ForensicsCaseWorkspace } from './components/ForensicsCaseWorkspace';
 import { NEXORA_CASE_EVIDENCE } from './logic/caseEvidence';
@@ -78,6 +79,8 @@ export const ForensicsSimulation: React.FC = () => {
         return <IncidentIntakeLab />;
       case 'preservation':
         return <EvidencePreservationLab />;
+      case 'forensics_3d':
+        return <Forensics3DLab />;
       case 'custody':
         return <ChainOfCustodyLab />;
       case 'disk':

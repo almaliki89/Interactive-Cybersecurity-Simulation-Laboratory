@@ -36,6 +36,7 @@ const PHASES: PhaseGroup[] = [
     labelAr: 'الأدلة',
     icon: ShieldCheck,
     labs: [
+      { id: 'forensics_3d', labelEn: '3D Evidence Bench', labelAr: 'طاولة الأدلة 3D' },
       { id: 'preservation', labelEn: 'Preservation', labelAr: 'الحفظ' },
       { id: 'custody', labelEn: 'Chain of Custody', labelAr: 'سلسلة الحضانة' },
     ],

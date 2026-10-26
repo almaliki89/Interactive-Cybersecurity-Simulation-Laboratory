@@ -13,6 +13,7 @@ import { SocContextInspector } from './SocContextInspector';
 import { SocFilterBar } from './SocFilterBar';
 import { SocRawEventDrawer } from './SocRawEventDrawer';
 import { SocExplorer } from './SocExplorer';
+import { Soc3DWarRoom } from './Soc3DWarRoom';
 
 import { 
   Activity, 
@@ -26,7 +27,8 @@ import {
   PanelLeft,
   PanelRight,
   Maximize2,
-  X
+  X,
+  Box
 } from 'lucide-react';
 
 export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackToMap }) => {
@@ -38,6 +40,7 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
   const activeTab = useSocStore((s) => s.activeTab);
   const setActiveTab = useSocStore((s) => s.setActiveTab);
   const selectedAlertId = useSocStore((s) => s.selectedAlertId);
+  const setSelectedAlertId = useSocStore((s) => s.setSelectedAlertId);
   const selectedEventId = useSocStore((s) => s.selectedEventId);
   const filters = useSocStore((s) => s.filters);
 
@@ -235,6 +238,12 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
                 icon={Terminal}
                 label={isAr ? 'المستكشف' : 'Explorer'}
               />
+              <NavButton 
+                active={activeTab === 'WAR_ROOM_3D'} 
+                onClick={() => setActiveTab('WAR_ROOM_3D')}
+                icon={Box}
+                label={isAr ? 'غرفة العمليات 3D' : '3D War Room'}
+              />
            </nav>
         </div>
 
@@ -314,6 +323,16 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
 
            {activeTab === 'EXPLORER' && (
              <SocExplorer events={enrichedTelemetry} />
+           )}
+
+           {activeTab === 'WAR_ROOM_3D' && (
+             <div className="flex-1 w-full h-full">
+               <Soc3DWarRoom 
+                 alerts={filteredAlerts}
+                 triagedAlerts={triagedAlerts}
+                 onSelectAlert={(alertId) => setSelectedAlertId(alertId)}
+               />
+             </div>
            )}
         </div>
 

@@ -66,7 +66,7 @@ export interface ThreatHuntingState {
   forensicsHandoffs: ForensicsHandoffPackage[];
 
   // UI Panels
-  activeTab: 'HYPOTHESIS' | 'TELEMETRY' | 'QUERY' | 'CORRELATION' | 'THREAT_INTEL' | 'FINDINGS' | 'DETECTION' | 'MASTER';
+  activeTab: 'HYPOTHESIS' | 'TELEMETRY' | 'QUERY' | 'CORRELATION' | 'THREAT_INTEL' | 'FINDINGS' | 'DETECTION' | 'MASTER' | 'MATRIX_3D';
   bottomDrawerTab: 'RAW' | 'QUERY_DIAG' | 'DETECTION_TUNING' | 'HANDOFF_LOGS';
   isBottomDrawerOpen: boolean;
   isMobileNavOpen: boolean;

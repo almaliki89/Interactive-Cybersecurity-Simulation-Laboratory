@@ -26,7 +26,9 @@ import {
   ShieldCheck,
   Server,
   ShieldAlert,
+  Box,
 } from 'lucide-react';
+import { ActiveDirectory3DRange } from './components/ActiveDirectory3DRange';
 
 export const ActiveDirectorySimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -36,6 +38,7 @@ export const ActiveDirectorySimulation: React.FC = () => {
 
   const navItems = [
     { id: 'map', nameEn: 'World Map', nameAr: 'خارطة المنظومة', icon: Compass },
+    { id: 'ad_3d_range', nameEn: '3D Domain Range', nameAr: 'نطاق الدومين 3D', icon: Box },
     { id: 'directory', nameEn: 'Directory Explorer', nameAr: 'مستكشف الدليل', icon: FolderTree },
     { id: 'users', nameEn: 'Users & Computers', nameAr: 'المستخدمون والحواسيب', icon: Users },
     { id: 'groups', nameEn: 'Group Graph', nameAr: 'تداخل المجموعات', icon: Workflow },
@@ -79,6 +82,10 @@ export const ActiveDirectorySimulation: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         {activeView === 'map' && (
           <ActiveDirectoryWorldMap onSelectLab={(labId) => setActiveView(labId)} />
+        )}
+
+        {activeView === 'ad_3d_range' && (
+          <ActiveDirectory3DRange />
         )}
 
         {activeView === 'directory' && (

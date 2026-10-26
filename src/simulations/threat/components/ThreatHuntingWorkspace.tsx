@@ -24,7 +24,9 @@ import {
   Menu,
   SlidersHorizontal,
   ChevronUp,
+  Box,
 } from 'lucide-react';
+import { Threat3DMatrixStage } from './Threat3DMatrixStage';
 
 interface ThreatHuntingWorkspaceProps {
   language: 'ar' | 'en';
@@ -63,6 +65,7 @@ export const ThreatHuntingWorkspace: React.FC<ThreatHuntingWorkspaceProps> = ({ 
     { id: 'THREAT_INTEL' as const, labelEn: 'Threat Intel', labelAr: 'الاستخبارات', icon: Eye },
     { id: 'FINDINGS' as const, labelEn: 'Findings', labelAr: 'النتائج', icon: FileCheck },
     { id: 'DETECTION' as const, labelEn: 'Detection Rules', labelAr: 'قواعد الكشف', icon: Sliders },
+    { id: 'MATRIX_3D' as const, labelEn: '3D Attack Graph', labelAr: 'مصفوفة الهجوم 3D', icon: Box },
     { id: 'MASTER' as const, labelEn: 'Master Hunt', labelAr: 'التحدي الشامل', icon: Award },
   ];
 
@@ -169,6 +172,7 @@ export const ThreatHuntingWorkspace: React.FC<ThreatHuntingWorkspaceProps> = ({ 
             {activeTab === 'THREAT_INTEL' && <ThreatIntelPanel language={language} />}
             {activeTab === 'FINDINGS' && <FindingsPanel language={language} />}
             {activeTab === 'DETECTION' && <DetectionBuilder language={language} />}
+            {activeTab === 'MATRIX_3D' && <Threat3DMatrixStage />}
             {activeTab === 'MASTER' && <MasterChallengeView language={language} />}
           </div>
 
