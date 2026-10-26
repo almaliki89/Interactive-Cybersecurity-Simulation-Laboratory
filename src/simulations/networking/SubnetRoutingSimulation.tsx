@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Workspace } from '../../components/simulation/Workspace';
+import { StageCanvas } from '../../components/simulation/StageCanvas';
+import { SimulationNode, ConnectionLink, Packet } from '../../types/simulation';
 import { Challenge } from '../../types/simulation';
 import {
   useSimulationStore,
@@ -63,6 +65,63 @@ export const SubnetRoutingSimulation: React.FC = () => {
     setPacketState('idle');
     setTransmissionResult(null);
   }, [hostIp, gatewayIp, cidrPrefix, natEnabled, destPort, protocol, firewallPolicy]);
+
+  // Dynamic 3D/2D Hardware Topology Nodes
+  const simulationNodes: SimulationNode[] = [
+    {
+      id: 'pc',
+      name: isAr ? 'مضيف LAN' : 'Host PC',
+      type: 'client',
+      ip: hostIp,
+      status: packetState === 'blocked' && transmissionResult?.failureHop === 'host' ? 'blocked' : 'online',
+      position: { x: 12, y: 50 },
+    },
+    {
+      id: 'router',
+      name: isAr ? 'موجه Gateway' : 'L3 Gateway',
+      type: 'router',
+      ip: gatewayIp,
+      status: packetState === 'blocked' && transmissionResult?.failureHop === 'router' ? 'blocked' : 'online',
+      position: { x: 38, y: 50 },
+    },
+    {
+      id: 'firewall',
+      name: isAr ? 'جدار الحماية NAT' : 'Firewall & NAT',
+      type: 'firewall',
+      ip: natEnabled ? '203.0.113.1' : (isAr ? 'معطل' : 'Disabled'),
+      status: packetState === 'blocked' && transmissionResult?.failureHop === 'firewall' ? 'blocked' : 'online',
+      position: { x: 64, y: 50 },
+    },
+    {
+      id: 'server',
+      name: isAr ? 'خادم WAN' : 'WAN Web Server',
+      type: 'server',
+      ip: `${wanServerIp}:${destPort}`,
+      status: packetState === 'blocked' && transmissionResult?.failureHop === 'service' ? 'blocked' : 'online',
+      position: { x: 88, y: 50 },
+    },
+  ];
+
+  const simulationConnections: ConnectionLink[] = [
+    { id: 'c1', source: 'pc', target: 'router', status: 'active', label: 'LAN Subnet' },
+    { id: 'c2', source: 'router', target: 'firewall', status: 'active', label: 'L3 Transit' },
+    { id: 'c3', source: 'firewall', target: 'server', status: 'active', label: 'WAN Link' },
+  ];
+
+  const simulationPackets: Packet[] = packetState !== 'idle' ? [
+    {
+      id: 'pkt-trace-1',
+      source: transmissionResult?.failureHop === 'router' ? 'pc' : transmissionResult?.failureHop === 'firewall' ? 'router' : 'firewall',
+      destination: transmissionResult?.failureHop === 'router' ? 'router' : transmissionResult?.failureHop === 'firewall' ? 'firewall' : 'server',
+      protocol,
+      sourcePort: 54321,
+      destinationPort: destPort,
+      progress: packetState === 'transmitting' ? 0.5 : 0.95,
+      state: packetState === 'blocked' ? 'blocked' : 'delivered',
+      timestamp: Date.now(),
+      blockedReason: packetState === 'blocked' ? (isAr ? 'تم حظر الحزمة' : 'BLOCKED') : undefined,
+    }
+  ] : [];
 
   // Authoritative Challenge Validator Registration
   useEffect(() => {
@@ -494,6 +553,17 @@ export const SubnetRoutingSimulation: React.FC = () => {
               </span>
             )}
           </h4>
+
+          {/* 3D / 2D Cyber Range Stage Viewport */}
+          <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 h-72">
+            <StageCanvas
+              nodes={simulationNodes}
+              connections={simulationConnections}
+              packets={simulationPackets}
+              height="100%"
+              onNodeClick={(n) => setSelectedDevice(n.id as any)}
+            />
+          </div>
 
           {/* Hop Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
