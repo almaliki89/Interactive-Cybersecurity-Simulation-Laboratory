@@ -239,6 +239,7 @@ export function calculateCustodyLedgerHash(records: CustodyRecord[]): string {
 
 /**
  * Validates cryptographic tamper resistance of a custody ledger for an evidence item.
+ * Requires a trusted expected baseline hash to claim tamper resistance verification.
  */
 export function verifyCustodyLedgerTamperResistance(
   evidenceId: string,
@@ -246,6 +247,7 @@ export function verifyCustodyLedgerTamperResistance(
   expectedLedgerHash?: string
 ): {
   isTamperEvident: boolean;
+  hasVerifiedBaseline: boolean;
   ledgerHash: string;
   recordCount: number;
   reasonEn: string;
@@ -253,10 +255,34 @@ export function verifyCustodyLedgerTamperResistance(
 } {
   const itemRecords = records.filter((r) => r.evidenceId === evidenceId);
   const ledgerHash = calculateCustodyLedgerHash(itemRecords);
-  const isTamperEvident = expectedLedgerHash ? ledgerHash === expectedLedgerHash : true;
+
+  if (itemRecords.length === 0) {
+    return {
+      isTamperEvident: false,
+      hasVerifiedBaseline: false,
+      ledgerHash,
+      recordCount: 0,
+      reasonEn: `No custody records found for evidence item ${evidenceId}.`,
+      reasonAr: `لم يتم العثور على سجلات حضانة للدليل ${evidenceId}.`,
+    };
+  }
+
+  if (!expectedLedgerHash || expectedLedgerHash.trim() === '') {
+    return {
+      isTamperEvident: false,
+      hasVerifiedBaseline: false,
+      ledgerHash,
+      recordCount: itemRecords.length,
+      reasonEn: `Missing expected baseline hash: cannot verify tamper resistance without a trusted reference hash.`,
+      reasonAr: `البصمة المرجعية المتوقعة مفقودة: لا يمكن التحقق من السلامة والتلاعب بدون بصمة مرجعية موثوقة.`,
+    };
+  }
+
+  const isTamperEvident = ledgerHash === expectedLedgerHash;
 
   return {
     isTamperEvident,
+    hasVerifiedBaseline: true,
     ledgerHash,
     recordCount: itemRecords.length,
     reasonEn: isTamperEvident

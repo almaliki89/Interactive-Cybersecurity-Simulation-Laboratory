@@ -8,7 +8,7 @@ import {
   verifyCustodyLedgerTamperResistance,
   CustodyRecord,
 } from '../../simulations/forensics/logic/custody';
-import { calculateEvidenceHash } from '../../simulations/forensics/logic/hashing';
+import { calculateEvidenceHash, canonicalSerialize } from '../../simulations/forensics/logic/hashing';
 
 describe('OMEGA MAX — Deep Security Audit & Integrity Guardrails', () => {
   beforeEach(() => {
@@ -529,9 +529,78 @@ describe('OMEGA MAX — Deep Security Audit & Integrity Guardrails', () => {
       // Both are valid SHA-256 deterministic hashes but protect distinct aspects:
       // contentHash protects artifact content / metadata
       // ledgerHash protects the custody transfer ledger sequence
-      expect(contentHash).toMatch(/^sha256:[a-f0-9]{32,64}$/);
-      expect(ledgerHash).toMatch(/^sha256:[a-f0-9]{32,64}$/);
+      expect(contentHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(ledgerHash).toMatch(/^sha256:[a-f0-9]{64}$/);
       expect(contentHash).not.toBe(ledgerHash);
+    });
+
+    it('verifies standard NIST SHA-256 test vectors, Arabic UTF-8, and block boundaries', () => {
+      // Empty string standard vector
+      const emptyHash = calculateEvidenceHash('');
+      expect(emptyHash).toBe('sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+      expect(emptyHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+
+      // Standard 'abc' vector
+      const abcHash = calculateEvidenceHash('abc');
+      expect(abcHash).toBe('sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+      expect(abcHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+
+      // Arabic Unicode string UTF-8 encoding verification
+      const arabicText = 'دليل جنائي رقمي - محاكاة نكسورا الأمنية';
+      const arabicHash = calculateEvidenceHash(arabicText);
+      expect(arabicHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(calculateEvidenceHash(arabicText)).toBe(arabicHash);
+
+      // Block boundary sizes: 55 bytes, 56 bytes, 64 bytes, 65 bytes
+      const b55 = 'A'.repeat(55);
+      const b56 = 'A'.repeat(56);
+      const b64 = 'A'.repeat(64);
+      const b65 = 'A'.repeat(65);
+      expect(calculateEvidenceHash(b55)).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(calculateEvidenceHash(b56)).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(calculateEvidenceHash(b64)).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(calculateEvidenceHash(b65)).toMatch(/^sha256:[a-f0-9]{64}$/);
+    });
+
+    it('canonicalSerialize produces distinct representations for null, undefined, NaN, and Infinity', () => {
+      expect(canonicalSerialize(null)).toBe('null');
+      expect(canonicalSerialize(undefined)).toBe('"__undefined__"');
+      expect(canonicalSerialize(NaN)).toBe('"__NaN__"');
+      expect(canonicalSerialize(Infinity)).toBe('"__Infinity__"');
+      expect(canonicalSerialize(-Infinity)).toBe('"__-Infinity__"');
+
+      // Ensure objects with null vs undefined vs NaN produce distinct serialized representations
+      const objNull = { val: null };
+      const objUndefined = { val: undefined };
+      const objNaN = { val: NaN };
+      expect(canonicalSerialize(objNull)).not.toBe(canonicalSerialize(objUndefined));
+      expect(canonicalSerialize(objNull)).not.toBe(canonicalSerialize(objNaN));
+      expect(canonicalSerialize(objUndefined)).not.toBe(canonicalSerialize(objNaN));
+    });
+
+    it('rejects tamper verification when expected baseline hash is missing or ledger is empty', () => {
+      const ledger: CustodyRecord[] = [
+        {
+          id: 'CUST-1',
+          evidenceId: 'EVD-100',
+          virtualTime: 10,
+          action: 'COLLECTED',
+          actor: 'Investigator Sara',
+          notes: 'Initial',
+        },
+      ];
+
+      // Missing baseline hash MUST NOT evaluate to true
+      const noBaselineRes = verifyCustodyLedgerTamperResistance('EVD-100', ledger, undefined);
+      expect(noBaselineRes.isTamperEvident).toBe(false);
+      expect(noBaselineRes.hasVerifiedBaseline).toBe(false);
+      expect(noBaselineRes.reasonEn).toContain('Missing expected baseline hash');
+
+      // Empty ledger MUST NOT evaluate to true
+      const emptyRes = verifyCustodyLedgerTamperResistance('EVD-NON-EXISTENT', [], 'sha256:abc');
+      expect(emptyRes.isTamperEvident).toBe(false);
+      expect(emptyRes.hasVerifiedBaseline).toBe(false);
+      expect(emptyRes.reasonEn).toContain('No custody records found');
     });
   });
 });

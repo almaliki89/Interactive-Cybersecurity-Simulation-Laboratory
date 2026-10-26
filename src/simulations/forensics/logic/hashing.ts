@@ -4,6 +4,7 @@
  * Fully deterministic - no Date.now, Math.random, or external network calls.
  */
 
+import { createHash } from 'crypto';
 import { ForensicEvidence } from './evidence';
 
 /**
@@ -11,9 +12,12 @@ import { ForensicEvidence } from './evidence';
  * Guarantees that key order variations in telemetry objects produce identical serialized output.
  */
 export function canonicalSerialize(val: unknown): string {
-  if (val === null || val === undefined) return 'null';
+  if (val === null) return 'null';
+  if (val === undefined) return '"__undefined__"';
   if (typeof val === 'number') {
-    if (!Number.isFinite(val)) return 'null';
+    if (Number.isNaN(val)) return '"__NaN__"';
+    if (val === Infinity) return '"__Infinity__"';
+    if (val === -Infinity) return '"__-Infinity__"';
     return String(val);
   }
   if (typeof val === 'boolean' || typeof val === 'string') {
@@ -33,10 +37,21 @@ export function canonicalSerialize(val: unknown): string {
 }
 
 /**
- * Standard FIPS 180-4 compliant SHA-256 implementation in pure TypeScript.
- * Evaluates real cryptographic 256-bit hashes synchronously.
+ * Standard FIPS 180-4 compliant SHA-256 implementation.
+ * Evaluates real cryptographic 256-bit hashes synchronously using Node crypto with pure JS fallback.
  */
 export function sha256Bytes(bytes: Uint8Array): string {
+  try {
+    if (typeof createHash === 'function') {
+      return createHash('sha256').update(bytes).digest('hex');
+    }
+  } catch {
+    // Fallback to pure JS SHA-256 if node:crypto is unavailable in pure browser context
+  }
+  return pureJsSha256(bytes);
+}
+
+function pureJsSha256(bytes: Uint8Array): string {
   const K = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -66,20 +81,20 @@ export function sha256Bytes(bytes: Uint8Array): string {
   padded.set(bytes, 0);
   padded[len] = 0x80;
 
-  const view = new DataView(padded.buffer);
+  const view = new DataView(padded.buffer, padded.byteOffset, padded.byteLength);
   view.setUint32(padded.length - 8, bitLenHi, false);
   view.setUint32(padded.length - 4, bitLenLo, false);
 
-  const W = new Int32Array(64);
+  const W = new Uint32Array(64);
 
   for (let i = 0; i < padded.length; i += 64) {
     for (let t = 0; t < 16; t++) {
-      W[t] = view.getInt32(i + t * 4, false);
+      W[t] = view.getUint32(i + t * 4, false);
     }
     for (let t = 16; t < 64; t++) {
       const s0 = (rightRotate(W[t - 15], 7) ^ rightRotate(W[t - 15], 18) ^ (W[t - 15] >>> 3)) >>> 0;
       const s1 = (rightRotate(W[t - 2], 17) ^ rightRotate(W[t - 2], 19) ^ (W[t - 2] >>> 10)) >>> 0;
-      W[t] = (W[t - 16] + s0 + W[t - 7] + s1) | 0;
+      W[t] = (W[t - 16] + s0 + W[t - 7] + s1) >>> 0;
     }
 
     let a = H0;
@@ -94,45 +109,47 @@ export function sha256Bytes(bytes: Uint8Array): string {
     for (let t = 0; t < 64; t++) {
       const S1 = (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) >>> 0;
       const ch = ((e & f) ^ (~e & g)) >>> 0;
-      const temp1 = (h + S1 + ch + K[t] + W[t]) | 0;
+      const temp1 = (h + S1 + ch + K[t] + W[t]) >>> 0;
       const S0 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) >>> 0;
       const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;
-      const temp2 = (S0 + maj) | 0;
+      const temp2 = (S0 + maj) >>> 0;
 
       h = g;
       g = f;
       f = e;
-      e = (d + temp1) | 0;
+      e = (d + temp1) >>> 0;
       d = c;
       c = b;
       b = a;
-      a = (temp1 + temp2) | 0;
+      a = (temp1 + temp2) >>> 0;
     }
 
-    H0 = (H0 + a) | 0;
-    H1 = (H1 + b) | 0;
-    H2 = (H2 + c) | 0;
-    H3 = (H3 + d) | 0;
-    H4 = (H4 + e) | 0;
-    H5 = (H5 + f) | 0;
-    H6 = (H6 + g) | 0;
-    H7 = (H7 + h) | 0;
+    H0 = (H0 + a) >>> 0;
+    H1 = (H1 + b) >>> 0;
+    H2 = (H2 + c) >>> 0;
+    H3 = (H3 + d) >>> 0;
+    H4 = (H4 + e) >>> 0;
+    H5 = (H5 + f) >>> 0;
+    H6 = (H6 + g) >>> 0;
+    H7 = (H7 + h) >>> 0;
   }
 
   return (
-    (H0 >>> 0).toString(16).padStart(8, '0') +
-    (H1 >>> 0).toString(16).padStart(8, '0') +
-    (H2 >>> 0).toString(16).padStart(8, '0') +
-    (H3 >>> 0).toString(16).padStart(8, '0') +
-    (H4 >>> 0).toString(16).padStart(8, '0') +
-    (H5 >>> 0).toString(16).padStart(8, '0') +
-    (H6 >>> 0).toString(16).padStart(8, '0') +
-    (H7 >>> 0).toString(16).padStart(8, '0')
+    H0.toString(16).padStart(8, '0') +
+    H1.toString(16).padStart(8, '0') +
+    H2.toString(16).padStart(8, '0') +
+    H3.toString(16).padStart(8, '0') +
+    H4.toString(16).padStart(8, '0') +
+    H5.toString(16).padStart(8, '0') +
+    H6.toString(16).padStart(8, '0') +
+    H7.toString(16).padStart(8, '0')
   );
 }
 
 function rightRotate(value: number, amount: number): number {
-  return ((value >>> amount) | (value << (32 - amount))) >>> 0;
+  const v = value >>> 0;
+  const n = amount;
+  return ((v >>> n) | ((v & ((1 << n) - 1)) * (2 ** (32 - n)))) >>> 0;
 }
 
 /**
