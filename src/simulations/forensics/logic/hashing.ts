@@ -7,10 +7,36 @@
 import { ForensicEvidence } from './evidence';
 
 /**
- * Calculates a deterministic synthetic hash string for any input
+ * Recursively serializes any input value into a canonical, key-sorted JSON string representation.
+ * Guarantees that key order variations in telemetry objects produce identical serialized output.
+ */
+export function canonicalSerialize(val: unknown): string {
+  if (val === null || val === undefined) return 'null';
+  if (typeof val === 'number') {
+    if (!Number.isFinite(val)) return 'null';
+    return String(val);
+  }
+  if (typeof val === 'boolean' || typeof val === 'string') {
+    return JSON.stringify(val);
+  }
+  if (Array.isArray(val)) {
+    return `[${val.map((item) => canonicalSerialize(item)).join(',')}]`;
+  }
+  if (typeof val === 'object') {
+    const keys = Object.keys(val as Record<string, unknown>).sort();
+    const entries = keys.map(
+      (key) => `${JSON.stringify(key)}:${canonicalSerialize((val as Record<string, unknown>)[key])}`
+    );
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(String(val));
+}
+
+/**
+ * Calculates a deterministic synthetic hash string (SHA-256 educational format) for any input using canonical serialization
  */
 export function calculateEvidenceHash(input: unknown): string {
-  const serialized = typeof input === 'string' ? input : JSON.stringify(input);
+  const serialized = typeof input === 'string' ? input : canonicalSerialize(input);
   let h1 = 0x811c9dc5;
   let h2 = 0x01000193;
 

@@ -67,11 +67,9 @@ export function validateCustodyChain(
   const unauthorizedModification = originalHash !== currentHash;
   const missingActor = itemRecords.some((r) => !r.actor || r.actor.trim() === '');
 
-  const unauthorizedActor = itemRecords.some((r) => {
-    if (!r.actor || r.actor.trim() === '') return true;
-    const lower = r.actor.toLowerCase().trim();
-    return lower === 'unknown' || lower === 'anonymous' || lower === 'attacker' || lower === 'unauthorized';
-  });
+  const invalidVirtualTime = itemRecords.some(
+    (r) => typeof r.virtualTime !== 'number' || !Number.isFinite(r.virtualTime) || r.virtualTime < 0
+  );
 
   const outOfOrderActions: string[] = [];
   const reasonsEn: string[] = [];
@@ -131,6 +129,10 @@ export function validateCustodyChain(
 
   const invalidChronology = outOfOrderActions.length > 0 || sequenceInverted || hasIllegalInitialAction;
 
+  if (invalidVirtualTime) {
+    reasonsEn.push(`Invalid timestamp (NaN, Infinity, or negative) detected in custody records for item ${evidenceId}`);
+    reasonsAr.push(`تم اكتشاف طابع زمني غير صالح (NaN أو غير محدود أو سالب) في سجلات الحضانة للدليل ${evidenceId}`);
+  }
   if (duplicateCollection) {
     reasonsEn.push(`Multiple initial collection records detected for item ${evidenceId}`);
     reasonsAr.push(`اكتشاف أكثر من تسجيل تحريز أولي للدليل ${evidenceId}`);
@@ -168,7 +170,8 @@ export function validateCustodyChain(
     !invalidChronology &&
     !missingActor &&
     !unauthorizedActor &&
-    !duplicateCollection;
+    !duplicateCollection &&
+    !invalidVirtualTime;
 
   return {
     valid,
@@ -185,11 +188,11 @@ export function validateCustodyChain(
 
 /**
  * Gets the custody history for a specific evidence item from the global or passed records.
- * Returns real custody records for the given evidence item.
+ * Differentiates between undefined (fallback) vs explicitly passed empty array ([]).
  */
 export function getCustodyHistory(evidenceId: string, records?: CustodyRecord[]): CustodyRecord[] {
   if (!evidenceId) return [];
-  const source = records && records.length > 0 ? records : getInitialCustodyRecords();
+  const source = records !== undefined ? records : getInitialCustodyRecords();
   return source.filter((r) => r.evidenceId === evidenceId);
 }
 
