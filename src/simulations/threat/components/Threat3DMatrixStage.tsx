@@ -23,7 +23,7 @@ export const Threat3DMatrixStage: React.FC = () => {
 
   const hunts = useThreatHuntingStore((s) => s.hunts);
   const activeHuntId = useThreatHuntingStore((s) => s.activeHuntId);
-  const setActiveHuntId = useThreatHuntingStore((s) => s.setActiveHuntId);
+  const setActiveHunt = useThreatHuntingStore((s) => s.setActiveHunt);
   const setActiveTab = useThreatHuntingStore((s) => s.setActiveTab);
 
   const mountRef = useRef<HTMLDivElement>(null);
@@ -76,20 +76,24 @@ export const Threat3DMatrixStage: React.FC = () => {
     cameraRef.current = camera;
 
     // 2. Renderer
-    const renderer = new THREE.WebGLRenderer({
-      antialias: !isSoftwareGl,
-      powerPreference: 'high-performance',
-    });
-    rendererRef.current = renderer;
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-    renderer.shadowMap.enabled = !isSoftwareGl;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    container.appendChild(renderer.domElement);
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: !isSoftwareGl,
+        powerPreference: 'high-performance',
+      });
+      rendererRef.current = renderer;
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      renderer.shadowMap.enabled = !isSoftwareGl;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+    } catch {
+      return;
+    }
 
     // 3. Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -414,8 +418,8 @@ export const Threat3DMatrixStage: React.FC = () => {
           break;
       }
 
-      camera.position.damp(targetPos, 3, delta);
-      controls.target.damp(targetLook, 3, delta);
+      camera.position.lerp(targetPos, Math.min(1, delta * 4));
+      controls.target.lerp(targetLook, Math.min(1, delta * 4));
 
       renderer.render(scene, camera);
 
