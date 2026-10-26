@@ -25,12 +25,16 @@ import {
   BookOpen,
   Eye,
   CheckCircle2,
-  HelpCircle,
   Cpu,
   Workflow,
   Key,
   Laptop,
+  Target,
+  Flag,
+  Award,
+  AlertCircle,
 } from 'lucide-react';
+import { CURRICULUM_LESSONS, CURRICULUM_MILESTONES } from '../../data/curriculumData';
 
 interface EnterprisePacket {
   id: string;
@@ -59,6 +63,29 @@ export const InteractiveEnterpriseHero: React.FC = () => {
   const selectEntity = useSimulationStore((s) => s.selectEntity);
   const clearSelection = useSimulationStore((s) => s.clearSelection);
   const onboardingStep = useSimulationStore((s) => s.onboardingStep);
+  const activeLessonId = useSimulationStore((s) => s.activeLessonId) || 'lesson-01-cia-triad';
+  const completedLessons = useSimulationStore((s) => s.completedLessons) || [];
+  const lessonProgress = useSimulationStore((s) => s.lessonProgress) || {};
+
+  const isAr = language === 'ar';
+  const activeLesson = CURRICULUM_LESSONS[activeLessonId] || CURRICULUM_LESSONS['lesson-01-cia-triad'];
+  const activeMilestone = CURRICULUM_MILESTONES.find((m) => m.id === activeLesson?.milestoneId) || CURRICULUM_MILESTONES[0];
+  const nextLessonId = activeLesson?.nextStep?.nextLessonId;
+  const nextLesson = nextLessonId ? CURRICULUM_LESSONS[nextLessonId] : null;
+
+  const totalLessonsCount = Object.keys(CURRICULUM_LESSONS).length;
+  const progressPercent = Math.min(100, Math.round((completedLessons.length / (totalLessonsCount || 1)) * 100));
+
+  const isCurrentLessonDone = completedLessons.includes(activeLessonId);
+  const currentProg = lessonProgress[activeLessonId];
+  const isCurrentLessonStarted = currentProg && (currentProg.currentStage > 0 || Object.keys(currentProg.checkedTaskSteps || {}).length > 0);
+
+  const activeLessonStatus: 'not_started' | 'in_progress' | 'needs_review' | 'completed_verified' =
+    isCurrentLessonDone
+      ? 'completed_verified'
+      : isCurrentLessonStarted
+        ? (currentProg?.isQuizPassed && !currentProg?.isTaskPassed ? 'needs_review' : 'in_progress')
+        : 'not_started';
 
   const [isPaused, setIsPaused] = useState(false);
   const [packets, setPackets] = useState<EnterprisePacket[]>([]);
@@ -272,30 +299,186 @@ export const InteractiveEnterpriseHero: React.FC = () => {
           </button>
         </div>
 
-        {/* Beginner Orientation Ribbon */}
-        <div className="mt-5 p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-800/40 text-left rtl:text-right max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-950 border border-emerald-800 text-emerald-400 flex items-center justify-center shrink-0">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-white">
-                {language === 'ar' ? 'جديد في الأمن السيبراني؟ لا تدع كثرة المختبرات تربكك.' : 'New to cybersecurity? Do not let 60 worlds overwhelm you.'}
+        {/* Beginner Journey Command Center (4 Questions Hub) */}
+        <div className="mt-6 p-4 sm:p-5 rounded-3xl bg-slate-900/90 border border-emerald-800/60 shadow-2xl text-left rtl:text-right max-w-5xl mx-auto backdrop-blur-md">
+          {/* Header Row */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5" />
               </div>
-              <div className="text-[11px] text-emerald-300/80">
-                {language === 'ar'
-                  ? 'صممنا لك منهجاً من 11 محطة تأسيسية يرشدك خطوة بخطوة من ثالوث CIA إلى الميدان الواقعي.'
-                  : 'We built an 11-milestone foundational track guiding you step-by-step from CIA Triad to enterprise ranges.'}
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-tight">
+                    {isAr ? 'مركز رحلة الطالب وتوجيه المبتدئ' : 'Student Mission & Beginner Journey Hub'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-950 border border-emerald-700 text-emerald-300">
+                    {isAr ? 'رحلة خطوة بخطوة' : 'Step-by-Step Flow'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  {isAr
+                    ? 'إجابات فورية توجه خطواتك التعليمية من الصفر إلى إثبات الاحتراف العملي'
+                    : 'Clear guidance answering the 4 foundational questions from zero to verified mastery'}
+                </p>
+              </div>
+            </div>
+
+            {/* Resume / Next Action Button */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveSimulation('paths')}
+                data-testid="hero-career-tracks-btn"
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
+              >
+                <Workflow className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{isAr ? 'المسارات التخصصية' : 'Career Tracks'}</span>
+              </button>
+              <button
+                onClick={() => setActiveSimulation('lesson')}
+                data-testid="hero-resume-learning-btn"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-lg shadow-emerald-950/60 transition-transform active:scale-95"
+              >
+                <span>
+                  {isCurrentLessonDone
+                    ? isAr ? 'استئناف المنهج' : 'Resume Curriculum'
+                    : isCurrentLessonStarted
+                      ? isAr ? 'متابعة الدرس قيد الدراسة' : 'Continue Current Lesson'
+                      : isAr ? 'بدء أول درس عملي' : 'Start First Practical Lesson'}
+                </span>
+                <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+              </button>
+            </div>
+          </div>
+
+          {/* 4 Questions Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Q1: أين أنا في المنهج؟ */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[10px] font-bold text-cyan-400 uppercase tracking-wider mb-1.5">
+                  <div className="flex items-center gap-1">
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>{isAr ? '1. أين أنا في المنهج؟' : '1. Where am I?'}</span>
+                  </div>
+                  <span className="font-mono text-slate-400">{progressPercent}%</span>
+                </div>
+                <div className="text-xs font-bold text-white line-clamp-1 mb-1">
+                  {isAr ? activeMilestone.titleAr : activeMilestone.titleEn}
+                </div>
+                <div className="text-[11px] text-slate-400 line-clamp-2">
+                  {isAr ? activeLesson.titleAr : activeLesson.titleEn}
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-500 rounded-full"
+                    style={{ width: `${Math.max(6, progressPercent)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Q2: ماذا تعلمت حتى الآن؟ */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1.5">
+                  <Award className="w-3.5 h-3.5" />
+                  <span>{isAr ? '2. ماذا تعلمت حتى الآن؟' : '2. What have I learned?'}</span>
+                </div>
+                <div className="flex items-baseline gap-2 mb-1.5">
+                  <span className="text-lg font-mono font-extrabold text-white">
+                    {completedLessons.length}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    {isAr ? `من أصل ${totalLessonsCount} درساً` : `of ${totalLessonsCount} lessons`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                    {completedChallenges.length} {isAr ? 'تحديات مثبتة' : 'Verified Labs'}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
+                    {isAr ? 'تحقق تقني حقيقي' : 'Real Tech Proof'}
+                  </span>
+                </div>
+              </div>
+              <div className="text-[10px] text-slate-500 font-mono mt-2">
+                {isAr ? 'التقييم مبني على حالة المحاكاة' : 'Validated by real sim engine'}
+              </div>
+            </div>
+
+            {/* Q3: ما المهمة العملية التي يجب أن أنفذها؟ */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1.5">
+                  <div className="flex items-center gap-1">
+                    <Target className="w-3.5 h-3.5" />
+                    <span>{isAr ? '3. المهمة العملية المطلوبة' : '3. Practical Task'}</span>
+                  </div>
+                  {/* Status Badge */}
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold border ${
+                      activeLessonStatus === 'completed_verified'
+                        ? 'bg-emerald-950 text-emerald-300 border-emerald-600'
+                        : activeLessonStatus === 'in_progress'
+                          ? 'bg-amber-950 text-amber-300 border-amber-600 animate-pulse'
+                          : activeLessonStatus === 'needs_review'
+                            ? 'bg-rose-950 text-rose-300 border-rose-600'
+                            : 'bg-slate-900 text-slate-400 border-slate-700'
+                    }`}
+                  >
+                    {activeLessonStatus === 'completed_verified' && (isAr ? 'مكتمل وموثّق ✓' : 'Verified ✓')}
+                    {activeLessonStatus === 'in_progress' && (isAr ? 'قيد التطبيق ⏳' : 'In Progress ⏳')}
+                    {activeLessonStatus === 'needs_review' && (isAr ? 'يحتاج مراجعة ⚠️' : 'Review ⚠️')}
+                    {activeLessonStatus === 'not_started' && (isAr ? 'لم يبدأ ⚪' : 'Not Started ⚪')}
+                  </span>
+                </div>
+                <div className="text-xs font-bold text-slate-200 line-clamp-2 mb-1">
+                  {isAr ? activeLesson.guidedTask.taskTitleAr : activeLesson.guidedTask.taskTitleEn}
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-[10px] text-slate-400">
+                <span className="font-mono text-cyan-300">
+                  {activeLesson.simulationId}
+                </span>
+                <span className="text-emerald-400 font-medium">
+                  {isAr ? 'المتطلبات مستوفاة ✓' : 'Prerequisites Met ✓'}
+                </span>
+              </div>
+            </div>
+
+            {/* Q4: ماذا أدرس بعد إكمالها؟ */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1 text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-1.5">
+                  <Flag className="w-3.5 h-3.5" />
+                  <span>{isAr ? '4. ماذا أدرس بعد إكمالها؟' : '4. What to study next?'}</span>
+                </div>
+                {nextLesson ? (
+                  <>
+                    <div className="text-xs font-bold text-white line-clamp-2 mb-1">
+                      {isAr ? nextLesson.titleAr : nextLesson.titleEn}
+                    </div>
+                    <div className="text-[11px] text-slate-400 line-clamp-1">
+                      {isAr ? nextLesson.whyItMattersAr : nextLesson.whyItMattersEn}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-xs font-bold text-emerald-400">
+                    {isAr ? 'تهانينا! أكملت المنهج بالكامل.' : 'Congratulations! All milestones completed.'}
+                  </div>
+                )}
+              </div>
+              <div className="mt-2 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                <span>{isAr ? 'المستوى اللاحق' : 'Next Tier'}</span>
+                <span className="text-purple-300 font-bold">
+                  {nextLesson ? `Milestone #${nextLesson.milestoneId}` : 'Cyber Range Master'}
+                </span>
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setActiveSimulation('lesson')}
-            className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0"
-          >
-            <span>{language === 'ar' ? 'دخول مسار التعلّم' : 'Enter Curriculum'}</span>
-            <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
-          </button>
         </div>
       </div>
 

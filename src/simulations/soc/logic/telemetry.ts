@@ -28,6 +28,7 @@ export interface SecurityTelemetryEvent {
   outcome?: 'SUCCESS' | 'FAILURE' | 'DENIED' | 'ANOMALY' | 'INFO';
 
   rawEventId?: string;
+  provenance?: 'SIMULATION_SYNTHETIC' | 'RECORDED_REPLAY' | 'LIVE_RUNTIME';
   attributes: Record<string, unknown>;
 }
 
@@ -68,6 +69,7 @@ export function createTelemetryEvent(params: {
   category: string;
   outcome?: 'SUCCESS' | 'FAILURE' | 'DENIED' | 'ANOMALY' | 'INFO';
   rawEventId?: string;
+  provenance?: 'SIMULATION_SYNTHETIC' | 'RECORDED_REPLAY' | 'LIVE_RUNTIME';
   attributes?: Record<string, unknown>;
 }): SecurityTelemetryEvent {
   return {
@@ -88,6 +90,7 @@ export function createTelemetryEvent(params: {
     category: params.category,
     outcome: params.outcome ?? 'SUCCESS',
     rawEventId: params.rawEventId,
+    provenance: params.provenance ?? 'SIMULATION_SYNTHETIC',
     attributes: params.attributes ?? {},
   };
 }

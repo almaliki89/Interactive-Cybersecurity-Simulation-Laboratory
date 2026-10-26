@@ -14,6 +14,8 @@ import { AlertTriageLab } from '../../simulations/soc/AlertTriageLab';
 import { ThreatHuntValidator } from '../../simulations/threat/logic/validators';
 import { DetectionRule } from '../../simulations/threat/logic/types';
 import { HUNT_SCENARIOS } from '../../simulations/threat/logic/scenarios';
+import { InteractiveEnterpriseHero } from '../../components/landing/InteractiveEnterpriseHero';
+import { LearningPathsView } from '../../components/paths/LearningPathsView';
 
 describe('OMEGA MAX — Real UI Component Integration & Challenge Lifecycle Suite', () => {
   beforeEach(() => {
@@ -1744,6 +1746,74 @@ describe('OMEGA MAX — Real UI Component Integration & Challenge Lifecycle Suit
         ],
       };
       expect(ThreatHuntValidator.validateMasterChallenge(unverifiedEvidenceState).success).toBe(false);
+    });
+  });
+
+  /* -------------------------------------------------------------------------
+   * 7. Beginner Journey & Career Track Integration (OMEGA MAX Phases 3, 4, 6)
+   * ------------------------------------------------------------------------- */
+  describe('7. Beginner Journey & Career Track Integration', () => {
+    it('7.1 InteractiveEnterpriseHero renders 4-Question Beginner Journey Hub', () => {
+      useSimulationStore.setState({
+        language: 'ar',
+        activeSimulationId: 'landing',
+        activeLessonId: 'lesson-01-cia-triad',
+        completedLessons: ['lesson-00-orientation'],
+        completedChallenges: ['cia-balance-challenge'],
+      });
+
+      render(<InteractiveEnterpriseHero />);
+
+      // Verify the 4 foundational questions are rendered in the hub
+      expect(screen.getByText(/مركز رحلة الطالب وتوجيه المبتدئ/i)).toBeDefined();
+      expect(screen.getByText(/1\. أين أنا في المنهج؟/i)).toBeDefined();
+      expect(screen.getByText(/2\. ماذا تعلمت حتى الآن؟/i)).toBeDefined();
+      expect(screen.getByText(/3\. المهمة العملية المطلوبة/i)).toBeDefined();
+      expect(screen.getByText(/4\. ماذا أدرس بعد إكمالها؟/i)).toBeDefined();
+
+      // Verify Resume Learning CTA is present
+      const resumeBtn = screen.getByTestId('hero-resume-learning-btn');
+      expect(resumeBtn).toBeDefined();
+
+      act(() => {
+        fireEvent.click(resumeBtn);
+      });
+
+      // Verify navigation to lesson view
+      expect(useSimulationStore.getState().activeSimulationId).toBe('lesson');
+    });
+
+    it('7.2 LearningPathsView switches between Career Tracks, Skills Report, and Modes Guide', () => {
+      useSimulationStore.setState({
+        language: 'ar',
+        activeSimulationId: 'paths',
+        completedChallenges: ['brute-force-triage-challenge', 'firewall-dmz-challenge'],
+      });
+
+      render(<LearningPathsView />);
+
+      // Verify default tab is Career Tracks
+      expect(screen.getByTestId('tab-tracks-btn')).toBeDefined();
+      expect(screen.getByTestId('tab-skills-report-btn')).toBeDefined();
+      expect(screen.getByTestId('tab-modes-guide-btn')).toBeDefined();
+
+      // Switch to Skills Report
+      act(() => {
+        fireEvent.click(screen.getByTestId('tab-skills-report-btn'));
+      });
+
+      expect(screen.getByText(/تقرير تدقيق المهارات السيبرانية المثبتة/i)).toBeDefined();
+      expect(screen.getByText(/مصفوفة الكفاءات التخصصية عبر المسارات الـ 5/i)).toBeDefined();
+
+      // Switch to Modes Guide
+      act(() => {
+        fireEvent.click(screen.getByTestId('tab-modes-guide-btn'));
+      });
+
+      expect(screen.getByText(/الفصل المعماري بين التعلم والتدريب والمنافسة/i)).toBeDefined();
+      expect(screen.getByText(/وضع التعلّم والشرح/i)).toBeDefined();
+      expect(screen.getByText(/وضع التدريب والممارسة/i)).toBeDefined();
+      expect(screen.getByText(/وضع المنافسة والاختبار/i)).toBeDefined();
     });
   });
 });

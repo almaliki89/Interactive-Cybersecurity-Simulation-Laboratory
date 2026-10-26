@@ -6,6 +6,7 @@
 
 import { ThreatHunt, HuntHypothesis, HuntFinding, DetectionRule, DetectionValidationResult, SocHandoffPackage, ForensicsHandoffPackage } from './types';
 import { SecurityTelemetryEvent } from '../../soc/logic/telemetry';
+import { calculateEvidenceHash } from '../../forensics/logic/hashing';
 
 export interface ValidationState {
   hunt: ThreatHunt;
@@ -373,10 +374,17 @@ export class ThreatHuntValidator {
 
       if (!h.evidenceList || h.evidenceList.length < 2) return false;
 
-      // Canonical evidence format, preserved, verified integrity
-      const validEvidence = h.evidenceList.every(
-        (e) => e.id.startsWith('EVD-') && e.preserved && e.integrityStatus === 'VERIFIED'
-      );
+      // Canonical evidence format, preserved, verified integrity with SHA-256 hash validation
+      const validEvidence = h.evidenceList.every((e) => {
+        if (!e.id.startsWith('EVD-') || !e.preserved || e.integrityStatus !== 'VERIFIED') return false;
+        if (!e.originalHash || !e.currentHash || e.originalHash !== e.currentHash) return false;
+        // Verify real cryptographic hash against evidence metadata if present
+        if (e.metadata && typeof e.metadata === 'object' && Object.keys(e.metadata).length > 0) {
+          const computedHash = calculateEvidenceHash(e.metadata);
+          if (e.currentHash !== computedHash) return false;
+        }
+        return true;
+      });
       if (!validEvidence) return false;
 
       // Verify raw event / telemetry linkage in evidence

@@ -13,6 +13,14 @@ import {
 import { ALL_PRESET_POLICIES } from '../../simulations/cloud/logic/policies';
 import { getInitialClusterRoles, auditKubernetesRbac } from '../../simulations/containers/logic/rbac';
 import { KubernetesRole } from '../../simulations/containers/logic/types';
+import {
+  calculateEvidenceHash,
+  verifyEvidenceIntegrity,
+  validateEvidenceCryptoProof,
+} from '../../simulations/forensics/logic/hashing';
+import { createForensicEvidenceFromTelemetry } from '../../simulations/forensics/logic/evidence';
+import { ThreatHuntValidator } from '../../simulations/threat/logic/validators';
+import { HUNT_SCENARIOS } from '../../simulations/threat/logic/scenarios';
 
 describe('OMEGA MAX — Challenge Integrity & Technical Validators', () => {
   beforeEach(() => {
@@ -375,6 +383,204 @@ describe('OMEGA MAX — Challenge Integrity & Technical Validators', () => {
         message: 'Post-reset attempt',
       });
       expect(useSimulationStore.getState().completedChallenges).not.toContain('iam-hardening-challenge');
+    });
+  });
+
+  describe('6. Cryptographic Evidence Integrity & SHA-256 Tamper Resistance', () => {
+    it('calculates deterministic SHA-256 style hashes from telemetry metadata', () => {
+      const metaA = { sourceWorld: 'WINDOWS', rawEventId: 'raw-1', host: 'FIN-WS-01', user: 'sara' };
+      const metaB = { sourceWorld: 'WINDOWS', rawEventId: 'raw-1', host: 'FIN-WS-01', user: 'sara' };
+      const metaC = { sourceWorld: 'WINDOWS', rawEventId: 'raw-1', host: 'FIN-WS-01', user: 'attacker' };
+
+      const hashA = calculateEvidenceHash(metaA);
+      const hashB = calculateEvidenceHash(metaB);
+      const hashC = calculateEvidenceHash(metaC);
+
+      expect(hashA).toMatch(/^sha256:[a-f0-9]{32}$/);
+      expect(hashA).toBe(hashB);
+      expect(hashA).not.toBe(hashC);
+    });
+
+    it('detects mismatched hashes and rejects untrusted integrity status in verifyEvidenceIntegrity', () => {
+      const metadata = { eventType: 'POWERSHELL_SUSPICIOUS', pid: 4820, host: 'DC-01' };
+      const trueHash = calculateEvidenceHash(metadata);
+
+      // Tampered currentHash
+      const tamperedEvidence = {
+        id: 'EVD-WIN-01',
+        type: 'LOG_EXPORT' as const,
+        acquiredAtVirtualTime: 100,
+        originalHash: trueHash,
+        currentHash: 'sha256:00000000000000000000000000000000',
+        preserved: true,
+        integrityStatus: 'VERIFIED' as const,
+        metadata,
+      };
+
+      const verified = verifyEvidenceIntegrity(tamperedEvidence);
+      expect(verified.integrityStatus).toBe('MISMATCH');
+
+      const proof = validateEvidenceCryptoProof(tamperedEvidence);
+      expect(proof.isValid).toBe(false);
+      expect(proof.isTampered).toBe(true);
+      expect(proof.reasonEn).toContain('Hash mismatch');
+    });
+
+    it('detects metadata alteration even if attacker forged matching originalHash and currentHash', () => {
+      const originalMeta = { eventType: 'LOGIN_FAILED', ip: '192.168.1.50' };
+      const forgedHash = 'sha256:forgedhash111122223333444455556666';
+
+      // Attacker modified metadata without re-computing the valid hash
+      const forgedEvidence = {
+        id: 'EVD-WIN-02',
+        type: 'LOG_EXPORT' as const,
+        acquiredAtVirtualTime: 120,
+        originalHash: forgedHash,
+        currentHash: forgedHash, // forged identical values
+        preserved: true,
+        integrityStatus: 'VERIFIED' as const,
+        metadata: originalMeta,
+      };
+
+      const verified = verifyEvidenceIntegrity(forgedEvidence);
+      expect(verified.integrityStatus).toBe('MISMATCH');
+
+      const proof = validateEvidenceCryptoProof(forgedEvidence);
+      expect(proof.isValid).toBe(false);
+      expect(proof.isTampered).toBe(true);
+      expect(proof.reasonEn).toContain('Metadata tampering detected');
+    });
+
+    it('rejects master challenge validation if forensics handoff evidence contains tampered metadata', () => {
+      const masterScenario = HUNT_SCENARIOS['HUNT-MASTER'];
+      const masterEvents = masterScenario.events;
+
+      const meta1 = { sourceWorld: 'WINDOWS', rawEventId: masterEvents[0].rawEventId || masterEvents[0].id };
+      const trueHash1 = calculateEvidenceHash(meta1);
+
+      // Create evidence with invalid/tampered hash
+      const tamperedEvidenceList = [
+        {
+          id: 'EVD-01',
+          type: 'LOG_EXPORT' as const,
+          sourceHost: 'FIN-WS-01',
+          sourceUser: 'sara',
+          acquiredAtVirtualTime: 100,
+          originalHash: trueHash1,
+          currentHash: trueHash1,
+          preserved: true,
+          integrityStatus: 'VERIFIED' as const,
+          metadata: meta1,
+        },
+        {
+          id: 'EVD-02',
+          type: 'LOG_EXPORT' as const,
+          sourceHost: 'DC-01',
+          sourceUser: 'admin',
+          acquiredAtVirtualTime: 110,
+          originalHash: 'sha256:fakehash1234',
+          currentHash: 'sha256:fakehash1234',
+          preserved: true,
+          integrityStatus: 'VERIFIED' as const,
+          metadata: { host: 'DC-01', command: 'tampered-cmd' }, // Hash will not match!
+        },
+      ];
+
+      const val = ThreatHuntValidator.validateMasterChallenge({
+        hunt: masterScenario.hunt,
+        hypothesis: { ...masterScenario.hypothesis, status: 'SUPPORTED' },
+        findings: [
+          {
+            id: 'FIND-HUNT-MASTER-1',
+            huntId: 'HUNT-MASTER',
+            titleEn: 'Nexus APT Findings',
+            titleAr: 'نتائج نيكسورا',
+            summaryEn: 'S',
+            summaryAr: 'S',
+            severity: 'critical',
+            eventIds: [masterEvents[0].id, masterEvents[1].id, masterEvents[2].id, masterEvents[3].id],
+            rawEventIds: [
+              masterEvents[0].rawEventId || masterEvents[0].id,
+              masterEvents[1].rawEventId || masterEvents[1].id,
+              masterEvents[2].rawEventId || masterEvents[2].id,
+              masterEvents[3].rawEventId || masterEvents[3].id,
+            ],
+            entityRefs: [],
+            confidence: 'HIGH',
+            confidenceScore: 90,
+            confidenceBreakdown: { signalCountScore: 25, correlationStrengthScore: 25, intelMatchesScore: 20, sourceDiversityScore: 20 },
+            status: 'VALIDATED',
+            whyEn: '',
+            whyAr: '',
+            createdAtVirtualTime: 100,
+          },
+        ],
+        detections: [
+          {
+            id: 'DET-HUNT-MASTER-1',
+            huntId: 'HUNT-MASTER',
+            nameEn: 'Master Rule',
+            nameAr: 'قاعدة شاملة',
+            descriptionEn: '',
+            descriptionAr: '',
+            severity: 'HIGH',
+            dataSources: ['WINDOWS'],
+            conditions: [],
+            mitreTechniques: [],
+            status: 'VALIDATED',
+            ruleType: 'SINGLE_EVENT',
+            createdAtVirtualTime: 0,
+          },
+        ],
+        detectionResults: {
+          'DET-HUNT-MASTER-1': {
+            ruleId: 'DET-HUNT-MASTER-1',
+            totalEvaluated: 10,
+            matchedEventIds: [masterEvents[0].id],
+            truePositives: 1,
+            falsePositives: 0,
+            benignMatches: [],
+            maliciousMatches: [masterEvents[0].id],
+            precision: 1.0,
+            recall: 1.0,
+            isValid: true,
+            tuningAdviceEn: '',
+            tuningAdviceAr: '',
+          },
+        },
+        socHandoffs: [
+          {
+            handoffId: 'SOC-MASTER-1',
+            huntId: 'HUNT-MASTER',
+            findingId: 'FIND-HUNT-MASTER-1',
+            rawEventIds: [masterEvents[0].rawEventId || masterEvents[0].id, masterEvents[1].rawEventId || masterEvents[1].id],
+            eventIds: [masterEvents[0].id, masterEvents[1].id],
+            summaryEn: 'SOC Dispatched',
+            summaryAr: 'تم الإرسال',
+            priority: 'P1_CRITICAL',
+            timestampVirtual: 120,
+            status: 'DISPATCHED',
+          },
+        ],
+        forensicsHandoffs: [
+          {
+            handoffId: 'FOR-MASTER-1',
+            huntId: 'HUNT-MASTER',
+            caseId: 'CASE-01',
+            findingId: 'FIND-HUNT-MASTER-1',
+            rawEventIds: [masterEvents[0].rawEventId || masterEvents[0].id, masterEvents[1].rawEventId || masterEvents[1].id],
+            acquiredAtVirtualTime: 130,
+            evidenceList: tamperedEvidenceList,
+          },
+        ],
+        executedQueries: ['sourceWorld = WINDOWS', 'sourceWorld = CLOUD'],
+        telemetryEvents: masterEvents,
+      });
+
+      expect(val.success).toBe(false);
+      expect(val.missingRequirementsEn).toContain(
+        'Must complete Forensics Handoff for master campaign generating canonical preserved evidence items (EVD-...).'
+      );
     });
   });
 });
