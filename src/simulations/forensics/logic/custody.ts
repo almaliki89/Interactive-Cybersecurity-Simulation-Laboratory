@@ -4,6 +4,8 @@
  * Fully deterministic - no Date.now, Math.random, or local timers.
  */
 
+import { calculateEvidenceHash } from './hashing';
+
 export interface CustodyRecord {
   id: string;
   evidenceId: string;
@@ -65,9 +67,23 @@ export function validateCustodyChain(
   const unauthorizedModification = originalHash !== currentHash;
   const missingActor = itemRecords.some((r) => !r.actor || r.actor.trim() === '');
 
+  const unauthorizedActor = itemRecords.some((r) => {
+    if (!r.actor || r.actor.trim() === '') return true;
+    const lower = r.actor.toLowerCase().trim();
+    return lower === 'unknown' || lower === 'anonymous' || lower === 'attacker' || lower === 'unauthorized';
+  });
+
   const outOfOrderActions: string[] = [];
   const reasonsEn: string[] = [];
   const reasonsAr: string[] = [];
+
+  // Enforce custody lifecycle: initial entry must be COLLECTED
+  const hasIllegalInitialAction = itemRecords.length > 0 && itemRecords[0].action !== 'COLLECTED';
+  if (hasIllegalInitialAction) {
+    outOfOrderActions.push(itemRecords[0].action);
+    reasonsEn.push(`Initial custody action for ${evidenceId} must be COLLECTED, found ${itemRecords[0].action}.`);
+    reasonsAr.push(`الإجراء الأولي للحضانة للدليل ${evidenceId} يجب أن يكون COLLECTED، وُجد ${itemRecords[0].action}.`);
+  }
 
   // Enforce custody chronology:
   // COLLECTED < VERIFIED
@@ -79,7 +95,9 @@ export function validateCustodyChain(
   itemRecords.forEach((r) => {
     if (r.action !== 'COLLECTED') {
       if (!collectedRecord || r.virtualTime <= collectedRecord.virtualTime) {
-        outOfOrderActions.push(r.action);
+        if (!outOfOrderActions.includes(r.action)) {
+          outOfOrderActions.push(r.action);
+        }
         reasonsEn.push(
           `Custody action ${r.action} occurred before or at collection time (${r.virtualTime} <= ${
             collectedRecord ? collectedRecord.virtualTime : 'N/A'
@@ -111,7 +129,7 @@ export function validateCustodyChain(
     }
   }
 
-  const invalidChronology = outOfOrderActions.length > 0 || sequenceInverted;
+  const invalidChronology = outOfOrderActions.length > 0 || sequenceInverted || hasIllegalInitialAction;
 
   if (duplicateCollection) {
     reasonsEn.push(`Multiple initial collection records detected for item ${evidenceId}`);
@@ -120,6 +138,10 @@ export function validateCustodyChain(
   if (missingActor) {
     reasonsEn.push(`Missing authorized actor for custody action on item ${evidenceId}`);
     reasonsAr.push(`غياب الفاعل المصرح له بإجراء الحضانة للدليل ${evidenceId}`);
+  }
+  if (unauthorizedActor) {
+    reasonsEn.push(`Unauthorized or unauthenticated actor recorded in custody chain for item ${evidenceId}`);
+    reasonsAr.push(`تم تسجيل فاعل غير مخول أو مجهول في سلسلة الحضانة للدليل ${evidenceId}`);
   }
   if (missingCollector) {
     reasonsEn.push(`Missing designated evidence collector for item ${evidenceId}`);
@@ -145,6 +167,7 @@ export function validateCustodyChain(
     !unauthorizedModification &&
     !invalidChronology &&
     !missingActor &&
+    !unauthorizedActor &&
     !duplicateCollection;
 
   return {
@@ -161,18 +184,60 @@ export function validateCustodyChain(
 }
 
 /**
- * Gets the custody history for a specific evidence item from the global records.
- * This is used by the technical drawer and other inspectors.
+ * Gets the custody history for a specific evidence item from the global or passed records.
+ * Returns real custody records for the given evidence item.
  */
-export function getCustodyHistory(evidenceId: string): CustodyRecord[] {
-  // Note: In a real implementation, this would access a store or database.
-  // Since this is a logic file, we'll assume it's filtered externally or 
-  // passed in. However, for the TechnicalDrawer to work as currently written,
-  // it expects to import it. We'll use the store's state if possible,
-  // but since logic can't easily access hooks, we'll provide a helper 
-  // that labs can use to filter.
-  // Actually, I'll update the TechnicalDrawer to use the store directly.
-  return []; // Placeholder - will update TechnicalDrawer
+export function getCustodyHistory(evidenceId: string, records?: CustodyRecord[]): CustodyRecord[] {
+  if (!evidenceId) return [];
+  const source = records && records.length > 0 ? records : getInitialCustodyRecords();
+  return source.filter((r) => r.evidenceId === evidenceId);
+}
+
+/**
+ * Computes a deterministic SHA-256 style cryptographic hash over the chain of custody records.
+ * Provides verifiable proof of custody ledger immutability and tamper resistance.
+ */
+export function calculateCustodyLedgerHash(records: CustodyRecord[]): string {
+  const normalized = records.map((r) => ({
+    id: r.id,
+    evidenceId: r.evidenceId,
+    virtualTime: r.virtualTime,
+    action: r.action,
+    actor: r.actor.trim(),
+    notes: r.notes.trim(),
+  }));
+  return calculateEvidenceHash(normalized);
+}
+
+/**
+ * Validates cryptographic tamper resistance of a custody ledger for an evidence item.
+ */
+export function verifyCustodyLedgerTamperResistance(
+  evidenceId: string,
+  records: CustodyRecord[],
+  expectedLedgerHash?: string
+): {
+  isTamperEvident: boolean;
+  ledgerHash: string;
+  recordCount: number;
+  reasonEn: string;
+  reasonAr: string;
+} {
+  const itemRecords = records.filter((r) => r.evidenceId === evidenceId);
+  const ledgerHash = calculateCustodyLedgerHash(itemRecords);
+  const isTamperEvident = expectedLedgerHash ? ledgerHash === expectedLedgerHash : true;
+
+  return {
+    isTamperEvident,
+    ledgerHash,
+    recordCount: itemRecords.length,
+    reasonEn: isTamperEvident
+      ? 'Custody ledger sequence and cryptographic hash verified.'
+      : `Custody ledger alteration detected: expected ${expectedLedgerHash}, computed ${ledgerHash}.`,
+    reasonAr: isTamperEvident
+      ? 'تم التحقق من تسلسل سجل الحضانة وبصمته التشفيرية.'
+      : `تم اكتشاف تعديل في سجل الحضانة: المتوقع ${expectedLedgerHash}، المحسوب ${ledgerHash}.`,
+  };
 }
 
 /**

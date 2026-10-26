@@ -20,10 +20,8 @@ export const ForensicsTechnicalDrawer: React.FC<{ isOpen: boolean; onClose: () =
 
   const selectedEvidence = evidence.find(ev => ev.id === selectedEvidenceId);
   
-  // Filter custody history from the global store
-  const custodyEntries = selectedEvidenceId 
-    ? allCustodyRecords.filter(r => r.evidenceId === selectedEvidenceId)
-    : [];
+  // Filter custody history using canonical custody engine
+  const custodyEntries = getCustodyHistory(selectedEvidenceId || '', allCustodyRecords);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

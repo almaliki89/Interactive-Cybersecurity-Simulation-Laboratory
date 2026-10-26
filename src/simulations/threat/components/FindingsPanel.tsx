@@ -222,10 +222,26 @@ export const FindingsPanel: React.FC<FindingsPanelProps> = ({ language }) => {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {finding.status === 'OPEN' && (
+                      <button
+                        onClick={() => validateFinding(finding.id)}
+                        data-testid={`btn-validate-finding-${finding.id}`}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{isAr ? 'اعتماد النتيجة وتدقيقها' : 'Verify & Validate'}</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => dispatchSocHandoff(finding.id)}
+                      disabled={finding.status !== 'VALIDATED'}
                       data-testid={`btn-soc-handoff-${finding.id}`}
-                      className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-cyan-400 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                        finding.status === 'VALIDATED'
+                          ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-cyan-400 hover:text-white'
+                          : 'bg-slate-950/50 border-slate-900 text-slate-600 cursor-not-allowed'
+                      }`}
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>{isAr ? 'إحالة إلى SOC' : 'Handoff to SOC'}</span>
@@ -233,8 +249,13 @@ export const FindingsPanel: React.FC<FindingsPanelProps> = ({ language }) => {
 
                     <button
                       onClick={() => dispatchForensicsHandoff(finding.id)}
+                      disabled={finding.status !== 'VALIDATED'}
                       data-testid={`btn-forensics-handoff-${finding.id}`}
-                      className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-purple-400 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                        finding.status === 'VALIDATED'
+                          ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-purple-400 hover:text-white'
+                          : 'bg-slate-950/50 border-slate-900 text-slate-600 cursor-not-allowed'
+                      }`}
                     >
                       <Archive className="w-3.5 h-3.5" />
                       <span>{isAr ? 'إحالة إلى التحقيق الجنائي' : 'Forensics Handoff'}</span>

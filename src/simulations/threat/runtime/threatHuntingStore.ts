@@ -95,7 +95,7 @@ export interface ThreatHuntingState {
       confidence?: ConfidenceLevel;
     }
   ) => void;
-  validateFinding: (findingId: string) => void;
+  validateFinding: (findingId: string) => boolean;
   dismissFinding: (findingId: string) => void;
 
   addDetectionRule: (rule: Omit<DetectionRule, 'id' | 'createdAtVirtualTime'>) => string;
@@ -326,8 +326,8 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
       ...findingData,
       id: findingId,
       huntId: state.activeHuntId,
-      eventIds: uniqueValidEventIds.length > 0 ? uniqueValidEventIds : distinctEventIds,
-      rawEventIds: uniqueRawEventIds.length > 0 ? uniqueRawEventIds : (findingData.rawEventIds || []),
+      eventIds: uniqueValidEventIds,
+      rawEventIds: uniqueRawEventIds,
       createdAtVirtualTime: vTime,
       confidence: confidenceLevel,
       confidenceScore: totalConfidenceScore,
@@ -345,11 +345,42 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
   },
 
   validateFinding: (findingId) => {
-    set((state) => ({
-      findings: state.findings.map((f) =>
+    const state = get();
+    const finding = state.findings.find((f) => f.id === findingId);
+    if (!finding) return false;
+
+    // Strict ownership: Must belong to active hunt
+    if (finding.huntId !== state.activeHuntId) return false;
+
+    // Must contain at least 2 distinct non-blank event IDs
+    const distinctEventIds = Array.from(
+      new Set((finding.eventIds || []).filter((id) => typeof id === 'string' && id.trim().length > 0))
+    );
+    if (distinctEventIds.length < 2) return false;
+
+    // All event IDs must exist in active hunt telemetry
+    const allEventsExist = distinctEventIds.every((id) =>
+      state.telemetryEvents.some((e) => e.id === id)
+    );
+    if (!allEventsExist) return false;
+
+    // Raw event IDs must be present and all exist in active telemetry
+    const distinctRawIds = Array.from(
+      new Set((finding.rawEventIds || []).filter((id) => typeof id === 'string' && id.trim().length > 0))
+    );
+    if (distinctRawIds.length === 0) return false;
+    const allRawExist = distinctRawIds.every((rid) =>
+      state.telemetryEvents.some((e) => e.rawEventId === rid || e.id === rid)
+    );
+    if (!allRawExist) return false;
+
+    set((s) => ({
+      findings: s.findings.map((f) =>
         f.id === findingId ? { ...f, status: 'VALIDATED' as const } : f
       ),
     }));
+
+    return true;
   },
 
   dismissFinding: (findingId) => {
@@ -396,6 +427,11 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
       throw new Error(`Rule ${ruleId} not found`);
     }
 
+    // Ownership check: Rule must belong to active hunt
+    if (rule.huntId && rule.huntId !== state.activeHuntId) {
+      throw new Error(`Rule ${ruleId} does not belong to active hunt ${state.activeHuntId}`);
+    }
+
     const prevResult = state.detectionResults[ruleId];
     const validationResult = DetectionEngine.validateRule(rule, state.telemetryEvents, prevResult);
 
@@ -419,8 +455,38 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
   },
 
   publishDetectionRuleToSoc: (ruleId) => {
-    set((state) => ({
-      detections: state.detections.map((d) =>
+    const state = get();
+    const rule = state.detections.find((d) => d.id === ruleId);
+    if (!rule) {
+      throw new Error(`Rule ${ruleId} not found`);
+    }
+
+    // Enforce hunt ownership
+    if (rule.huntId && rule.huntId !== state.activeHuntId) {
+      throw new Error(`Cannot publish rule ${ruleId}: belongs to ${rule.huntId}, not active hunt ${state.activeHuntId}`);
+    }
+
+    // Enforce valid recent test evaluation
+    const result = state.detectionResults[ruleId];
+    if (!result || result.ruleId !== ruleId) {
+      throw new Error(`Cannot publish rule ${ruleId} to SOC: rule has not been tested or validated against telemetry`);
+    }
+
+    // Enforce strict 0 false positives and at least 1 true positive
+    if (!result.isValid || result.truePositives < 1 || result.falsePositives !== 0) {
+      throw new Error(
+        `Cannot publish rule ${ruleId} to SOC: rule failed required validation criteria (TP: ${result.truePositives}, FP: ${result.falsePositives})`
+      );
+    }
+
+    // Enforce matched telemetry event validity
+    const matched = result.matchedEventIds || [];
+    if (matched.length === 0 || !matched.every((id) => state.telemetryEvents.some((e) => e.id === id))) {
+      throw new Error(`Cannot publish rule ${ruleId} to SOC: matched events do not exist in current telemetry`);
+    }
+
+    set((s) => ({
+      detections: s.detections.map((d) =>
         d.id === ruleId
           ? {
               ...d,
@@ -437,6 +503,35 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     const finding = state.findings.find((f) => f.id === findingId);
     if (!finding) throw new Error(`Finding ${findingId} not found`);
 
+    // Strict ownership: finding must belong to active hunt
+    if (finding.huntId !== state.activeHuntId) {
+      throw new Error(`Finding ${findingId} belongs to ${finding.huntId}, not active hunt ${state.activeHuntId}`);
+    }
+
+    // Must be validated
+    if (finding.status !== 'VALIDATED') {
+      throw new Error(`Cannot dispatch unvalidated finding ${findingId} to SOC`);
+    }
+
+    // Verify all finding events exist in telemetry
+    const validEvents = (finding.eventIds || []).filter((id) => state.telemetryEvents.some((e) => e.id === id));
+    if (validEvents.length === 0 || validEvents.length !== finding.eventIds.length) {
+      throw new Error(`Finding ${findingId} contains invalid or unverified telemetry references`);
+    }
+
+    // If ruleId is supplied, verify rule belongs to same hunt and is validated with 0 false positives
+    if (ruleId) {
+      const rule = state.detections.find((d) => d.id === ruleId);
+      if (!rule) throw new Error(`Detection rule ${ruleId} not found`);
+      if (rule.huntId && rule.huntId !== state.activeHuntId) {
+        throw new Error(`Rule ${ruleId} belongs to ${rule.huntId}, not active hunt ${state.activeHuntId}`);
+      }
+      const ruleResult = state.detectionResults[ruleId];
+      if (!ruleResult || !ruleResult.isValid || ruleResult.truePositives < 1 || ruleResult.falsePositives !== 0) {
+        throw new Error(`Rule ${ruleId} has not achieved 0 false positives validation required for handoff`);
+      }
+    }
+
     const handoff = ThreatHandoffBridge.createSocHandoff(finding, ruleId, 150);
 
     set((s) => ({
@@ -450,6 +545,16 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     const state = get();
     const finding = state.findings.find((f) => f.id === findingId);
     if (!finding) throw new Error(`Finding ${findingId} not found`);
+
+    // Strict ownership: finding must belong to active hunt
+    if (finding.huntId !== state.activeHuntId) {
+      throw new Error(`Finding ${findingId} belongs to ${finding.huntId}, not active hunt ${state.activeHuntId}`);
+    }
+
+    // Must be validated
+    if (finding.status !== 'VALIDATED') {
+      throw new Error(`Cannot dispatch unvalidated finding ${findingId} to Forensics`);
+    }
 
     const handoff = ThreatHandoffBridge.createForensicsHandoff(
       finding,
