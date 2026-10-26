@@ -20,6 +20,7 @@ import {
   ThreatActorProfile,
   SocHandoffPackage,
   ForensicsHandoffPackage,
+  ConfidenceLevel,
 } from '../logic/types';
 import { HUNT_SCENARIOS } from '../logic/scenarios';
 import { ThreatHuntQueryEngine } from '../logic/queryEngine';
@@ -88,7 +89,12 @@ export interface ThreatHuntingState {
 
   updateHypothesisStatus: (status: HuntHypothesis['status'], reasonEn?: string, reasonAr?: string) => void;
 
-  addFinding: (finding: Omit<HuntFinding, 'id' | 'createdAtVirtualTime' | 'confidenceScore' | 'confidenceBreakdown'>) => void;
+  addFinding: (
+    finding: Omit<HuntFinding, 'id' | 'createdAtVirtualTime' | 'confidenceScore' | 'confidenceBreakdown' | 'huntId' | 'confidence'> & {
+      huntId?: string;
+      confidence?: ConfidenceLevel;
+    }
+  ) => void;
   validateFinding: (findingId: string) => void;
   dismissFinding: (findingId: string) => void;
 
@@ -283,14 +289,28 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
     const vTime = state.telemetryEvents.length > 0 ? state.telemetryEvents[0].virtualTime : 0;
     const findingId = `FIND-${state.activeHuntId}-${state.findings.length + 1}`;
 
-    // Calculate deterministic confidence breakdown
-    const signalCount = findingData.eventIds.length;
-    const sourceDiversity = new Set(
-      state.telemetryEvents.filter((e) => findingData.eventIds.includes(e.id)).map((e) => e.sourceWorld)
-    ).size;
+    // Sanitize and deduplicate event IDs against active telemetry to prevent artificial score inflation
+    const distinctEventIds = Array.from(new Set(findingData.eventIds || []));
+    const validEvents = state.telemetryEvents.filter((e) => distinctEventIds.includes(e.id));
+    const uniqueValidEventIds = validEvents.map((e) => e.id);
+    const uniqueRawEventIds = Array.from(
+      new Set(
+        validEvents
+          .map((e) => e.rawEventId || e.id)
+          .concat(
+            (findingData.rawEventIds || []).filter((rid) =>
+              validEvents.some((e) => e.rawEventId === rid || e.id === rid)
+            )
+          )
+      )
+    );
+
+    // Calculate deterministic confidence breakdown using deduplicated verified signals
+    const signalCount = uniqueValidEventIds.length;
+    const sourceDiversity = new Set(validEvents.map((e) => e.sourceWorld)).size;
 
     const matchedIntelCount = state.intelIndicators.filter((i) =>
-      i.matchedEventIds?.some((id) => findingData.eventIds.includes(id))
+      i.matchedEventIds?.some((id) => uniqueValidEventIds.includes(id))
     ).length;
 
     const signalScore = Math.min(30, signalCount * 10);
@@ -306,6 +326,8 @@ export const useThreatHuntingStore = create<ThreatHuntingState>((set, get) => ({
       ...findingData,
       id: findingId,
       huntId: state.activeHuntId,
+      eventIds: uniqueValidEventIds.length > 0 ? uniqueValidEventIds : distinctEventIds,
+      rawEventIds: uniqueRawEventIds.length > 0 ? uniqueRawEventIds : (findingData.rawEventIds || []),
       createdAtVirtualTime: vTime,
       confidence: confidenceLevel,
       confidenceScore: totalConfidenceScore,

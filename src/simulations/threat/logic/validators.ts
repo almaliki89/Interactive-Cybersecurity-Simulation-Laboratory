@@ -85,15 +85,14 @@ export class ThreatHuntValidator {
       completedObjs.push('obj-finding');
     }
 
-    // 4. Verify Detection Rule belongs to active hunt with trustworthy ownership
+      // 4. Verify Detection Rule belongs to active hunt with trustworthy ownership
     const validDetection = state.detections.find((d) => {
       // Explicit huntId must match target huntId
       if (d.huntId) {
         if (d.huntId !== huntId) return false;
       } else {
         // Legacy ownership inference ONLY if huntId is absent and ID follows canonical format
-        const isCanonicalFormat =
-          d.id.startsWith(`DET-${huntId}-`) || d.id.includes(`-${huntId}-`);
+        const isCanonicalFormat = d.id.startsWith(`DET-${huntId}-`);
         if (!isCanonicalFormat) return false;
       }
 
@@ -127,12 +126,13 @@ export class ThreatHuntValidator {
       if (h.huntId !== huntId) return false;
       if (h.status !== 'DISPATCHED' && h.status !== 'INGESTED') return false;
 
-      // Telemetry events check
+      // Telemetry events check: must contain at least 1 valid event and no duplicates
       const validEventIds = (h.eventIds || []).filter(
         (id) => typeof id === 'string' && id.trim().length > 0
       );
-      if (validEventIds.length < 1) return false;
-      const eventsExist = validEventIds.every((id) =>
+      const uniqueHandoffEventIds = Array.from(new Set(validEventIds));
+      if (uniqueHandoffEventIds.length < 1) return false;
+      const eventsExist = uniqueHandoffEventIds.every((id) =>
         state.telemetryEvents.some((e) => e.id === id)
       );
       if (!eventsExist) return false;
@@ -144,9 +144,9 @@ export class ThreatHuntValidator {
       );
       if (!linkedFinding) return false;
 
-      // Evidence consistency: handoff eventIds must be supported by linked finding's eventIds
+      // Evidence consistency: ALL handoff eventIds must be supported by linked finding's eventIds
       const findingEventSet = new Set(linkedFinding.eventIds);
-      const isConsistentWithFinding = validEventIds.some((id) => findingEventSet.has(id));
+      const isConsistentWithFinding = uniqueHandoffEventIds.every((id) => findingEventSet.has(id));
       if (!isConsistentWithFinding) return false;
 
       // If ruleId is present, must reference eligible detection rule for same hunt
@@ -156,8 +156,7 @@ export class ThreatHuntValidator {
 
         if (linkedRule.huntId && linkedRule.huntId !== huntId) return false;
         if (!linkedRule.huntId) {
-          const isCanonical =
-            linkedRule.id.startsWith(`DET-${huntId}-`) || linkedRule.id.includes(`-${huntId}-`);
+          const isCanonical = linkedRule.id.startsWith(`DET-${huntId}-`);
           if (!isCanonical) return false;
         }
 
@@ -241,8 +240,13 @@ export class ThreatHuntValidator {
 
     const masterEventIdsSet = new Set<string>();
     for (const f of masterFindings) {
-      for (const id of f.eventIds || []) {
-        if (typeof id === 'string' && id.trim().length > 0) {
+      const distinctFEventIds = Array.from(new Set(f.eventIds || []));
+      for (const id of distinctFEventIds) {
+        if (
+          typeof id === 'string' &&
+          id.trim().length > 0 &&
+          state.telemetryEvents.some((e) => e.id === id)
+        ) {
           masterEventIdsSet.add(id.trim());
         }
       }
@@ -258,6 +262,7 @@ export class ThreatHuntValidator {
         (f) =>
           f.rawEventIds &&
           f.rawEventIds.length > 0 &&
+          f.rawEventIds.every((rid) => state.telemetryEvents.some((e) => e.rawEventId === rid || e.id === rid)) &&
           f.eventIds.every((id) => state.telemetryEvents.some((e) => e.id === id))
       );
       if (!hasValidEvents) {
@@ -313,14 +318,15 @@ export class ThreatHuntValidator {
       if (!linkedFinding) return false;
 
       const validEventIds = (h.eventIds || []).filter((id) => typeof id === 'string' && id.trim().length > 0);
-      if (validEventIds.length < 2) return false;
+      const uniqueHandoffEventIds = Array.from(new Set(validEventIds));
+      if (uniqueHandoffEventIds.length < 2) return false;
 
-      const eventsExist = validEventIds.every((id) => state.telemetryEvents.some((e) => e.id === id));
+      const eventsExist = uniqueHandoffEventIds.every((id) => state.telemetryEvents.some((e) => e.id === id));
       if (!eventsExist) return false;
 
-      // Handoff events must be consistent with linked finding's eventIds
+      // Handoff events must all be consistent with linked finding's eventIds
       const findingEventSet = new Set(linkedFinding.eventIds);
-      const isConsistentWithFinding = validEventIds.some((id) => findingEventSet.has(id));
+      const isConsistentWithFinding = uniqueHandoffEventIds.every((id) => findingEventSet.has(id));
       if (!isConsistentWithFinding) return false;
 
       // If ruleId is present, must reference eligible detection rule for HUNT-MASTER
@@ -374,6 +380,10 @@ export class ThreatHuntValidator {
 
       if (!h.evidenceList || h.evidenceList.length < 2) return false;
 
+      // Enforce distinct evidence IDs - prevent duplicate counting or inflation
+      const uniqueEvidenceIds = new Set(h.evidenceList.map((e) => e.id));
+      if (uniqueEvidenceIds.size < 2 || uniqueEvidenceIds.size !== h.evidenceList.length) return false;
+
       // Canonical evidence format, preserved, verified integrity with SHA-256 hash validation
       const validEvidence = h.evidenceList.every((e) => {
         if (!e.id.startsWith('EVD-') || !e.preserved || e.integrityStatus !== 'VERIFIED') return false;
@@ -382,16 +392,28 @@ export class ThreatHuntValidator {
         if (e.metadata && typeof e.metadata === 'object' && Object.keys(e.metadata).length > 0) {
           const computedHash = calculateEvidenceHash(e.metadata);
           if (e.currentHash !== computedHash) return false;
+
+          // Verify evidence source linkage: metadata rawEventId or eventId must belong to linked finding
+          const evRawId = (e.metadata.rawEventId as string) || (e.metadata.eventId as string);
+          if (evRawId) {
+            const linkedToFinding =
+              linkedFinding.rawEventIds.includes(evRawId) ||
+              linkedFinding.eventIds.includes(evRawId) ||
+              state.telemetryEvents.some(
+                (te) => (te.rawEventId === evRawId || te.id === evRawId) && linkedFinding.eventIds.includes(te.id)
+              );
+            if (!linkedToFinding) return false;
+          }
         }
         return true;
       });
       if (!validEvidence) return false;
 
-      // Verify raw event / telemetry linkage in evidence
+      // Verify ALL raw event / telemetry linkages in handoff
       if (h.rawEventIds && h.rawEventIds.length > 0) {
-        const hasValidTelemetryRefs = h.rawEventIds.some((rid) =>
-          state.telemetryEvents.some((e) => e.rawEventId === rid || e.id === rid) ||
-          linkedFinding.rawEventIds.includes(rid)
+        const hasValidTelemetryRefs = h.rawEventIds.every((rid) =>
+          linkedFinding.rawEventIds.includes(rid) &&
+          state.telemetryEvents.some((e) => e.rawEventId === rid || e.id === rid)
         );
         if (!hasValidTelemetryRefs) return false;
       }

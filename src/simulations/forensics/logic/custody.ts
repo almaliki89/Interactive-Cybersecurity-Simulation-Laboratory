@@ -54,13 +54,16 @@ export function validateCustodyChain(
 ): CustodyValidationResult {
   const itemRecords = records.filter((r) => r.evidenceId === evidenceId);
 
-  const collectedRecord = itemRecords.find((r) => r.action === 'COLLECTED');
+  const collectionRecords = itemRecords.filter((r) => r.action === 'COLLECTED');
+  const collectedRecord = collectionRecords[0];
+  const duplicateCollection = collectionRecords.length > 1;
   const verifiedRecord = itemRecords.find((r) => r.action === 'VERIFIED');
 
   const missingCollector = !collectedRecord || !collectedRecord.actor || collectedRecord.actor.trim() === '';
   const missingAcquisitionTime = !collectedRecord || collectedRecord.virtualTime < 0;
   const missingIntegrityVerification = !verifiedRecord;
   const unauthorizedModification = originalHash !== currentHash;
+  const missingActor = itemRecords.some((r) => !r.actor || r.actor.trim() === '');
 
   const outOfOrderActions: string[] = [];
   const reasonsEn: string[] = [];
@@ -91,8 +94,33 @@ export function validateCustodyChain(
     }
   });
 
-  const invalidChronology = outOfOrderActions.length > 0;
+  // Verify monotonic chronology across consecutive custody ledger entries
+  let sequenceInverted = false;
+  for (let i = 1; i < itemRecords.length; i++) {
+    if (itemRecords[i].virtualTime < itemRecords[i - 1].virtualTime) {
+      sequenceInverted = true;
+      if (!outOfOrderActions.includes(itemRecords[i].action)) {
+        outOfOrderActions.push(itemRecords[i].action);
+      }
+      reasonsEn.push(
+        `Custody action ${itemRecords[i].action} timestamp T+${itemRecords[i].virtualTime} is earlier than preceding action T+${itemRecords[i - 1].virtualTime}.`
+      );
+      reasonsAr.push(
+        `الإجراء الجنائي ${itemRecords[i].action} يحمل وقت T+${itemRecords[i].virtualTime} أسبق من الإجراء السابق T+${itemRecords[i - 1].virtualTime}.`
+      );
+    }
+  }
 
+  const invalidChronology = outOfOrderActions.length > 0 || sequenceInverted;
+
+  if (duplicateCollection) {
+    reasonsEn.push(`Multiple initial collection records detected for item ${evidenceId}`);
+    reasonsAr.push(`اكتشاف أكثر من تسجيل تحريز أولي للدليل ${evidenceId}`);
+  }
+  if (missingActor) {
+    reasonsEn.push(`Missing authorized actor for custody action on item ${evidenceId}`);
+    reasonsAr.push(`غياب الفاعل المصرح له بإجراء الحضانة للدليل ${evidenceId}`);
+  }
   if (missingCollector) {
     reasonsEn.push(`Missing designated evidence collector for item ${evidenceId}`);
     reasonsAr.push(`عدم تحديد المجمع المسؤول عن الدليل ${evidenceId}`);
@@ -115,7 +143,9 @@ export function validateCustodyChain(
     !missingAcquisitionTime &&
     !missingIntegrityVerification &&
     !unauthorizedModification &&
-    !invalidChronology;
+    !invalidChronology &&
+    !missingActor &&
+    !duplicateCollection;
 
   return {
     valid,
