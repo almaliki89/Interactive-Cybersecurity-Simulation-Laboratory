@@ -10,6 +10,24 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(import.meta.dirname || process.cwd(), '.'),
       },
+      dedupe: ['react', 'react-dom'],
+    },
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'zustand',
+        'lucide-react',
+        'three',
+        'three/addons/controls/OrbitControls.js',
+        'three/addons/environments/RoomEnvironment.js',
+        'canvas-confetti',
+        'js-sha256',
+        'motion',
+      ],
     },
     server: {
       port: 3000,
