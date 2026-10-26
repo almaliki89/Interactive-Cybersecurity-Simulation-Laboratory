@@ -4,7 +4,7 @@
  * Fully deterministic - no Date.now, Math.random, or external network calls.
  */
 
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import { ForensicEvidence } from './evidence';
 
 /**
@@ -38,7 +38,7 @@ export function canonicalSerialize(val: unknown): string {
 
 /**
  * Standard FIPS 180-4 compliant SHA-256 implementation.
- * Evaluates real cryptographic 256-bit hashes synchronously using Node crypto with pure JS fallback.
+ * Pure, self-contained, and browser-safe. Evaluates exact cryptographic 256-bit hashes synchronously.
  */
 export function sha256Bytes(bytes: Uint8Array): string {
   try {
@@ -46,12 +46,21 @@ export function sha256Bytes(bytes: Uint8Array): string {
       return createHash('sha256').update(bytes).digest('hex');
     }
   } catch {
-    // Fallback to pure JS SHA-256 if node:crypto is unavailable in pure browser context
+    // Browser fallback
   }
   return pureJsSha256(bytes);
 }
 
 function pureJsSha256(bytes: Uint8Array): string {
+  let h0 = 0x6a09e667;
+  let h1 = 0xbb67ae85;
+  let h2 = 0x3c6ef372;
+  let h3 = 0xa54ff53a;
+  let h4 = 0x510e527f;
+  let h5 = 0x9b05688c;
+  let h6 = 0x1f83d9ab;
+  let h7 = 0x5be0cd19;
+
   const K = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -63,56 +72,62 @@ function pureJsSha256(bytes: Uint8Array): string {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef4a3f7, 0xc67178f2,
   ];
 
-  let H0 = 0x6a09e667;
-  let H1 = 0xbb67ae85;
-  let H2 = 0x3c6ef372;
-  let H3 = 0xa54ff53a;
-  let H4 = 0x510e527f;
-  let H5 = 0x9b05688c;
-  let H6 = 0x1f83d9ab;
-  let H7 = 0x5be0cd19;
-
   const len = bytes.length;
-  const bitLenHi = Math.floor(len / 0x20000000);
-  const bitLenLo = (len * 8) >>> 0;
+  const blocks: number[] = [];
+  for (let i = 0; i < len; i++) {
+    blocks[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
+  }
+  blocks[len >> 2] |= 0x80 << (24 - (len % 4) * 8);
 
-  const k = (56 - ((len + 1) % 64) + 64) % 64;
-  const padded = new Uint8Array(len + 1 + k + 8);
-  padded.set(bytes, 0);
-  padded[len] = 0x80;
+  const totalLenBits = len * 8;
+  const blockLen = (((len + 8) >> 6) + 1) * 16;
+  while (blocks.length < blockLen) {
+    blocks.push(0);
+  }
+  blocks[blockLen - 1] = totalLenBits & 0xffffffff;
+  blocks[blockLen - 2] = Math.floor(totalLenBits / 0x100000000);
 
-  const view = new DataView(padded.buffer, padded.byteOffset, padded.byteLength);
-  view.setUint32(padded.length - 8, bitLenHi, false);
-  view.setUint32(padded.length - 4, bitLenLo, false);
+  const w = new Uint32Array(64);
 
-  const W = new Uint32Array(64);
-
-  for (let i = 0; i < padded.length; i += 64) {
+  for (let i = 0; i < blocks.length; i += 16) {
     for (let t = 0; t < 16; t++) {
-      W[t] = view.getUint32(i + t * 4, false);
+      w[t] = blocks[i + t] >>> 0;
     }
     for (let t = 16; t < 64; t++) {
-      const s0 = (rightRotate(W[t - 15], 7) ^ rightRotate(W[t - 15], 18) ^ (W[t - 15] >>> 3)) >>> 0;
-      const s1 = (rightRotate(W[t - 2], 17) ^ rightRotate(W[t - 2], 19) ^ (W[t - 2] >>> 10)) >>> 0;
-      W[t] = (W[t - 16] + s0 + W[t - 7] + s1) >>> 0;
+      const gamma0 =
+        (((w[t - 15] >>> 7) | (w[t - 15] << 25)) >>> 0) ^
+        (((w[t - 15] >>> 18) | (w[t - 15] << 14)) >>> 0) ^
+        (w[t - 15] >>> 3);
+      const gamma1 =
+        (((w[t - 2] >>> 17) | (w[t - 2] << 15)) >>> 0) ^
+        (((w[t - 2] >>> 19) | (w[t - 2] << 13)) >>> 0) ^
+        (w[t - 2] >>> 10);
+      w[t] = (w[t - 16] + gamma0 + w[t - 7] + gamma1) >>> 0;
     }
 
-    let a = H0;
-    let b = H1;
-    let c = H2;
-    let d = H3;
-    let e = H4;
-    let f = H5;
-    let g = H6;
-    let h = H7;
+    let a = h0;
+    let b = h1;
+    let c = h2;
+    let d = h3;
+    let e = h4;
+    let f = h5;
+    let g = h6;
+    let h = h7;
 
     for (let t = 0; t < 64; t++) {
-      const S1 = (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) >>> 0;
-      const ch = ((e & f) ^ (~e & g)) >>> 0;
-      const temp1 = (h + S1 + ch + K[t] + W[t]) >>> 0;
-      const S0 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) >>> 0;
-      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;
-      const temp2 = (S0 + maj) >>> 0;
+      const sigma1 =
+        (((e >>> 6) | (e << 26)) >>> 0) ^
+        (((e >>> 11) | (e << 21)) >>> 0) ^
+        (((e >>> 25) | (e << 7)) >>> 0);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + sigma1 + ch + K[t] + w[t]) >>> 0;
+
+      const sigma0 =
+        (((a >>> 2) | (a << 30)) >>> 0) ^
+        (((a >>> 13) | (a << 19)) >>> 0) ^
+        (((a >>> 22) | (a << 10)) >>> 0);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (sigma0 + maj) >>> 0;
 
       h = g;
       g = f;
@@ -124,32 +139,18 @@ function pureJsSha256(bytes: Uint8Array): string {
       a = (temp1 + temp2) >>> 0;
     }
 
-    H0 = (H0 + a) >>> 0;
-    H1 = (H1 + b) >>> 0;
-    H2 = (H2 + c) >>> 0;
-    H3 = (H3 + d) >>> 0;
-    H4 = (H4 + e) >>> 0;
-    H5 = (H5 + f) >>> 0;
-    H6 = (H6 + g) >>> 0;
-    H7 = (H7 + h) >>> 0;
+    h0 = (h0 + a) >>> 0;
+    h1 = (h1 + b) >>> 0;
+    h2 = (h2 + c) >>> 0;
+    h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0;
+    h5 = (h5 + f) >>> 0;
+    h6 = (h6 + g) >>> 0;
+    h7 = (h7 + h) >>> 0;
   }
 
-  return (
-    H0.toString(16).padStart(8, '0') +
-    H1.toString(16).padStart(8, '0') +
-    H2.toString(16).padStart(8, '0') +
-    H3.toString(16).padStart(8, '0') +
-    H4.toString(16).padStart(8, '0') +
-    H5.toString(16).padStart(8, '0') +
-    H6.toString(16).padStart(8, '0') +
-    H7.toString(16).padStart(8, '0')
-  );
-}
-
-function rightRotate(value: number, amount: number): number {
-  const v = value >>> 0;
-  const n = amount;
-  return ((v >>> n) | ((v & ((1 << n) - 1)) * (2 ** (32 - n)))) >>> 0;
+  const hex = (n: number) => (n >>> 0).toString(16).padStart(8, '0');
+  return `${hex(h0)}${hex(h1)}${hex(h2)}${hex(h3)}${hex(h4)}${hex(h5)}${hex(h6)}${hex(h7)}`;
 }
 
 /**
