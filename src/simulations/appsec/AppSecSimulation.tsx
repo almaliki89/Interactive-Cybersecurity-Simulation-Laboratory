@@ -17,6 +17,8 @@ import { RateLimitingLab } from './RateLimitingLab';
 import { AppLoggingLab } from './AppLoggingLab';
 import { SecureArchitectureLab } from './SecureArchitectureLab';
 import { AppSecMasterChallenge } from './AppSecMasterChallenge';
+import { GraphQLApiLab } from './GraphQLApiLab';
+import { WasmSecurityLab } from './WasmSecurityLab';
 import {
   Compass,
   Globe,
@@ -33,6 +35,7 @@ import {
   Server,
   Layers,
   ShieldAlert,
+  Code,
 } from 'lucide-react';
 
 export const AppSecSimulation: React.FC = () => {
@@ -51,6 +54,8 @@ export const AppSecSimulation: React.FC = () => {
     { id: 'xss', nameEn: 'XSS Defense', nameAr: 'حماية XSS', icon: FileCode },
     { id: 'csrf', nameEn: 'CSRF Defense', nameAr: 'حماية CSRF', icon: ShieldCheck },
     { id: 'api_security', nameEn: 'API Security', nameAr: 'أمن API', icon: Radio },
+    { id: 'graphql', nameEn: 'GraphQL Security', nameAr: 'أمن GraphQL', icon: Code },
+    { id: 'wasm', nameEn: 'Wasm Security', nameAr: 'أمن WebAssembly', icon: FileCode },
     { id: 'jwt', nameEn: 'JWT Tokens', nameAr: 'رموز JWT', icon: Key },
     { id: 'cors', nameEn: 'CORS Policy', nameAr: 'سياسات CORS', icon: Globe },
     { id: 'file_upload', nameEn: 'File Upload', nameAr: 'رفع الملفات', icon: FileCheck },
@@ -197,6 +202,10 @@ export const AppSecSimulation: React.FC = () => {
             onNavigateToChallenge={() => setActiveView('challenge')}
           />
         )}
+
+        {activeView === 'graphql' && <GraphQLApiLab language={language} />}
+
+        {activeView === 'wasm' && <WasmSecurityLab language={language} />}
 
         {activeView === 'challenge' && (
           <AppSecMasterChallenge

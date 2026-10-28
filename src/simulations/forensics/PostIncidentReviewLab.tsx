@@ -1,27 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { useForensicsStore } from '../../stores/forensicsStore';
 import { generateLessonsLearnedReport } from './logic/lessons';
-import { BookOpen, ShieldCheck, FileText, Target, Database } from 'lucide-react';
+import { BookOpen, ShieldCheck, FileText, Target, Database, Award } from 'lucide-react';
+import { ForensicsCertificateModal } from './components/ForensicsCertificateModal';
 
 export const PostIncidentReviewLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const isAr = language === 'ar';
   
   const evidence = useForensicsStore((s) => s.evidence);
+  const records = useForensicsStore((s) => s.custodyRecords);
+  const [isCertOpen, setIsCertOpen] = useState(false);
 
   const report = generateLessonsLearnedReport('INC-NEXORA-2026-0812', evidence.map(e => e.id));
 
   return (
     <div className="flex-1 p-6 bg-slate-950 text-slate-100 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
-      <div className="border-b border-slate-800 pb-4">
-        <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
-          <BookOpen className="w-4 h-4" />
-          <span>{isAr ? 'معمل مراجعة ما بعد الحادثة والدروس المستفادة' : 'Post-Incident Review & Lessons Learned Lab'}</span>
+      <div className="border-b border-slate-800 pb-4 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
+            <BookOpen className="w-4 h-4" />
+            <span>{isAr ? 'معمل مراجعة ما بعد الحادثة والدروس المستفادة' : 'Post-Incident Review & Lessons Learned Lab'}</span>
+          </div>
+          <h1 className="text-xl font-black text-white mt-1 uppercase tracking-tight">
+            {isAr ? 'توثيق التقرير النهائي وتحسين الضوابط' : 'FINAL_CASE_SUMMARY_&_LESSONS_LEARNED'}
+          </h1>
         </div>
-        <h1 className="text-xl font-black text-white mt-1 uppercase tracking-tight">
-          {isAr ? 'توثيق التقرير النهائي وتحسين الضوابط' : 'FINAL_CASE_SUMMARY_&_LESSONS_LEARNED'}
-        </h1>
+
+        <button
+          onClick={() => setIsCertOpen(true)}
+          data-testid="btn-open-forensics-certificate-review"
+          className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-950 to-slate-900 border border-emerald-800 text-emerald-300 hover:text-white hover:border-emerald-700 text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all shadow-md shadow-emerald-950/30"
+        >
+          <Award className="w-4 h-4 text-emerald-400" />
+          <span>{isAr ? 'شهادة التوثيق الجنائي الرسمية (ISO 27037)' : 'Official ISO 27037 Certificate'}</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -86,6 +100,15 @@ export const PostIncidentReviewLab: React.FC = () => {
           </section>
         </div>
       </div>
+
+      <ForensicsCertificateModal
+        isOpen={isCertOpen}
+        onClose={() => setIsCertOpen(false)}
+        caseId="INC-NEXORA-2026-0812"
+        evidence={evidence}
+        records={records}
+        language={language}
+      />
     </div>
   );
 };

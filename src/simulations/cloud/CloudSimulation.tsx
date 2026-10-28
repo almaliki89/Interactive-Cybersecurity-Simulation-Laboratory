@@ -18,6 +18,8 @@ import { SecurityGroupLab } from './SecurityGroupLab';
 import { CloudStorageLab } from './CloudStorageLab';
 import { SecretsSecurityLab } from './SecretsSecurityLab';
 import { WorkloadIdentityLab } from './WorkloadIdentityLab';
+import { CloudSsrfLab } from './CloudSsrfLab';
+import { ZeroTrustMeshLab } from './ZeroTrustMeshLab';
 import { CloudComputeLab } from './CloudComputeLab';
 import { CloudLoggingLab } from './CloudLoggingLab';
 import { CloudMisconfigurationLab } from './CloudMisconfigurationLab';
@@ -25,6 +27,8 @@ import { CloudDetectionLab } from './CloudDetectionLab';
 import { CloudIncidentLab } from './CloudIncidentLab';
 import { CloudArchitectureLab } from './CloudArchitectureLab';
 import { CloudMasterChallenge } from './CloudMasterChallenge';
+import { EbpfRuntimeLab } from '../containers/EbpfRuntimeLab';
+import { ServerlessSecurityLab } from './ServerlessSecurityLab';
 import { Cloud, ArrowLeft } from 'lucide-react';
 
 export const CloudSimulation: React.FC = () => {
@@ -51,7 +55,14 @@ export const CloudSimulation: React.FC = () => {
       case 'secrets':
         return <SecretsSecurityLab />;
       case 'workload':
-        return <WorkloadIdentityLab />;
+      case 'ssrf':
+        return <CloudSsrfLab />;
+      case 'zerotrust':
+        return <ZeroTrustMeshLab />;
+      case 'ebpf':
+        return <EbpfRuntimeLab language={language} />;
+      case 'serverless':
+        return <ServerlessSecurityLab language={language} />;
       case 'compute':
         return <CloudComputeLab />;
       case 'logging':
@@ -83,6 +94,9 @@ export const CloudSimulation: React.FC = () => {
     { id: 'storage', labelEn: 'Storage S3', labelAr: 'التخزين' },
     { id: 'secrets', labelEn: 'Secrets', labelAr: 'الأسرار' },
     { id: 'workload', labelEn: 'IMDS/SSRF', labelAr: 'بيانات التعريف' },
+    { id: 'zerotrust', labelEn: 'Zero Trust Mesh', labelAr: 'شبكة الثقة الصفرية' },
+    { id: 'ebpf', labelEn: 'eBPF Tracing', labelAr: 'تتبع eBPF' },
+    { id: 'serverless', labelEn: 'Serverless', labelAr: 'الحوسبة بدون خادم' },
     { id: 'compute', labelEn: 'Compute', labelAr: 'الخوادم' },
     { id: 'logging', labelEn: 'CloudTrail', labelAr: 'السجلات' },
     { id: 'misconfigs', labelEn: 'CSPM Scan', labelAr: 'الفاحص' },

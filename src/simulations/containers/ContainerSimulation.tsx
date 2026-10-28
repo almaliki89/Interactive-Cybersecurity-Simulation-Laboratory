@@ -25,6 +25,7 @@ import { ServiceMeshMtlsLab } from './ServiceMeshMtlsLab';
 import { K8sIncidentLab } from './K8sIncidentLab';
 import { ContainerArchitectureLab } from './ContainerArchitectureLab';
 import { ContainerMasterChallenge } from './ContainerMasterChallenge';
+import { MicrovmIsolationLab } from './MicrovmIsolationLab';
 import { Boxes, ArrowLeft } from 'lucide-react';
 
 export const ContainerSimulation: React.FC = () => {
@@ -62,6 +63,8 @@ export const ContainerSimulation: React.FC = () => {
         return <ServiceMeshMtlsLab />;
       case 'incident':
         return <K8sIncidentLab />;
+      case 'microvm':
+        return <MicrovmIsolationLab language={language} />;
       case 'architecture':
         return <ContainerArchitectureLab />;
       case 'master':
@@ -79,6 +82,7 @@ export const ContainerSimulation: React.FC = () => {
     { id: 'capabilities', labelEn: 'Capabilities', labelAr: 'الصلاحيات' },
     { id: 'images', labelEn: 'Images & CVEs', labelAr: 'الصور' },
     { id: 'escape', labelEn: 'Escape', labelAr: 'الهروب' },
+    { id: 'microvm', labelEn: 'MicroVM / Kata', labelAr: 'عزل MicroVM' },
     { id: 'controlplane', labelEn: 'Control Plane', labelAr: 'التحكم' },
     { id: 'rbac', labelEn: 'RBAC', labelAr: 'الصلاحيات' },
     { id: 'podsecurity', labelEn: 'Pod Security', labelAr: 'أمان الحزم' },

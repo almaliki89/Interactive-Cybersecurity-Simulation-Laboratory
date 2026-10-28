@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Workspace } from '../../components/simulation/Workspace';
 import { Challenge } from '../../types/simulation';
 import { useSimulationStore } from '../../stores/simulationStore';
+import { MemoryExploitRopLab } from './MemoryExploitRopLab';
 import {
   Cpu,
   Layers,
@@ -12,11 +13,13 @@ import {
   Play,
   ArrowRight,
   HardDrive,
+  Flame,
+  Binary,
 } from 'lucide-react';
 
 export const SystemInternalsSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
-
+  const [activeTab, setActiveTab] = useState<'layout' | 'rop_lab'>('layout');
   const [activeSegment, setActiveSegment] = useState<'stack' | 'heap' | 'code' | 'data'>('stack');
   const [aslrEnabled, setAslrEnabled] = useState(true);
   const [depEnabled, setDepEnabled] = useState(true);
@@ -82,39 +85,73 @@ export const SystemInternalsSimulation: React.FC = () => {
       controlDeck={
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSpawnedProcess(true)}
-              className="py-1.5 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5"
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>{language === 'ar' ? 'تشغيل عملية جديدة (Spawn Process)' : 'Spawn Process'}</span>
-            </button>
+            <div className="flex rounded-lg bg-slate-950 p-1 border border-slate-800">
+              <button
+                onClick={() => setActiveTab('layout')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                  activeTab === 'layout'
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'فضاء الذاكرة والنواة' : 'Memory & Kernel Layout'}</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('rop_lab')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                  activeTab === 'rop_lab'
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'هجمات الذاكرة وسلاسل ROP' : 'ROP & Memory Exploits'}</span>
+              </button>
+            </div>
+
+            {activeTab === 'layout' && (
+              <button
+                onClick={() => setSpawnedProcess(true)}
+                className="py-1.5 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>{language === 'ar' ? 'تشغيل عملية جديدة (Spawn Process)' : 'Spawn Process'}</span>
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
-              <input
-                type="checkbox"
-                checked={aslrEnabled}
-                onChange={(e) => setAslrEnabled(e.target.checked)}
-                className="rounded border-slate-700 text-cyan-500"
-              />
-              <span>{language === 'ar' ? 'عشوائية الذاكرة (ASLR)' : 'ASLR Enabled'}</span>
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
-              <input
-                type="checkbox"
-                checked={depEnabled}
-                onChange={(e) => setDepEnabled(e.target.checked)}
-                className="rounded border-slate-700 text-cyan-500"
-              />
-              <span>{language === 'ar' ? 'منع التنفيذ (DEP / NX)' : 'DEP / NX Bit'}</span>
-            </label>
-          </div>
+          {activeTab === 'layout' && (
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                <input
+                  type="checkbox"
+                  checked={aslrEnabled}
+                  onChange={(e) => setAslrEnabled(e.target.checked)}
+                  className="rounded border-slate-700 text-cyan-500"
+                />
+                <span>{language === 'ar' ? 'عشوائية الذاكرة (ASLR)' : 'ASLR Enabled'}</span>
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                <input
+                  type="checkbox"
+                  checked={depEnabled}
+                  onChange={(e) => setDepEnabled(e.target.checked)}
+                  className="rounded border-slate-700 text-cyan-500"
+                />
+                <span>{language === 'ar' ? 'منع التنفيذ (DEP / NX)' : 'DEP / NX Bit'}</span>
+              </label>
+            </div>
+          )}
         </div>
       }
     >
-      <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center select-none">
+      {activeTab === 'rop_lab' ? (
+        <div className="flex-1 overflow-y-auto">
+          <MemoryExploitRopLab language={language} />
+        </div>
+      ) : (
+        <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center select-none">
         {/* Memory Architecture Visualizer */}
         <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Virtual Process Memory Map */}
@@ -214,6 +251,7 @@ export const SystemInternalsSimulation: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
     </Workspace>
   );
 };

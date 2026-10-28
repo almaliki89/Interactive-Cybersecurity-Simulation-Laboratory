@@ -20,7 +20,9 @@ import {
   ArrowRight,
   ShieldAlert,
   Zap,
+  Download,
 } from 'lucide-react';
+import { convertPacketsToPcap, downloadPcapFile } from '../../engine/networking/pcapExporter';
 
 export const TcpSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -376,6 +378,23 @@ export const TcpSimulation: React.FC = () => {
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>{t.tcp.resetSession}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const pcapBytes = convertPacketsToPcap(packets.length > 0 ? packets : [
+                    { id: 'p1', source: 'client', destination: 'server', protocol: 'TCP', sourcePort: 49152, destinationPort: 443, flags: ['SYN'], state: 'delivered', progress: 1, timestamp: Date.now() },
+                    { id: 'p2', source: 'server', destination: 'client', protocol: 'TCP', sourcePort: 443, destinationPort: 49152, flags: ['SYN', 'ACK'], state: 'delivered', progress: 1, timestamp: Date.now() + 50 },
+                    { id: 'p3', source: 'client', destination: 'server', protocol: 'TCP', sourcePort: 49152, destinationPort: 443, flags: ['ACK'], state: 'delivered', progress: 1, timestamp: Date.now() + 100 },
+                  ]);
+                  downloadPcapFile(pcapBytes, 'tcp_handshake_capture.pcap');
+                }}
+                data-testid="btn-export-pcap"
+                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                title={language === 'ar' ? 'تصدير حزم الاتصال الحقيقية لبرنامج Wireshark' : 'Export binary capture for Wireshark'}
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'تصدير PCAP (Wireshark)' : 'Export PCAP'}</span>
               </button>
             </div>
 

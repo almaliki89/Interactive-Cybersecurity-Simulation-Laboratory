@@ -3,7 +3,7 @@ import { SecurityAlert, AlertStatus } from '../simulations/soc/logic/detection';
 import { EnrichedTelemetryEvent } from '../simulations/soc/logic/enrichment';
 import { SecurityIncident } from '../simulations/soc/logic/incidents';
 
-export type SocWorkstationTab = 'QUEUE' | 'INVESTIGATION' | 'EXPLORER' | 'TIMELINE' | 'DECISION' | 'WAR_ROOM_3D';
+export type SocWorkstationTab = 'QUEUE' | 'INVESTIGATION' | 'EXPLORER' | 'TIMELINE' | 'DECISION' | 'WAR_ROOM_3D' | 'PLAYBOOK_STUDIO';
 
 interface SocStoreState {
   // Navigation

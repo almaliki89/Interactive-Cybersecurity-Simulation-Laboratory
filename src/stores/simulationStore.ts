@@ -70,7 +70,8 @@ export type SimulationId =
   | 'cloud_iam'
   | 'kubernetes'
   | 'mitre_attack'
-  | 'cloud_trail';
+  | 'cloud_trail'
+  | 'national_cyber_range';
 
 export interface SelectedEntity {
   type: 'node' | 'packet' | 'rule' | 'log' | 'event' | 'connection' | 'world' | 'concept';

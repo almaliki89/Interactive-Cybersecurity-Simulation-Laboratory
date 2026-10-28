@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { useForensicsStore } from '../../stores/forensicsStore';
 import { CustodyRecord, addCustodyRecord, validateCustodyChain } from './logic/custody';
-import { FileText, Plus, ShieldCheck, AlertTriangle, UserCheck, History, ArrowRight, User } from 'lucide-react';
+import { FileText, Plus, ShieldCheck, AlertTriangle, UserCheck, History, ArrowRight, User, Award } from 'lucide-react';
+import { ForensicsCertificateModal } from './components/ForensicsCertificateModal';
 
 export const ChainOfCustodyLab: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -18,6 +19,7 @@ export const ChainOfCustodyLab: React.FC = () => {
   const [action, setAction] = useState<'COLLECTED' | 'TRANSFERRED' | 'VERIFIED' | 'WORKING_COPY_CREATED' | 'ANALYZED'>('TRANSFERRED');
   const [actor, setActor] = useState('Analyst Reem');
   const [notes, setNotes] = useState('Transferred to evidence vault');
+  const [isCertOpen, setIsCertOpen] = useState(false);
 
   const handleAddRecord = () => {
     if (!actor.trim() || !targetEvidenceId) return;
@@ -55,13 +57,24 @@ export const ChainOfCustodyLab: React.FC = () => {
             {isAr ? 'سجل الحضانة والملكية للأدلة الجنائية (Chain of Custody)' : 'CUSTODY_IMMUTABLE_LEDGER'}
           </h1>
         </div>
-        <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border transition-all ${
-          validation.valid
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-        }`}>
-          {validation.valid ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          <span>{validation.valid ? (isAr ? 'سلسلة الحضانة صحيحة' : 'CHAIN_VALID') : (isAr ? 'سلسلة غير مكتملة' : 'INVALID_CHAIN')}</span>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsCertOpen(true)}
+            data-testid="btn-open-forensics-certificate"
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-950 to-slate-900 border border-emerald-800 text-emerald-300 hover:text-white hover:border-emerald-700 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-sm"
+          >
+            <Award className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{isAr ? 'الشهادة وحزمة الأدلة' : 'Certificate & Package'}</span>
+          </button>
+
+          <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border transition-all ${
+            validation.valid
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+          }`}>
+            {validation.valid ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+            <span>{validation.valid ? (isAr ? 'سلسلة الحضانة صحيحة' : 'CHAIN_VALID') : (isAr ? 'سلسلة غير مكتملة' : 'INVALID_CHAIN')}</span>
+          </div>
         </div>
       </div>
 
@@ -186,6 +199,15 @@ export const ChainOfCustodyLab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ForensicsCertificateModal
+        isOpen={isCertOpen}
+        onClose={() => setIsCertOpen(false)}
+        caseId="INC-NEXORA-2026-0812"
+        evidence={evidence}
+        records={records}
+        language={language}
+      />
     </div>
   );
 };

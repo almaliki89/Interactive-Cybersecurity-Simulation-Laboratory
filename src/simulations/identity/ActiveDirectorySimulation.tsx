@@ -27,8 +27,15 @@ import {
   Server,
   ShieldAlert,
   Box,
+  Flame,
+  Crown,
 } from 'lucide-react';
 import { ActiveDirectory3DRange } from './components/ActiveDirectory3DRange';
+import { KerberoastingLab } from './KerberoastingLab';
+import { DcsyncGoldenTicketLab } from './DcsyncGoldenTicketLab';
+import { WebAuthnLab } from './WebAuthnLab';
+import { BiometricSecurityLab } from './BiometricSecurityLab';
+import { Fingerprint, Camera } from 'lucide-react';
 
 export const ActiveDirectorySimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
@@ -48,6 +55,10 @@ export const ActiveDirectorySimulation: React.FC = () => {
     { id: 'gpo', nameEn: 'Group Policy', nameAr: 'سياسات GPO', icon: FileCode },
     { id: 'trusts', nameEn: 'Domain Trusts', nameAr: 'علاقات الثقة', icon: Network },
     { id: 'risks', nameEn: 'Identity Risk', nameAr: 'مخاطر الهوية', icon: ShieldCheck },
+    { id: 'kerberoast', nameEn: 'Kerberoasting Attack', nameAr: 'هجوم Kerberoasting', icon: Flame },
+    { id: 'dcsync', nameEn: 'DCSync & Golden Ticket', nameAr: 'هجوم DCSync والتذكرة الذهبية', icon: Crown },
+    { id: 'webauthn', nameEn: 'FIDO2 / Passkeys', nameAr: 'مفاتيح المرور Passkeys', icon: Fingerprint },
+    { id: 'biometrics', nameEn: 'Biometric PAD Security', nameAr: 'أمن السمات الحيوية PAD', icon: Camera },
     { id: 'eventlog', nameEn: 'Event Logs', nameAr: 'سجل الأحداث', icon: Server },
     { id: 'challenge', nameEn: 'Master Challenge', nameAr: 'التحدي الشامل', icon: ShieldAlert },
   ];
@@ -149,6 +160,22 @@ export const ActiveDirectorySimulation: React.FC = () => {
           <ActiveDirectoryEventLogLab
             onBackToMap={() => setActiveView('map')}
           />
+        )}
+
+        {activeView === 'kerberoast' && (
+          <KerberoastingLab />
+        )}
+
+        {activeView === 'dcsync' && (
+          <DcsyncGoldenTicketLab />
+        )}
+
+        {activeView === 'webauthn' && (
+          <WebAuthnLab language={language} />
+        )}
+
+        {activeView === 'biometrics' && (
+          <BiometricSecurityLab language={language} />
         )}
 
         {activeView === 'challenge' && (

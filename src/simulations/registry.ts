@@ -25,6 +25,9 @@ const LessonView = React.lazy(() =>
 );
 
 // Interactive Simulation Labs (Lazy Loaded)
+const NationalCyberRangeLab = React.lazy(() =>
+  import('./warroom/NationalCyberRangeLab').then((m) => ({ default: m.NationalCyberRangeLab }))
+);
 const CiaTriadSimulation = React.lazy(() =>
   import('./foundations/CiaTriadSimulation').then((m) => ({ default: m.CiaTriadSimulation }))
 );
@@ -638,6 +641,15 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
     component: ThreatHuntingSimulation,
     worldId: 28,
     category: 'lab',
+  },
+  national_cyber_range: {
+    id: 'national_cyber_range',
+    nameAr: 'غرفة العمليات السيبرانية الوطنية (War Room)',
+    nameEn: 'National Cyber Warfare Range',
+    domain: 'investigation',
+    component: NationalCyberRangeLab,
+    worldId: 30,
+    category: 'core',
   },
 };
 

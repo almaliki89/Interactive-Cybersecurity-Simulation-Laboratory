@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useThreatHuntingStore } from '../runtime/threatHuntingStore';
-import { Sliders, Play, CheckCircle2, AlertTriangle, ShieldCheck, Send, Sparkles, RefreshCw, XCircle } from 'lucide-react';
+import { Sliders, Play, CheckCircle2, AlertTriangle, ShieldCheck, Send, Sparkles, RefreshCw, XCircle, Code2 } from 'lucide-react';
 import { DetectionRule } from '../logic/types';
+import { SiemTranspilerModal } from './SiemTranspilerModal';
 
 interface DetectionBuilderProps {
   language: 'ar' | 'en';
@@ -27,6 +28,7 @@ export const DetectionBuilder: React.FC<DetectionBuilderProps> = ({ language }) 
   const [excludedUsers, setExcludedUsers] = useState<string>('it_admin_rob');
 
   const [activeEditingRuleId, setActiveEditingRuleId] = useState<string | null>(null);
+  const [transpilingRule, setTranspilingRule] = useState<DetectionRule | null>(null);
 
   const handleCreateOrUpdateRule = () => {
     const hostList = excludedHosts.split(',').map((s) => s.trim()).filter(Boolean);
@@ -282,8 +284,18 @@ export const DetectionBuilder: React.FC<DetectionBuilderProps> = ({ language }) 
                     </div>
                   )}
 
-                  {/* Publish to SOC Action */}
-                  <div className="flex items-center justify-end gap-2 pt-2">
+                  {/* Actions Bar */}
+                  <div className="flex items-center justify-end gap-2 pt-2 flex-wrap">
+                    <button
+                      onClick={() => setTranspilingRule(rule)}
+                      data-testid={`btn-transpile-siem-${rule.id}`}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-950/70 border border-indigo-800 text-indigo-300 hover:text-white hover:bg-indigo-900/80 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      title={isAr ? 'عرض وترجمة القاعدة لصيغ Sigma و SIEM' : 'Transpile rule to Sigma and SIEM queries'}
+                    >
+                      <Code2 className="w-3.5 h-3.5" />
+                      <span>{isAr ? 'قواعد Sigma & SIEM' : 'Sigma & SIEM Code'}</span>
+                    </button>
+
                     <button
                       onClick={() => handleValidate(rule.id)}
                       data-testid={`btn-revalidate-${rule.id}`}
@@ -309,6 +321,15 @@ export const DetectionBuilder: React.FC<DetectionBuilderProps> = ({ language }) 
           );
         })}
       </div>
+
+      {transpilingRule && (
+        <SiemTranspilerModal
+          rule={transpilingRule}
+          isOpen={true}
+          onClose={() => setTranspilingRule(null)}
+          language={language}
+        />
+      )}
     </div>
   );
 };

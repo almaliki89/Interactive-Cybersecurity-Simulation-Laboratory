@@ -25,6 +25,7 @@ import { CompliancePolicyLab } from './CompliancePolicyLab';
 import { PipelineIncidentLab } from './PipelineIncidentLab';
 import { DevSecOpsArchitectureLab } from './DevSecOpsArchitectureLab';
 import { DevSecOpsMasterChallenge } from './DevSecOpsMasterChallenge';
+import { DependencyConfusionLab } from './DependencyConfusionLab';
 import { Workspace } from '../../components/simulation/Workspace';
 
 export const DevSecOpsSimulation: React.FC = () => {
@@ -48,6 +49,7 @@ export const DevSecOpsSimulation: React.FC = () => {
     compliance: { titleEn: 'Compliance as Code', titleAr: 'الامتثال التلقائي' },
     incident: { titleEn: 'Supply Chain Incident', titleAr: 'حوادث التوريد' },
     architecture: { titleEn: 'DevSecOps Architecture', titleAr: 'المعمارية الآمنة' },
+    dependency_confusion: { titleEn: 'Dependency Confusion', titleAr: 'خلط التبعيات' },
     master: { titleEn: 'Master Challenge', titleAr: 'التحدي الشامل' },
   };
 
@@ -67,6 +69,7 @@ export const DevSecOpsSimulation: React.FC = () => {
       case 'compliance': return <CompliancePolicyLab />;
       case 'incident': return <PipelineIncidentLab />;
       case 'architecture': return <DevSecOpsArchitectureLab />;
+      case 'dependency_confusion': return <DependencyConfusionLab language={language} />;
       case 'master': return <DevSecOpsMasterChallenge />;
       case 'map':
       default:

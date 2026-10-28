@@ -12,7 +12,14 @@ import { DhcpSimulation } from './DhcpSimulation';
 import { NatSimulation } from './NatSimulation';
 import { UdpSimulation } from './UdpSimulation';
 import { PortsServicesLab } from './PortsServicesLab';
+import { IcsScadaLab } from './IcsScadaLab';
+import { Telecommunications5gLab } from './Telecommunications5gLab';
+import { AerospaceSatelliteLab } from './AerospaceSatelliteLab';
+import { MaritimeSecurityLab } from './MaritimeSecurityLab';
+import { AutomotiveCanLab } from './AutomotiveCanLab';
+import { GnssSpoofingLab } from './GnssSpoofingLab';
 import { NexoraBranchMasterChallenge } from './NexoraBranchMasterChallenge';
+import { Radio, Wifi, Satellite, Anchor, Car, Compass } from 'lucide-react';
 
 import { TcpSimulation } from '../tcp/TcpSimulation';
 import { DnsSimulation } from '../dns/DnsSimulation';
@@ -37,6 +44,12 @@ type LabKey =
   | 'http'
   | 'tls'
   | 'firewall'
+  | 'ics_scada'
+  | 'telecom_5g'
+  | 'satellite'
+  | 'maritime'
+  | 'automotive_can'
+  | 'gnss_spoofing'
   | 'nexora_master';
 
 export const NetworkingWorldMap: React.FC = () => {
@@ -106,6 +119,12 @@ export const NetworkingWorldMap: React.FC = () => {
       titleEn: '7. Perimeter Security & Master Challenge',
       items: [
         { key: 'firewall', nameAr: 'جدار الحماية وقواعد ACL', nameEn: 'Firewall ACL Engine', icon: ShieldCheck },
+        { key: 'ics_scada', nameAr: 'أمن الشبكات الصناعية SCADA / ICS', nameEn: 'OT & SCADA Security Lab', icon: Radio },
+        { key: 'telecom_5g', nameAr: 'أمن شبكات الاتصالات 5G Core', nameEn: '5G Core Telecom Security Lab', icon: Wifi },
+        { key: 'satellite', nameAr: 'أمن الأقمار الصناعية والفضاء Aerospace', nameEn: 'Satellite & Aerospace Lab', icon: Satellite },
+        { key: 'maritime', nameAr: 'أمن السفن والملاحة البحرية Maritime', nameEn: 'Maritime & Vessel Security Lab', icon: Anchor },
+        { key: 'automotive_can', nameAr: 'أمن شبكات السيارات CAN Bus & V2X', nameEn: 'Automotive CAN & V2X Lab', icon: Car },
+        { key: 'gnss_spoofing', nameAr: 'تزييف الملاحة الفضائية وحرب الترددات GNSS', nameEn: 'GNSS Satellite Spoofing & EW Lab', icon: Compass },
         { key: 'nexora_master', nameAr: 'التحدي الرئيسي: شبكة NEXORA', nameEn: 'NEXORA Master Challenge', icon: Award },
       ],
     },
@@ -218,6 +237,12 @@ export const NetworkingWorldMap: React.FC = () => {
           {activeLab === 'http' && <HttpSimulation />}
           {activeLab === 'tls' && <TlsSimulation />}
           {activeLab === 'firewall' && <FirewallSimulation />}
+          {activeLab === 'ics_scada' && <IcsScadaLab language={language} />}
+          {activeLab === 'telecom_5g' && <Telecommunications5gLab language={language} />}
+          {activeLab === 'satellite' && <AerospaceSatelliteLab language={language} />}
+          {activeLab === 'maritime' && <MaritimeSecurityLab language={language} />}
+          {activeLab === 'automotive_can' && <AutomotiveCanLab language={language} />}
+          {activeLab === 'gnss_spoofing' && <GnssSpoofingLab language={language} />}
           {activeLab === 'nexora_master' && <NexoraBranchMasterChallenge />}
         </div>
       )}

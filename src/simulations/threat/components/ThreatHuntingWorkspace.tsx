@@ -10,6 +10,13 @@ import { FindingsPanel } from './FindingsPanel';
 import { DetectionBuilder } from './DetectionBuilder';
 import { MasterChallengeView } from './MasterChallengeView';
 import { HuntInspector } from './HuntInspector';
+import { MalwareSandboxLab } from '../MalwareSandboxLab';
+import { AiSecurityLab } from '../AiSecurityLab';
+import { IotFirmwareLab } from '../IotFirmwareLab';
+import { RansomwareC2Lab } from '../RansomwareC2Lab';
+import { SocialEngineeringOsintLab } from '../SocialEngineeringOsintLab';
+import { ActiveDeceptionLab } from '../ActiveDeceptionLab';
+import { IoMTMedicalDeviceLab } from '../IoMTMedicalDeviceLab';
 import { HuntBottomDrawer } from './HuntBottomDrawer';
 import {
   Crosshair,
@@ -25,6 +32,13 @@ import {
   SlidersHorizontal,
   ChevronUp,
   Box,
+  FileCode,
+  Bot,
+  Cpu,
+  Skull,
+  Users,
+  Boxes,
+  Heart,
 } from 'lucide-react';
 import { Threat3DMatrixStage } from './Threat3DMatrixStage';
 
@@ -66,6 +80,13 @@ export const ThreatHuntingWorkspace: React.FC<ThreatHuntingWorkspaceProps> = ({ 
     { id: 'FINDINGS' as const, labelEn: 'Findings', labelAr: 'النتائج', icon: FileCheck },
     { id: 'DETECTION' as const, labelEn: 'Detection Rules', labelAr: 'قواعد الكشف', icon: Sliders },
     { id: 'MATRIX_3D' as const, labelEn: '3D Attack Graph', labelAr: 'مصفوفة الهجوم 3D', icon: Box },
+    { id: 'MALWARE_SANDBOX' as const, labelEn: 'Malware Sandbox', labelAr: 'مختبر البرمجيات الخبيثة', icon: FileCode },
+    { id: 'AI_RED_TEAM' as const, labelEn: 'AI & LLM Red Team', labelAr: 'أمن الذكاء الاصطناعي', icon: Bot },
+    { id: 'IOT_FIRMWARE' as const, labelEn: 'IoT & Firmware', labelAr: 'أمن إنترنت الأشياء والرقاقات', icon: Cpu },
+    { id: 'IOMT_MEDICAL' as const, labelEn: 'IoMT Medical Devices', labelAr: 'الأجهزة الطبية الحيوية', icon: Heart },
+    { id: 'RANSOMWARE_C2' as const, labelEn: 'Ransomware & C2', labelAr: 'برمجيات الفدية وقنوات C2', icon: Skull },
+    { id: 'SOCIAL_OSINT' as const, labelEn: 'Social Eng & OSINT', labelAr: 'الهندسة الاجتماعية و OSINT', icon: Users },
+    { id: 'ACTIVE_DECEPTION' as const, labelEn: 'Active Deception', labelAr: 'الدفاع الإيجابي والمصائد', icon: Boxes },
     { id: 'MASTER' as const, labelEn: 'Master Hunt', labelAr: 'التحدي الشامل', icon: Award },
   ];
 
@@ -173,6 +194,13 @@ export const ThreatHuntingWorkspace: React.FC<ThreatHuntingWorkspaceProps> = ({ 
             {activeTab === 'FINDINGS' && <FindingsPanel language={language} />}
             {activeTab === 'DETECTION' && <DetectionBuilder language={language} />}
             {activeTab === 'MATRIX_3D' && <Threat3DMatrixStage />}
+            {activeTab === 'MALWARE_SANDBOX' && <MalwareSandboxLab />}
+            {activeTab === 'AI_RED_TEAM' && <AiSecurityLab language={language} />}
+            {activeTab === 'IOT_FIRMWARE' && <IotFirmwareLab language={language} />}
+            {activeTab === 'IOMT_MEDICAL' && <IoMTMedicalDeviceLab language={language} />}
+            {activeTab === 'RANSOMWARE_C2' && <RansomwareC2Lab language={language} />}
+            {activeTab === 'SOCIAL_OSINT' && <SocialEngineeringOsintLab language={language} />}
+            {activeTab === 'ACTIVE_DECEPTION' && <ActiveDeceptionLab language={language} />}
             {activeTab === 'MASTER' && <MasterChallengeView language={language} />}
           </div>
 

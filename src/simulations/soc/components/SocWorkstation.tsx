@@ -14,6 +14,7 @@ import { SocFilterBar } from './SocFilterBar';
 import { SocRawEventDrawer } from './SocRawEventDrawer';
 import { SocExplorer } from './SocExplorer';
 import { Soc3DWarRoom } from './Soc3DWarRoom';
+import { SoarPlaybookStudio } from './SoarPlaybookStudio';
 
 import { 
   Activity, 
@@ -28,7 +29,8 @@ import {
   PanelRight,
   Maximize2,
   X,
-  Box
+  Box,
+  Workflow
 } from 'lucide-react';
 
 export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackToMap }) => {
@@ -244,6 +246,12 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
                 icon={Box}
                 label={isAr ? 'غرفة العمليات 3D' : '3D War Room'}
               />
+              <NavButton 
+                active={activeTab === 'PLAYBOOK_STUDIO'} 
+                onClick={() => setActiveTab('PLAYBOOK_STUDIO')}
+                icon={Workflow}
+                label={isAr ? 'أتمتة SOAR' : 'SOAR Studio'}
+              />
            </nav>
         </div>
 
@@ -333,6 +341,10 @@ export const SocWorkstation: React.FC<{ onBackToMap?: () => void }> = ({ onBackT
                  onSelectAlert={(alertId) => setSelectedAlertId(alertId)}
                />
              </div>
+           )}
+
+           {activeTab === 'PLAYBOOK_STUDIO' && (
+             <SoarPlaybookStudio />
            )}
         </div>
 
