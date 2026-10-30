@@ -3760,14 +3760,14 @@ Cameras record 24/7 (like raw system logs), and smart alarms ping the guard room
       },
     ],
     concept: {
-      textAr: `الميدان السيبراني في OMEGA ليس مجرد رسم شكلي؛ هو محاكاة حقيقية لمؤسسة كاملة تسمى Nexora Financial.
+      textAr: `الميدان السيبراني في منصة ZORG ليس مجرد رسم شكلي؛ هو محاكاة حقيقية لمؤسسة كاملة تسمى Nexora Financial.
 تضم المؤسسة:
 • خادم النطاق (DC01): يدير Active Directory وحل أسماء DNS.
 • خادم الملفات (FILE01): يقدم مشاركات SMB المحمية بصلاحيات NTFS.
 • محطات العمل (FIN-WS01 للمالية، HR-WS01 للموارد البشرية): أجهزة ويندوز كاملة بسطح مكتب ونظام ملفات.
 • المبدل المركزي (CORE-SW01): ينقل الإطارات عبر جدول عناوين MAC.
 • الكابلات الفيزيائية: أي انقطاع في كابل خادم يقطع الاتصال به مباشرة كما يحدث في العالم الحقيقي!`,
-      textEn: `The OMEGA Cyber Range is a living digital twin of an enterprise named Nexora Financial.
+      textEn: `The ZORG Cyber Range is a living digital twin of an enterprise named Nexora Financial.
 It features:
 • Domain Controller (DC01): Managing Active Directory authentication and DNS resolution.
 • File Server (FILE01): Providing SMB network shares protected by NTFS DACLs.
@@ -3862,8 +3862,8 @@ Just as a city has power plants, police stations, roads, and houses; an enterpri
       },
     ],
     nextStep: {
-      takeawayAr: 'تهانينا الحارة! 🎉 لقد أكملت مسار التأسيس السيبراني الشامل من الصفر حتى الميدان المتكامل. أنت الآن تملك الأساس الصلب لاستكشاف كل عوالم ومختبرات OMEGA المتقدمة بثقة واقتدار!',
-      takeawayEn: 'Heartfelt congratulations! 🎉 You have completed the comprehensive beginner cybersecurity journey from scratch to the enterprise cyber range. You are now equipped to explore all advanced OMEGA labs with total confidence!',
+      takeawayAr: 'تهانينا الحارة! 🎉 لقد أكملت مسار التأسيس السيبراني الشامل من الصفر حتى الميدان المتكامل. أنت الآن تملك الأساس الصلب لاستكشاف كل عوالم ومختبرات ZORG المتقدمة بثقة واقتدار!',
+      takeawayEn: 'Heartfelt congratulations! 🎉 You have completed the comprehensive beginner cybersecurity journey from scratch to the enterprise cyber range. You are now equipped to explore all advanced ZORG labs with total confidence!',
     },
   },
 };

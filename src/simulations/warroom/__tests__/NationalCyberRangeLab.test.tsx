@@ -4,15 +4,15 @@ import React from 'react';
 import { NationalCyberRangeLab } from '../NationalCyberRangeLab';
 
 describe('NationalCyberRangeLab', () => {
-  it('renders National Cyber Warfare header and default scenario', () => {
+  it('renders National Cyber Range header and default scenario', () => {
     render(<NationalCyberRangeLab language="en" />);
-    expect(screen.getAllByText(/National Cyber Warfare & Critical Infrastructure Range/i)[0]).toBeDefined();
+    expect(screen.getAllByText(/National Strategic Cyber Range & Critical Infrastructure War Room/i)[0]).toBeDefined();
     expect(screen.getAllByText(/National Power Grid Cascading Blackout/i)[0]).toBeDefined();
   });
 
   it('renders Arabic interface correctly', () => {
     render(<NationalCyberRangeLab language="ar" />);
-    expect(screen.getAllByText(/غرفة العمليات السيبرانية الوطنية للبنى التحتية الحيوية/i)[0]).toBeDefined();
+    expect(screen.getAllByText(/الميدان السيبراني الوطني الشامل وغرفة العمليات/i)[0]).toBeDefined();
   });
 
   it('triggers national cyber strike and reports cascading blackout when undefended', async () => {

@@ -3,6 +3,7 @@ import { Workspace } from '../../components/simulation/Workspace';
 import { Challenge } from '../../types/simulation';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { MemoryExploitRopLab } from './MemoryExploitRopLab';
+import { HardwareRowhammerLab } from './HardwareRowhammerLab';
 import {
   Cpu,
   Layers,
@@ -15,11 +16,12 @@ import {
   HardDrive,
   Flame,
   Binary,
+  Grid3X3,
 } from 'lucide-react';
 
 export const SystemInternalsSimulation: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
-  const [activeTab, setActiveTab] = useState<'layout' | 'rop_lab'>('layout');
+  const [activeTab, setActiveTab] = useState<'layout' | 'rop_lab' | 'hardware_hacks'>('layout');
   const [activeSegment, setActiveSegment] = useState<'stack' | 'heap' | 'code' | 'data'>('stack');
   const [aslrEnabled, setAslrEnabled] = useState(true);
   const [depEnabled, setDepEnabled] = useState(true);
@@ -108,6 +110,17 @@ export const SystemInternalsSimulation: React.FC = () => {
                 <Flame className="w-3.5 h-3.5" />
                 <span>{language === 'ar' ? 'هجمات الذاكرة وسلاسل ROP' : 'ROP & Memory Exploits'}</span>
               </button>
+              <button
+                onClick={() => setActiveTab('hardware_hacks')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                  activeTab === 'hardware_hacks'
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Grid3X3 className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'اختراق العتاد (Rowhammer)' : 'Hardware Hacks'}</span>
+              </button>
             </div>
 
             {activeTab === 'layout' && (
@@ -149,6 +162,10 @@ export const SystemInternalsSimulation: React.FC = () => {
       {activeTab === 'rop_lab' ? (
         <div className="flex-1 overflow-y-auto">
           <MemoryExploitRopLab language={language} />
+        </div>
+      ) : activeTab === 'hardware_hacks' ? (
+        <div className="flex-1 overflow-y-auto">
+          <HardwareRowhammerLab language={language} />
         </div>
       ) : (
         <div className="flex-1 p-6 overflow-y-auto flex flex-col items-center select-none">

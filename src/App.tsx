@@ -76,16 +76,24 @@ class SimulationErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorB
 
 export default function App() {
   const language = useSimulationStore((s) => s.language);
+  const theme = useSimulationStore((s) => s.theme);
   const activeSimulationId = useSimulationStore((s) => s.activeSimulationId);
   const setActiveSimulation = useSimulationStore((s) => s.setActiveSimulation);
   const clockStatus = useSimulationStore((s) => s.clockStatus);
   const setClockStatus = useSimulationStore((s) => s.setClockStatus);
 
-  // Sync HTML direction and language
+  // Sync HTML direction, language, and theme class
   useEffect(() => {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('light', 'dark', 'modern');
+      document.documentElement.classList.add(theme);
+    }
+  }, [theme]);
 
   // Global hotkeys (Space to pause/play, R to reset, ArrowRight to step, / for search)
   useEffect(() => {
@@ -152,8 +160,15 @@ export default function App() {
   const activeRegistration = getRegisteredSimulation(activeSimulationId);
   const ActiveComponent = activeRegistration.component;
 
+  const themeClass = 
+    theme === 'light' 
+      ? 'bg-slate-50 text-slate-900' 
+      : theme === 'dark' 
+      ? 'bg-slate-950 text-slate-100' 
+      : 'bg-[#070b16] text-slate-100';
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-cyan-500/20 selection:text-cyan-200">
+    <div className={`min-h-screen flex flex-col ${themeClass} selection:bg-cyan-500/20 selection:text-cyan-200 transition-colors duration-200`}>
       <Header />
       <GlobalSearchModal />
 

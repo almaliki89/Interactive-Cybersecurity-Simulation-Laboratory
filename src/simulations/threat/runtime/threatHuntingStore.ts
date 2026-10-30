@@ -66,7 +66,7 @@ export interface ThreatHuntingState {
   forensicsHandoffs: ForensicsHandoffPackage[];
 
   // UI Panels
-  activeTab: 'HYPOTHESIS' | 'TELEMETRY' | 'QUERY' | 'CORRELATION' | 'THREAT_INTEL' | 'FINDINGS' | 'DETECTION' | 'MASTER' | 'MATRIX_3D' | 'MALWARE_SANDBOX' | 'AI_RED_TEAM' | 'IOT_FIRMWARE' | 'RANSOMWARE_C2' | 'SOCIAL_OSINT' | 'ACTIVE_DECEPTION' | 'IOMT_MEDICAL';
+  activeTab: 'HYPOTHESIS' | 'TELEMETRY' | 'QUERY' | 'CORRELATION' | 'THREAT_INTEL' | 'FINDINGS' | 'DETECTION' | 'MASTER' | 'MATRIX_3D' | 'MALWARE_SANDBOX' | 'AI_RED_TEAM' | 'IOT_FIRMWARE' | 'RANSOMWARE_C2' | 'SOCIAL_OSINT' | 'ACTIVE_DECEPTION' | 'IOMT_MEDICAL' | 'BCI_NEURAL';
   bottomDrawerTab: 'RAW' | 'QUERY_DIAG' | 'DETECTION_TUNING' | 'HANDOFF_LOGS';
   isBottomDrawerOpen: boolean;
   isMobileNavOpen: boolean;

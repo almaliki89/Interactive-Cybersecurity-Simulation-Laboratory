@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Public and private user metadata.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "format": "email" },
+        "language": { "type": "string", "enum": ["ar", "en"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "language"]
+    },
+    "UserProgress": {
+      "title": "User Learning Progress",
+      "description": "Tracking completed lessons and challenges.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "completedLessons": { "type": "array", "description": "Array of lesson IDs" },
+        "completedChallenges": { "type": "array", "description": "Array of challenge IDs" },
+        "lessonProgress": { "type": "object", "description": "Map of lessonId to stage/status" },
+        "onboardingProgress": { "type": "object" },
+        "activeLessonId": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid"]
+    },
+    "SimulationAudit": {
+      "title": "Simulation Audit Log",
+      "description": "High-fidelity telemetry for the God View and verification.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "simulationId": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "simulationId", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "Base user document."
+    },
+    "/users/{uid}/progress/current": {
+      "schema": "UserProgress",
+      "description": "Learning path state."
+    },
+    "/telemetry/{logId}": {
+      "schema": "SimulationAudit",
+      "description": "Global telemetry stream."
+    }
+  }
+}

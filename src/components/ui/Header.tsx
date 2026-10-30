@@ -35,6 +35,9 @@ import {
   Lock,
   Sparkles,
   Crosshair,
+  Sun,
+  Moon,
+  Palette,
 } from 'lucide-react';
 
 const TelemetryDisplay: React.FC = () => {
@@ -69,6 +72,8 @@ const TelemetryDisplay: React.FC = () => {
 export const Header: React.FC = () => {
   const language = useSimulationStore((s) => s.language);
   const setLanguage = useSimulationStore((s) => s.setLanguage);
+  const theme = useSimulationStore((s) => s.theme);
+  const setTheme = useSimulationStore((s) => s.setTheme);
   const activeSimulationId = useSimulationStore((s) => s.activeSimulationId);
   const setActiveSimulation = useSimulationStore((s) => s.setActiveSimulation);
   const mode = useSimulationStore((s) => s.mode);
@@ -219,14 +224,14 @@ export const Header: React.FC = () => {
         ) : (
           <button
             onClick={() => setActiveSimulation('landing')}
-            className="flex items-center gap-2.5 sm:gap-3 hover:opacity-80 transition-all group shrink-0"
+            className="flex items-center gap-3 hover:opacity-90 transition-all group shrink-0"
           >
-            <div className="w-7 h-7 rounded-lg bg-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-900/20 group-hover:scale-105 transition-transform">
-              <Shield className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 via-teal-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform border border-cyan-400/30">
+              <Shield className="w-4 h-4 text-white drop-shadow-md" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-tighter text-white leading-none">OMEGA</span>
-              <span className="text-[8px] font-mono text-cyan-500 uppercase tracking-[0.2em] leading-none mt-1">Cyber Range</span>
+            <div className="flex flex-col items-start">
+              <span className="text-base font-extrabold tracking-wider bg-gradient-to-r from-white via-cyan-200 to-cyan-400 bg-clip-text text-transparent leading-none">ZORG</span>
+              <span className="text-[8px] font-mono text-cyan-400 uppercase tracking-[0.25em] leading-none mt-1 font-semibold">Cyber Range</span>
             </div>
           </button>
         )}
@@ -352,6 +357,37 @@ export const Header: React.FC = () => {
           className="h-8 px-3 rounded-lg border border-slate-800 bg-slate-900 text-[10px] font-bold text-cyan-500 hover:text-white transition-all shadow-sm flex items-center justify-center min-w-[36px]"
         >
           {language === 'ar' ? 'EN' : 'ع'}
+        </button>
+
+        <button
+          onClick={() => {
+            const nextTheme = theme === 'modern' ? 'dark' : theme === 'dark' ? 'light' : 'modern';
+            setTheme(nextTheme);
+          }}
+          title={
+            language === 'ar'
+              ? `تبديل المظهر (الحالي: ${theme === 'modern' ? 'عصري كحلي' : theme === 'dark' ? 'داكن عسكري' : 'فاتح نقي'})`
+              : `Switch Theme (Current: ${theme.toUpperCase()})`
+          }
+          data-testid="theme-toggle-btn"
+          className="h-8 px-2.5 rounded-lg border border-slate-800 bg-slate-900 text-[11px] font-semibold text-slate-200 hover:text-cyan-400 hover:border-cyan-500/40 transition-all shadow-sm flex items-center gap-1.5 shrink-0"
+        >
+          {theme === 'light' ? (
+            <Sun className="w-3.5 h-3.5 text-amber-400" />
+          ) : theme === 'dark' ? (
+            <Moon className="w-3.5 h-3.5 text-indigo-400" />
+          ) : (
+            <Palette className="w-3.5 h-3.5 text-cyan-400" />
+          )}
+          <span className="hidden sm:inline text-[10px]">
+            {language === 'ar'
+              ? theme === 'modern'
+                ? 'عصري'
+                : theme === 'dark'
+                ? 'داكن'
+                : 'فاتح'
+              : theme.toUpperCase()}
+          </span>
         </button>
 
         {!isLabActive && (

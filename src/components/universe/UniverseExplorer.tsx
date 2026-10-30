@@ -117,7 +117,7 @@ export const UniverseExplorer: React.FC = () => {
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-semibold text-cyan-400 mb-1">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              <span>{language === 'ar' ? 'معمارية الكون السيبراني الشامل (OMEGA V4)' : 'Complete Cybersecurity Universe Architecture'}</span>
+              <span>{language === 'ar' ? 'معمارية الكون السيبراني الشامل (ZORG V4)' : 'Complete Cybersecurity Universe Architecture'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               {language === 'ar' ? 'مستكشف العوالم والنطاقات الأمنية الـ 60' : '60 Interconnected Cybersecurity Worlds'}

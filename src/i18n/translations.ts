@@ -408,7 +408,7 @@ export const translations = {
     },
   },
   en: {
-    appTitle: 'OMEGA V2',
+    appTitle: 'ZORG',
     appSubtitle: 'Interactive Cybersecurity Simulation Laboratory',
     languageName: 'العربية',
     nav: {

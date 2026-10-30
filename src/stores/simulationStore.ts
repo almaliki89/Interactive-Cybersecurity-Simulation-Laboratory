@@ -81,6 +81,7 @@ export interface SelectedEntity {
 
 interface SimulationStoreState {
   language: Language;
+  theme: 'modern' | 'dark' | 'light';
   activeSimulationId: SimulationId;
   selectedMacroDomainId: MacroDomainId | null;
   selectedWorldId: number | null;
@@ -122,6 +123,7 @@ interface SimulationStoreState {
   lessonProgress: Record<string, LessonProgressState>;
 
   // Actions
+  setTheme: (theme: 'modern' | 'dark' | 'light') => void;
   setLanguage: (lang: Language) => void;
   setActiveSimulation: (id: SimulationId) => void;
   setActiveLessonId: (id: string) => void;
@@ -176,6 +178,7 @@ interface SimulationStoreState {
   setActiveChallengeId: (challengeId: string | null) => void;
   registerChallengeValidator: (challengeId: string, validator: ChallengeValidatorFn) => void;
   unregisterChallengeValidator: (challengeId: string) => void;
+  logTelemetry: (simulationId: string, action: string, details?: any) => void;
   reloadFromStorage: () => void;
 }
 
@@ -541,6 +544,13 @@ export const safeParseLanguage = (raw: string | null): Language => {
   return 'ar';
 };
 
+export type PlatformTheme = 'modern' | 'dark' | 'light';
+
+export const safeParseTheme = (raw: string | null): PlatformTheme => {
+  if (raw === 'modern' || raw === 'dark' || raw === 'light') return raw;
+  return 'modern';
+};
+
 export interface OnboardingRequirements {
   firewallInspected: boolean;
   policyAltered: boolean;
@@ -579,6 +589,7 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
 
   return {
     language: safeParseLanguage(getStoredItem('omega_language')),
+    theme: safeParseTheme(getStoredItem('omega_theme')),
     activeSimulationId: (typeof window !== 'undefined' && window.location.hash.replace('#', '')) ? (window.location.hash.replace('#', '') as SimulationId) : 'landing',
     selectedMacroDomainId: null,
     selectedWorldId: null,
@@ -640,6 +651,12 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
         )
       )
     ),
+
+    setTheme: (theme) => {
+      console.info(`[ThemeEngine] Platform theme switched to: ${theme}`);
+      setStoredItem('omega_theme', theme);
+      set({ theme });
+    },
 
     setLanguage: (lang) => {
       setStoredItem('omega_language', lang);
@@ -1089,6 +1106,26 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
     });
   },
 
+  logTelemetry: async (simulationId, action, details = {}) => {
+    // Note: In a production app, we would import db/auth here or use an external service.
+    // For this applet, we'll try to keep the store as the orchestrator.
+    try {
+      const { db, auth } = await import('../lib/firebase');
+      if (auth.currentUser) {
+        const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+        await addDoc(collection(db, 'telemetry'), {
+          uid: auth.currentUser.uid,
+          simulationId,
+          action,
+          details,
+          timestamp: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.error('[Telemetry] Failed to log action:', err);
+    }
+  },
+
   reloadFromStorage: () => {
     const lang = safeParseLanguage(getStoredItem('omega_language'));
     const rawCompletedChallenges = safeParseCompletedChallenges(
@@ -1126,12 +1163,17 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => {
 
     const activeLesson = safeParseActiveLessonId(getStoredItem('omega_active_lesson_id'));
 
+    const storedTheme = safeParseTheme(getStoredItem('omega_theme'));
+
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
       document.documentElement.lang = lang;
+      document.documentElement.classList.remove('light', 'dark', 'modern');
+      document.documentElement.classList.add(storedTheme);
     }
     set({
       language: lang,
+      theme: storedTheme,
       completedChallenges: verifiedCompletedChallenges,
       completedLessons: verifiedCompletedLessons,
       activeLessonId: activeLesson,

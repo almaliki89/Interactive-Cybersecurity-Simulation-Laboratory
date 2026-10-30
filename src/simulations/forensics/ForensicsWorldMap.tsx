@@ -16,6 +16,7 @@ import {
   Globe,
   Terminal,
   Search,
+  Camera,
 } from 'lucide-react';
 
 interface LabNode {
@@ -39,6 +40,7 @@ const FORENSICS_LABS: LabNode[] = [
   { id: 'network', titleEn: 'Network Evidence', titleAr: 'الأدلة الشبكية وحركة المرور', cluster: 'Artifacts', icon: Activity },
   { id: 'timeline', titleEn: 'Timeline Reconstruction', titleAr: 'إعادة بناء الخط الزمني للحادثة', cluster: 'Analysis', icon: History },
   { id: 'rootcause', titleEn: 'Root Cause Analysis', titleAr: 'تحليل السبب الجذر والتتبع', cluster: 'Analysis', icon: Target },
+  { id: 'deepfake', titleEn: 'AI & Deepfake Forensics', titleAr: 'التحليل الجنائي للذكاء الاصطناعي', cluster: 'Analysis', icon: Camera },
   { id: 'containment', titleEn: 'Containment & Eradication', titleAr: 'الاحتواء المتناسب واستئصال التهديد', cluster: 'Response', icon: ShieldCheck },
   { id: 'recovery', titleEn: 'Recovery Validation', titleAr: 'التحقق من التعافي والتسجيل الأمني', cluster: 'Response', icon: RotateCcw },
   { id: 'lessons', titleEn: 'Post-Incident Review', titleAr: 'مراجعة ما بعد الحادثة والدروس', cluster: 'Review', icon: BookOpen },

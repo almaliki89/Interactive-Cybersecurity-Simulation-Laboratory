@@ -18,8 +18,11 @@ import { AerospaceSatelliteLab } from './AerospaceSatelliteLab';
 import { MaritimeSecurityLab } from './MaritimeSecurityLab';
 import { AutomotiveCanLab } from './AutomotiveCanLab';
 import { GnssSpoofingLab } from './GnssSpoofingLab';
+import { DroneHijackMavlinkLab } from './DroneHijackMavlinkLab';
+import { Telecom6gOranLab } from './Telecom6gOranLab';
+import { SmartCityUrbanLab } from './SmartCityUrbanLab';
 import { NexoraBranchMasterChallenge } from './NexoraBranchMasterChallenge';
-import { Radio, Wifi, Satellite, Anchor, Car, Compass } from 'lucide-react';
+import { Radio, Wifi, Satellite, Anchor, Car, Compass, Target, Building2 } from 'lucide-react';
 
 import { TcpSimulation } from '../tcp/TcpSimulation';
 import { DnsSimulation } from '../dns/DnsSimulation';
@@ -50,6 +53,9 @@ type LabKey =
   | 'maritime'
   | 'automotive_can'
   | 'gnss_spoofing'
+  | 'drone_hijack'
+  | 'telecom_6g'
+  | 'smart_city'
   | 'nexora_master';
 
 export const NetworkingWorldMap: React.FC = () => {
@@ -125,6 +131,9 @@ export const NetworkingWorldMap: React.FC = () => {
         { key: 'maritime', nameAr: 'أمن السفن والملاحة البحرية Maritime', nameEn: 'Maritime & Vessel Security Lab', icon: Anchor },
         { key: 'automotive_can', nameAr: 'أمن شبكات السيارات CAN Bus & V2X', nameEn: 'Automotive CAN & V2X Lab', icon: Car },
         { key: 'gnss_spoofing', nameAr: 'تزييف الملاحة الفضائية وحرب الترددات GNSS', nameEn: 'GNSS Satellite Spoofing & EW Lab', icon: Compass },
+        { key: 'drone_hijack', nameAr: 'اختطاف الدرونز وحقن MAVLink', nameEn: 'Drone Hijacking & MAVLink Lab', icon: Target },
+        { key: 'telecom_6g', nameAr: 'أمن شبكات 6G ومعمارية O-RAN', nameEn: '6G O-RAN Security Lab', icon: Network },
+        { key: 'smart_city', nameAr: 'أمن المدن الذكية والبنية الحضرية', nameEn: 'Smart City & Urban Lab', icon: Building2 },
         { key: 'nexora_master', nameAr: 'التحدي الرئيسي: شبكة NEXORA', nameEn: 'NEXORA Master Challenge', icon: Award },
       ],
     },
@@ -243,6 +252,9 @@ export const NetworkingWorldMap: React.FC = () => {
           {activeLab === 'maritime' && <MaritimeSecurityLab language={language} />}
           {activeLab === 'automotive_can' && <AutomotiveCanLab language={language} />}
           {activeLab === 'gnss_spoofing' && <GnssSpoofingLab language={language} />}
+          {activeLab === 'drone_hijack' && <DroneHijackMavlinkLab language={language} />}
+          {activeLab === 'telecom_6g' && <Telecom6gOranLab language={language} />}
+          {activeLab === 'smart_city' && <SmartCityUrbanLab language={language} />}
           {activeLab === 'nexora_master' && <NexoraBranchMasterChallenge />}
         </div>
       )}

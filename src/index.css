@@ -22,7 +22,124 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: var(--color-omega-bg);
+  }
+
+  /* =========================================================================
+     ZORG TRI-THEME ARCHITECTURE: Light, Modern & Dark Styling Overrides
+     ========================================================================= */
+
+  /* 1. LIGHT CRISP MODE */
+  html.light {
+    color-scheme: light;
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+  html.light body {
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+  html.light .bg-slate-950 {
+    background-color: #f8fafc !important;
+  }
+  html.light .bg-slate-900 {
+    background-color: #ffffff !important;
+  }
+  html.light .bg-slate-900\/20,
+  html.light .bg-slate-900\/30,
+  html.light .bg-slate-900\/40,
+  html.light .bg-slate-900\/50,
+  html.light .bg-slate-900\/60,
+  html.light .bg-slate-900\/80,
+  html.light .bg-slate-900\/90 {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+  }
+  html.light .bg-slate-950\/40,
+  html.light .bg-slate-950\/50,
+  html.light .bg-slate-950\/60,
+  html.light .bg-slate-950\/80,
+  html.light .bg-slate-950\/90 {
+    background-color: rgba(248, 250, 252, 0.9) !important;
+  }
+  html.light .bg-slate-800,
+  html.light .bg-slate-800\/40,
+  html.light .bg-slate-800\/50,
+  html.light .bg-slate-800\/60 {
+    background-color: #f1f5f9 !important;
+  }
+  html.light .border-slate-800,
+  html.light .border-slate-800\/50,
+  html.light .border-slate-800\/60,
+  html.light .border-slate-900,
+  html.light .border-slate-900\/50 {
+    border-color: #e2e8f0 !important;
+  }
+  html.light .border-slate-700 {
+    border-color: #cbd5e1 !important;
+  }
+  html.light .text-white,
+  html.light .text-slate-100 {
+    color: #0f172a !important;
+  }
+  html.light .text-slate-200 {
+    color: #1e293b !important;
+  }
+  html.light .text-slate-300 {
+    color: #334155 !important;
+  }
+  html.light .text-slate-400 {
+    color: #475569 !important;
+  }
+  html.light .text-slate-500 {
+    color: #64748b !important;
+  }
+
+  /* 2. MODERN NAVY / OBSIDIAN MODE */
+  html.modern {
+    color-scheme: dark;
+    background-color: #070b16;
+    color: #f8fafc;
+  }
+  html.modern body {
+    background-color: #070b16;
+    color: #f8fafc;
+  }
+  html.modern .bg-slate-950 {
+    background-color: #070b16 !important;
+  }
+  html.modern .bg-slate-900 {
+    background-color: #0d1527 !important;
+  }
+  html.modern .bg-slate-900\/20,
+  html.modern .bg-slate-900\/30,
+  html.modern .bg-slate-900\/40,
+  html.modern .bg-slate-900\/50,
+  html.modern .bg-slate-900\/60,
+  html.modern .bg-slate-900\/80,
+  html.modern .bg-slate-900\/90 {
+    background-color: rgba(13, 21, 39, 0.8) !important;
+  }
+  html.modern .bg-slate-950\/40,
+  html.modern .bg-slate-950\/50,
+  html.modern .bg-slate-950\/60,
+  html.modern .bg-slate-950\/80,
+  html.modern .bg-slate-950\/90 {
+    background-color: rgba(7, 11, 22, 0.85) !important;
+  }
+  html.modern .border-slate-800,
+  html.modern .border-slate-800\/50,
+  html.modern .border-slate-800\/60,
+  html.modern .border-slate-900 {
+    border-color: #1a2744 !important;
+  }
+
+  /* 3. TACTICAL DARK / TERMINAL BLACK MODE */
+  html.dark {
+    color-scheme: dark;
+    background-color: #020617;
+    color: #f8fafc;
+  }
+  html.dark body {
+    background-color: #020617;
     color: #f8fafc;
   }
 

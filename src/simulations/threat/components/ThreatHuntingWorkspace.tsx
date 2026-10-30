@@ -17,6 +17,7 @@ import { RansomwareC2Lab } from '../RansomwareC2Lab';
 import { SocialEngineeringOsintLab } from '../SocialEngineeringOsintLab';
 import { ActiveDeceptionLab } from '../ActiveDeceptionLab';
 import { IoMTMedicalDeviceLab } from '../IoMTMedicalDeviceLab';
+import { BciNeuralSecurityLab } from '../BciNeuralSecurityLab';
 import { HuntBottomDrawer } from './HuntBottomDrawer';
 import {
   Crosshair,
@@ -39,6 +40,7 @@ import {
   Users,
   Boxes,
   Heart,
+  Brain,
 } from 'lucide-react';
 import { Threat3DMatrixStage } from './Threat3DMatrixStage';
 
@@ -84,6 +86,7 @@ export const ThreatHuntingWorkspace: React.FC<ThreatHuntingWorkspaceProps> = ({ 
     { id: 'AI_RED_TEAM' as const, labelEn: 'AI & LLM Red Team', labelAr: 'أمن الذكاء الاصطناعي', icon: Bot },
     { id: 'IOT_FIRMWARE' as const, labelEn: 'IoT & Firmware', labelAr: 'أمن إنترنت الأشياء والرقاقات', icon: Cpu },
     { id: 'IOMT_MEDICAL' as const, labelEn: 'IoMT Medical Devices', labelAr: 'الأجهزة الطبية الحيوية', icon: Heart },
+    { id: 'BCI_NEURAL' as const, labelEn: 'BCI & Neural Security', labelAr: 'الأمن العصبي والدماغي', icon: Brain },
     { id: 'RANSOMWARE_C2' as const, labelEn: 'Ransomware & C2', labelAr: 'برمجيات الفدية وقنوات C2', icon: Skull },
     { id: 'SOCIAL_OSINT' as const, labelEn: 'Social Eng & OSINT', labelAr: 'الهندسة الاجتماعية و OSINT', icon: Users },
     { id: 'ACTIVE_DECEPTION' as const, labelEn: 'Active Deception', labelAr: 'الدفاع الإيجابي والمصائد', icon: Boxes },
@@ -198,6 +201,7 @@ export const ThreatHuntingWorkspace: React.FC<ThreatHuntingWorkspaceProps> = ({ 
             {activeTab === 'AI_RED_TEAM' && <AiSecurityLab language={language} />}
             {activeTab === 'IOT_FIRMWARE' && <IotFirmwareLab language={language} />}
             {activeTab === 'IOMT_MEDICAL' && <IoMTMedicalDeviceLab language={language} />}
+            {activeTab === 'BCI_NEURAL' && <BciNeuralSecurityLab language={language} />}
             {activeTab === 'RANSOMWARE_C2' && <RansomwareC2Lab language={language} />}
             {activeTab === 'SOCIAL_OSINT' && <SocialEngineeringOsintLab language={language} />}
             {activeTab === 'ACTIVE_DECEPTION' && <ActiveDeceptionLab language={language} />}

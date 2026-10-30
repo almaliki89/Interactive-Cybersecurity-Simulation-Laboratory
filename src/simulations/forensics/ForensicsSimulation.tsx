@@ -17,6 +17,7 @@ import { ContainmentEradicationLab } from './ContainmentEradicationLab';
 import { RecoveryValidationLab } from './RecoveryValidationLab';
 import { PostIncidentReviewLab } from './PostIncidentReviewLab';
 import { ForensicsMasterChallenge } from './ForensicsMasterChallenge';
+import { DeepfakeForensicLab } from './DeepfakeForensicLab';
 import { useForensicsStore, ForensicsLabId } from '../../stores/forensicsStore';
 import { normalizeRuntimeEvent } from '../soc/logic/normalization';
 import { createForensicEvidenceFromTelemetry } from './logic/evidence';
@@ -107,6 +108,8 @@ export const ForensicsSimulation: React.FC = () => {
         return <RecoveryValidationLab />;
       case 'lessons':
         return <PostIncidentReviewLab />;
+      case 'deepfake':
+        return <DeepfakeForensicLab language={language} />;
       case 'master':
         return <ForensicsMasterChallenge />;
       case 'map':

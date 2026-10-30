@@ -498,8 +498,8 @@ export const LearningPathsView: React.FC = () => {
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
               {isAr
-                ? 'استلهاماً من أفضل الممارسات المنهجية، توفر OMEGA MAX ثلاث بيئات عمل متمايزة تضمن انتقال الطالب بثقة من المفهوم النظري إلى الاحتراف الفعلي.'
-                : 'OMEGA MAX enforces distinct pedagogical stages ensuring students transition seamlessly from mental models to competitive rigor.'}
+                ? 'استلهاماً من أفضل الممارسات المنهجية، توفر منصة ZORG ثلاث بيئات عمل متمايزة تضمن انتقال الطالب بثقة من المفهوم النظري إلى الاحتراف الفعلي.'
+                : 'ZORG enforces distinct pedagogical stages ensuring students transition seamlessly from mental models to competitive rigor.'}
             </p>
           </div>
 

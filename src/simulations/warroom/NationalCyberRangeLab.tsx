@@ -20,6 +20,7 @@ import {
   Power,
   Cpu,
 } from 'lucide-react';
+import { NationalDefenseMap } from './NationalDefenseMap';
 
 interface NationalCyberRangeLabProps {
   language?: 'ar' | 'en';
@@ -104,6 +105,16 @@ export const NationalCyberRangeLab: React.FC<NationalCyberRangeLabProps> = ({ la
     [selectedCrisisId]
   );
 
+  const getSectorAr = (sector: string) => {
+    switch (sector) {
+      case 'ENERGY_GRID': return 'شبكة كهرباء البصرة والفرات الأوسط';
+      case 'FINANCIAL_SWIFT': return 'نظام المقاصة الإلكتروني (البنك المركزي العراقي)';
+      case 'AEROSPACE_ATC': return 'منظومة الملاحة الجوية (مطار بغداد الدولي)';
+      case 'HEALTHCARE_ICU': return 'شبكة بيانات المستشفيات التعليمية';
+      default: return sector;
+    }
+  };
+
   const handleTriggerNationalCrisis = () => {
     setIsCrisisActive(true);
     setWarRoomLog(null);
@@ -143,7 +154,7 @@ export const NationalCyberRangeLab: React.FC<NationalCyberRangeLabProps> = ({ la
         setWarRoomLog({
           status: 'INFRASTRUCTURE_BLACKOUT',
           details: isAr
-            ? `إنذار قصوى: انهيار قطاع ${scenario.sector} وفشل استقرار البنية التحتية الحيوية!`
+            ? `إنذار قصوى: انهيار قطاع ${getSectorAr(scenario.sector)} وفشل استقرار البنية التحتية الحيوية!`
             : `CRITICAL NATIONAL CRISIS: ${scenario.sector} failure cascading across critical lifelines!`,
           doctrineResponse: isAr
             ? `[أثر الهجوم الفادح] ${scenario.descriptionAr}`
@@ -172,7 +183,7 @@ export const NationalCyberRangeLab: React.FC<NationalCyberRangeLabProps> = ({ la
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              {isAr ? 'غرفة العمليات السيبرانية الوطنية للبنى التحتية الحيوية (National Cyber War Room)' : 'National Cyber Warfare & Critical Infrastructure Range'}
+              {isAr ? 'الميدان السيبراني الوطني الشامل وغرفة العمليات (National Cyber Range)' : 'National Strategic Cyber Range & Critical Infrastructure War Room'}
               <span className="px-2 py-0.5 text-[10px] text-rose-400 bg-rose-950/60 border border-rose-800 rounded-full font-mono">
                 CISA Critical Sectors / APT Defense
               </span>
@@ -190,20 +201,28 @@ export const NationalCyberRangeLab: React.FC<NationalCyberRangeLabProps> = ({ la
           className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-700"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          {isAr ? 'إعادة ضبط غرفة الأزمات' : 'Reset War Room'}
+          {isAr ? 'إعادة ضبط الميدان الشامل' : 'Reset Cyber Range'}
         </button>
       </div>
 
       {/* Strategic Posture & DEFCON Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 flex items-center justify-between">
-          <div>
+          <div className="flex-1">
             <span className="text-[11px] text-slate-400 font-bold block">{isAr ? 'سلامة البنية التحتية الوطنية' : 'Infrastructure Health'}</span>
-            <span className={`text-2xl font-bold ${infrastructureHealthPct < 50 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
-              {infrastructureHealthPct}%
-            </span>
+            <div className="flex items-center gap-3">
+              <span className={`text-2xl font-bold ${infrastructureHealthPct < 50 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                {infrastructureHealthPct}%
+              </span>
+              <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 ${infrastructureHealthPct < 50 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                  style={{ width: `${infrastructureHealthPct}%` }}
+                ></div>
+              </div>
+            </div>
           </div>
-          <Activity className="w-6 h-6 text-cyan-400" />
+          <Activity className="w-6 h-6 text-cyan-400 ml-3" />
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 flex items-center justify-between">
@@ -322,9 +341,17 @@ export const NationalCyberRangeLab: React.FC<NationalCyberRangeLabProps> = ({ la
             </button>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono space-y-1">
-            <span className="text-slate-400 font-bold block">{isAr ? 'البروتوكول/القطاع المستهدف بالهجوم:' : 'Exploited Protocol / Vector:'}</span>
-            <span className="text-rose-400 font-bold">{scenario.protocolExploited}</span>
+          <div className="bg-slate-950 border border-slate-800 rounded p-3 text-xs font-mono space-y-3">
+            <div>
+              <span className="text-slate-400 font-bold block mb-1">{isAr ? 'البروتوكول/القطاع المستهدف بالهجوم:' : 'Exploited Protocol / Vector:'}</span>
+              <span className="text-rose-400 font-bold">{scenario.protocolExploited}</span>
+            </div>
+            
+            <NationalDefenseMap 
+              language={language} 
+              infrastructureHealth={infrastructureHealthPct}
+              activeCrisis={isCrisisActive}
+            />
           </div>
 
           {/* War Room Incident Output Log */}

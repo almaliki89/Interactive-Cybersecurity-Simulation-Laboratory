@@ -20,6 +20,7 @@ export type ForensicsLabId =
   | 'recovery' 
   | 'lessons' 
   | 'forensics_3d'
+  | 'deepfake'
   | 'master';
 
 interface ForensicsStoreState {
