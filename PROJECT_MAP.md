@@ -16,6 +16,7 @@ ZORG is an enterprise-grade cybersecurity simulation and Iraqi national curricul
 - `src/App.tsx`: Main entry component with theme syncing (modern, dark, light classes applied to root) and error boundaries.
 - `src/stores/simulationStore.ts`: Central simulation state, safe theme parsing (`safeParseTheme`), telemetry, curriculum progress, and challenge tracking.
 - `src/stores/__tests__/themeEngine.test.ts`: TDD unit test suite verifying theme validation, persistence, and storage rehydration.
-- `src/components/ui/Header.tsx`: Navigation header with tri-theme toggle (Modern/Dark/Light), language switcher, and lab switchers.
+- `src/components/ui/Header.tsx`: Linear/Calm-Tech navigation header with authoritative ZORG branding, tri-theme toggle (Modern/Dark/Light), language switcher, and streamlined lab switchers.
+- `src/components/landing/InteractiveEnterpriseHero.tsx`: Mission-first Command Deck with uncluttered visual hierarchy, smooth packet stream, and calm student journey hub.
 - `src/index.css`: Tri-theme CSS architecture with dynamic surface, background, and text overrides for light, modern, and dark palettes.
 

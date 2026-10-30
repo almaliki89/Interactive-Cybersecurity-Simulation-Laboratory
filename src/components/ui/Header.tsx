@@ -184,16 +184,16 @@ export const Header: React.FC = () => {
     ? (devSecOpsSubLabs.find(l => l.id === devSecOpsTab))
     : activeLab;
 
-  // Unified Three-Zone Header (Consolidated Phase 1D)
+  // Unified Calm-Tech Three-Zone Header
   return (
-    <header className="h-12 border-b border-slate-900 bg-slate-950 px-3 sm:px-4 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none">
+    <header className="h-14 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-30 shrink-0 sticky top-0 font-sans select-none transition-colors duration-200">
       {/* Zone 1: Identity / Context */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="flex items-center gap-3 min-w-0">
         {isLabActive && activeLab ? (
-          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setActiveSimulation('explorer')}
-              className="w-7 h-7 shrink-0 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 transition-all shadow-sm"
+              className="w-8 h-8 shrink-0 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-all shadow-sm"
               title={language === 'ar' ? 'العودة للكون' : 'Back to Universe'}
             >
               <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
@@ -201,21 +201,21 @@ export const Header: React.FC = () => {
             <button
               onClick={() => setActiveSimulation('lesson')}
               data-testid="return-to-lesson-btn"
-              className="h-7 px-2 sm:px-2.5 rounded-lg bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60 hover:border-emerald-400 text-[10px] font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0"
+              className="h-8 px-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60 hover:border-emerald-400 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shrink-0"
               title={language === 'ar' ? `العودة إلى الدرس الحالي: ${activeLesson?.titleAr || ''}` : `Return to Lesson: ${activeLesson?.titleEn || ''}`}
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>{language === 'ar' ? 'العودة للدرس' : 'Back to Lesson'}</span>
             </button>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
                 {React.createElement(displayLabName?.icon || activeLab.icon, { className: 'w-4 h-4' })}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] sm:text-[11px] font-bold text-white uppercase tracking-tight truncate max-w-[130px] sm:max-w-[220px] md:max-w-none leading-tight">
+                <span className="text-xs font-bold text-white uppercase tracking-tight truncate max-w-[140px] sm:max-w-[220px] md:max-w-none leading-tight">
                   {language === 'ar' ? displayLabName?.nameAr || activeLab.nameAr : displayLabName?.nameEn || activeLab.nameEn}
                 </span>
-                <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest leading-none truncate max-w-[120px] sm:max-w-none">
+                <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest leading-none truncate max-w-[120px] sm:max-w-none mt-0.5">
                   {activeSimulationId === 'devsecops' ? (devSecOpsTab === 'map' ? 'WORLD HUB' : 'DEVSECOPS LAB') : activeLab.category}
                 </span>
               </div>
@@ -226,12 +226,12 @@ export const Header: React.FC = () => {
             onClick={() => setActiveSimulation('landing')}
             className="flex items-center gap-3 hover:opacity-90 transition-all group shrink-0"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 via-teal-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform border border-cyan-400/30">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 via-teal-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform border border-cyan-400/30">
               <Shield className="w-4 h-4 text-white drop-shadow-md" />
             </div>
             <div className="flex flex-col items-start">
-              <span className="text-base font-extrabold tracking-wider bg-gradient-to-r from-white via-cyan-200 to-cyan-400 bg-clip-text text-transparent leading-none">ZORG</span>
-              <span className="text-[8px] font-mono text-cyan-400 uppercase tracking-[0.25em] leading-none mt-1 font-semibold">Cyber Range</span>
+              <span className="text-lg font-black tracking-wider bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent leading-none">ZORG</span>
+              <span className="text-[9px] font-mono text-cyan-400 uppercase tracking-[0.25em] leading-none mt-1 font-semibold">Cyber Platform</span>
             </div>
           </button>
         )}

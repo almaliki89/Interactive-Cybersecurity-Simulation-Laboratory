@@ -239,68 +239,68 @@ export const InteractiveEnterpriseHero: React.FC = () => {
   const followedPacket = packets.find((p) => p.id === followedPacketId);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-6 flex flex-col items-center select-none">
+    <div className="flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-8 flex flex-col items-center select-none transition-colors duration-200">
       {/* 1. Technical Wordmark & Purpose Banner */}
-      <div className="max-w-6xl w-full text-center mt-2 mb-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-cyan-400 mb-3 shadow-inner">
+      <div className="max-w-5xl w-full text-center mt-3 mb-8">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs font-semibold text-cyan-400 mb-4 shadow-sm backdrop-blur-sm">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="font-mono uppercase tracking-wider text-[11px]">
-            {language === 'ar' ? 'نظام تشغيل مرئي تفاعلي للأمن السيبراني' : 'Visual Operating System for Cybersecurity'}
+          <span className="font-mono uppercase tracking-widest text-[11px] font-bold">
+            {language === 'ar' ? 'منصة ZORG السيبرانية الوطنية' : 'ZORG CYBER DEFENSE PLATFORM'}
           </span>
           <span className="text-slate-600">·</span>
           <span className="text-slate-400 text-[11px]">
-            {language === 'ar' ? '10 نطاقات و 60 عالماً حياً' : '10 Domains & 60 Living Worlds'}
+            {language === 'ar' ? '60 عالماً وميدان عمليات حي' : '60 Living Simulation Worlds'}
           </span>
         </div>
 
-        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight text-balance">
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.15] text-balance">
           {language === 'ar'
-            ? 'افهم الأمن السيبراني عبر التفاعل الحي مع الأنظمة وتدفق البيانات.'
-            : 'Understand Cybersecurity by Watching & Manipulating Live Systems.'}
+            ? 'احترف الأمن السيبراني عبر الممارسة الحية ومحاكاة المعارك الواقعية.'
+            : 'Master Cybersecurity Through Live Real-World Simulation.'}
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto mt-2 text-balance leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto mt-3 text-balance leading-relaxed">
           {language === 'ar'
-            ? 'تتبع مسار الحزم، وجرب كسر وإصلاح جدران الحماية، وافحص مصافحة TLS وتذاكر Kerberos في بيئة برمجية تفاعلية تتفاعل لحظياً مع كل قرار أمني.'
-            : 'Track packets across perimeter nodes, toggle firewall ACLs, inspect TLS handshakes, and correlate SIEM events in a living interactive universe.'}
+            ? 'تتبع تدفق الحزم في الزمن الحقيقي، تصدَّ للهجمات، وتحكم بجدران الحماية ومصادقة Kerberos في بيئة عملياتية حية تتفاعل لحظياً مع كل قرار أمني تتخذه.'
+            : 'Inspect live network packet streams, neutralize cyber attacks, and command next-gen firewalls in a living digital twin responding to your every action.'}
         </p>
 
         {/* Global Action CTAs */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+        <div className="flex flex-wrap items-center justify-center gap-3.5 mt-6">
           <button
             onClick={() => setActiveSimulation('lesson')}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs flex items-center gap-2 shadow-xl shadow-emerald-950/50 transition-transform active:scale-95"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2.5 shadow-xl shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-95"
           >
             <Sparkles className="w-4 h-4 fill-current" />
-            <span>{language === 'ar' ? 'ابدأ التعلّم من الصفر (مسار المبتدئين خطوة بخطوة)' : 'Start Learning from Scratch (Beginner Track)'}</span>
+            <span>{language === 'ar' ? 'ابدأ التعلّم من الصفر (المسار العملي)' : 'Start Hands-On Learning Track'}</span>
           </button>
 
           <button
             onClick={() => setActiveSimulation('range')}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500/60 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-colors"
+            className="px-5 py-3 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500/60 text-slate-200 hover:text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all hover:bg-slate-800/80 shadow-sm"
           >
             <Compass className="w-4 h-4 text-cyan-400" />
-            <span>{language === 'ar' ? 'دخول الميدان السيبراني الشامل (World 60)' : 'Enter Cyber Range (World 60)'}</span>
+            <span>{language === 'ar' ? 'دخول الميدان السيبراني الشامل (World 60)' : 'Enter Enterprise Cyber Range'}</span>
           </button>
 
           <button
             onClick={() => setActiveSimulation('explorer')}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-2 transition-colors"
+            className="px-5 py-3 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-semibold text-xs sm:text-sm flex items-center gap-2 transition-colors"
           >
             <Globe className="w-4 h-4 text-slate-400" />
-            <span>{language === 'ar' ? 'استكشاف العوالم الـ 60 (Universe Map)' : 'Explore 60 Cyber Worlds'}</span>
+            <span>{language === 'ar' ? 'استكشاف العوالم الـ 60' : 'Explore 60 Worlds'}</span>
           </button>
 
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white text-xs flex items-center gap-2 font-mono"
+            className="px-4 py-3 rounded-xl bg-slate-900/40 border border-slate-800/80 text-slate-400 hover:text-white text-xs flex items-center gap-2 font-mono hover:border-slate-700 transition-colors"
           >
             <Search className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{language === 'ar' ? 'بحث شامل (Cmd+K)' : 'Search (Cmd+K)'}</span>
+            <span>⌘K</span>
           </button>
         </div>
 
         {/* Beginner Journey Command Center (4 Questions Hub) */}
-        <div className="mt-6 p-4 sm:p-5 rounded-3xl bg-slate-900/90 border border-emerald-800/60 shadow-2xl text-left rtl:text-right max-w-5xl mx-auto backdrop-blur-md">
+        <div className="mt-6 p-4 sm:p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl text-left rtl:text-right max-w-5xl mx-auto backdrop-blur-md">
           {/* Header Row */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-4">
             <div className="flex items-center gap-2.5">
