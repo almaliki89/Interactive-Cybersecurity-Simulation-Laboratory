@@ -12,6 +12,8 @@ import {
   Layers3,
   Network,
   Search,
+  Play,
+  CheckCircle2,
   ShieldCheck,
   Workflow,
 } from 'lucide-react';
@@ -247,6 +249,41 @@ export const ZorgDashboard: React.FC = () => {
           </div>
         </section>
 
+        <section className="zorg-first-steps" aria-labelledby="zorg-first-steps-title">
+          <div className="zorg-first-steps-heading">
+            <div>
+              <span className="zorg-section-kicker">{text('دليل البداية السريع', 'YOUR FIRST STEPS')}</span>
+              <h2 id="zorg-first-steps-title">{text('مستخدم جديد؟ اتبع هذه الخطوات الثلاث', 'New here? Follow these three steps')}</h2>
+              <p>{text('لا تبدأ بتصفح كل العوالم. تعلّم فكرة واحدة، جرّبها في المختبر، ثم أكمل الدرس.', 'Do not start by browsing every world. Learn one idea, practice it in the lab, then complete the lesson.')}</p>
+            </div>
+            <button type="button" className="zorg-first-steps-start" data-testid="zorg-first-step-btn" onClick={() => setActiveSimulation('lesson')}>
+              <BookOpen size={17} />
+              {text('ابدأ الدرس الأول', 'Start the first lesson')}
+              <ArrowUpRight size={16} className={isAr ? 'zorg-arrow-rtl' : ''} />
+            </button>
+          </div>
+          <div className="zorg-first-steps-grid">
+            <article className="zorg-first-step-card">
+              <span className="zorg-first-step-number">01</span>
+              <span className="zorg-first-step-icon"><BookOpen size={20} /></span>
+              <h3>{text('تعلّم الفكرة', 'Learn the idea')}</h3>
+              <p>{text('ابدأ من «ابدأ هنا». اقرأ الأهداف والشرح ولا تحتاج إلى إعداد أي شيء.', 'Open “Start Here”. Read the goals and explanation. No setup is required.')}</p>
+            </article>
+            <article className="zorg-first-step-card">
+              <span className="zorg-first-step-number">02</span>
+              <span className="zorg-first-step-icon"><Play size={20} /></span>
+              <h3>{text('جرّب بنفسك', 'Try it yourself')}</h3>
+              <p>{text('عند ظهور المهمة العملية، افتح المختبر المرتبط بالدرس وجرّب الخطوات داخله.', 'When you reach the practical task, open its linked lab and try the steps there.')}</p>
+            </article>
+            <article className="zorg-first-step-card">
+              <span className="zorg-first-step-number">03</span>
+              <span className="zorg-first-step-icon"><CheckCircle2 size={20} /></span>
+              <h3>{text('أكمل وانتقل', 'Complete and continue')}</h3>
+              <p>{text('ارجع إلى الدرس، أجب عن الأسئلة، ثم أكمل لتُحفظ متابعتك وتنتقل للدرس التالي.', 'Return to the lesson, answer the questions, then complete it to save progress and continue.')}</p>
+            </article>
+          </div>
+        </section>
+
         <section className="zorg-resume-section">
           <div className="zorg-section-heading">
             <div>
@@ -288,9 +325,9 @@ export const ZorgDashboard: React.FC = () => {
 
         <section className="zorg-onboarding-section">
           <div className="zorg-onboarding-copy">
-            <span className="zorg-section-kicker">{text('تجربة قصيرة للمبتدئين', 'A QUICK FIRST EXERCISE')}</span>
+            <span className="zorg-section-kicker">{text('تجربة قصيرة اختيارية للمبتدئين', 'OPTIONAL FIRST EXERCISE')}</span>
             <h2>{text('جرّب كيف يتخذ جدار الحماية قراره', 'See how a firewall makes a decision')}</h2>
-            <p>{text('نفّذ خطوتين بسيطتين لفهم أثر سياسة الشبكة قبل الانتقال إلى بقية المختبرات.', 'Complete two simple steps to understand the effect of network policy before exploring the laboratories.')}</p>
+            <p>{text('هذه تجربة جانبية للتعرّف على المحاكاة، وليست شرطاً لإكمال المنهج. يمكنك تجاوزها والبدء بالدرس الأول مباشرة.', 'This is an optional tour of the simulator, not a requirement. You can skip it and start the first lesson directly.')}</p>
             <div className="zorg-onboarding-steps">
               <span className={onboardingStep >= 2 ? 'is-complete' : 'is-current'}><i>1</i>{text('افحص الجدار', 'Inspect the firewall')}</span>
               <span className="zorg-step-connector" />
@@ -356,8 +393,8 @@ export const ZorgDashboard: React.FC = () => {
           <div className="zorg-section-heading">
             <div>
               <span className="zorg-section-kicker">{text('مساحات العمل', 'WORKSPACES')}</span>
-              <h2>{text('اختر المجال الذي تريد استكشافه', 'Choose a field to explore')}</h2>
-              <p>{text('كل مساحة تقودك إلى مختبرات وتجارب مترابطة ضمن موضوع واحد.', 'Each workspace brings together related laboratories and hands-on exercises.')}</p>
+              <h2>{text('استكشف المجالات بعد أن تتعرف على الأساسيات', 'Explore domains after learning the basics')}</h2>
+              <p>{text('هذه مداخل للاستكشاف الحر وليست خطوات مطلوبة للبداية. اختر مجالاً، ثم افتح المختبر المناسب.', 'These are optional exploration areas, not required first steps. Choose a domain, then open a related lab.')}</p>
             </div>
             <button type="button" className="zorg-button-tertiary" onClick={() => setActiveSimulation('explorer')}>
               {text('جميع العوالم', 'All worlds')} <ArrowUpRight size={16} />
