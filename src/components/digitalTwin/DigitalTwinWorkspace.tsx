@@ -196,7 +196,6 @@ export const DigitalTwinWorkspace: React.FC = () => {
                     return (
                       <g key={link.id}>
                         <line x1={source.x} y1={source.y} x2={target.x} y2={target.y} stroke={stroke} strokeWidth="0.55" strokeDasharray={link.status === 'active' ? '1.2 1.5' : '2 2'} opacity={link.status === 'active' ? 0.75 : 0.9} />
-                        {link.status === 'active' && <circle r="1.1" fill="#a5f3fc"><animateMotion dur="4s" repeatCount="indefinite" path={`M ${source.x} ${source.y} L ${target.x} ${target.y}`} /></circle>}
                       </g>
                     );
                   })}
@@ -210,6 +209,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
                       type="button"
                       onClick={() => inspectNode(node.id)}
                       aria-pressed={selected}
+                      data-testid={`digital-twin-node-${node.id}`}
                       aria-label={actionText(`تحديد ${node.labelAr}`, `Select ${node.labelEn}`)}
                       className={`absolute z-10 flex w-[116px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 rounded-xl border p-2 text-center shadow-lg transition sm:w-[136px] sm:p-2.5 ${selected ? 'border-cyan-300 bg-cyan-950/90 ring-2 ring-cyan-400/25' : 'border-slate-700 bg-slate-950/95 hover:border-slate-500'}`}
                       style={{ left: `${node.x}%`, top: `${node.y}%` }}
@@ -274,6 +274,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => inspectNode('hr-ws-04')}
+                  data-testid="digital-twin-inspect-btn"
                   disabled={world.progress.alertInspected}
                   className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2.5 text-xs font-bold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-default disabled:opacity-45"
                 >
@@ -282,6 +283,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
                 <button
                   type="button"
                   onClick={isolateEndpoint}
+                  data-testid="digital-twin-isolate-btn"
                   disabled={!world.progress.alertInspected || world.progress.endpointIsolated}
                   className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2.5 text-xs font-bold text-rose-100 transition hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -290,6 +292,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
                 <button
                   type="button"
                   onClick={blockSuspiciousEgress}
+                  data-testid="digital-twin-block-btn"
                   disabled={!world.progress.alertInspected || world.progress.egressBlocked}
                   className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5 text-xs font-bold text-amber-100 transition hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -298,6 +301,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
                 <button
                   type="button"
                   onClick={resolveIncident}
+                  data-testid="digital-twin-resolve-btn"
                   disabled={world.incidentStatus !== 'contained' || complete}
                   className="rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-extrabold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
                 >
