@@ -2,8 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, db, signInWithPopup, googleProvider, signOut } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { useSimulationStore } from '../stores/simulationStore';
-import { DEFAULT_LESSON_ID } from '../stores/simulationStore';
+import { DEFAULT_LESSON_ID, useSimulationStore } from '../stores/simulationStore';
 import { sanitizeCloudProgress } from './progressSync';
 
 interface FirebaseContextType {
