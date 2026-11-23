@@ -348,8 +348,8 @@ export const DigitalTwinWorkspace: React.FC = () => {
                 <div key={rule.id} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-[9px] text-slate-500">{rule.id}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${rule.enabled ? 'bg-rose-400/10 text-rose-300' : 'bg-slate-700/50 text-slate-400'}`}>
-                      {rule.enabled ? actionText('حظر مفعّل', 'DENY · ACTIVE') : actionText('غير مفعّل', 'DISABLED')}
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${rule.enabled ? (rule.action === 'DENY' ? 'bg-rose-400/10 text-rose-300' : 'bg-emerald-400/10 text-emerald-300') : 'bg-slate-700/50 text-slate-400'}`}>
+                      {rule.enabled ? (rule.action === 'DENY' ? actionText('حظر مفعّل', 'DENY · ACTIVE') : actionText('سماح مفعّل', 'ALLOW · ACTIVE')) : actionText('غير مفعّل', 'DISABLED')}
                     </span>
                   </div>
                   <div className="mt-2 text-[11px] font-semibold text-slate-200">{isAr ? rule.nameAr : rule.nameEn}</div>
