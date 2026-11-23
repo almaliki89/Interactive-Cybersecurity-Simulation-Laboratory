@@ -538,6 +538,23 @@ export const LessonView: React.FC = () => {
 
         {/* Stage Content Container */}
         <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6">
+          <section className="zorg-lesson-help" aria-label={isAr ? 'طريقة استخدام الدرس' : 'How to use this lesson'}>
+            <div className="zorg-lesson-help-icon"><HelpCircle className="w-5 h-5" /></div>
+            <div className="zorg-lesson-help-copy">
+              <strong>{isAr ? 'كيف تكمل هذا الدرس؟' : 'How to finish this lesson'}</strong>
+              <p>
+                {isAr
+                  ? 'اتبع المراحل من اليمين إلى اليسار بالترتيب: اقرأ الشرح، شاهد المعاينة، ثم عند «المهمة العملية» افتح المختبر وطبّق. بعد ذلك ارجع من زر «العودة إلى الدرس» وأجب عن الأسئلة لإكمال الدرس.'
+                  : 'Follow the stages in order: read the explanation, view the demonstration, then open the lab at “Hands-on Task” and practice. Return with “Back to lesson”, answer the questions, and complete the lesson.'}
+              </p>
+              <div className="zorg-lesson-help-tags">
+                <span>{isAr ? '1 · اقرأ' : '1 · Read'}</span>
+                <span>{isAr ? '2 · شاهد' : '2 · Watch'}</span>
+                <span>{isAr ? '3 · طبّق' : '3 · Practice'}</span>
+                <span>{isAr ? '4 · اختبر نفسك' : '4 · Check your knowledge'}</span>
+              </div>
+            </div>
+          </section>
           {/* Integrity Warning: Predecessor Not Done */}
           {!isPredecessorCompleted && (
             <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-600/50 flex items-start gap-3 animate-in slide-in-from-top-2 duration-300">

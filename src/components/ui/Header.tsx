@@ -13,10 +13,12 @@ import {
   ShieldCheck,
   Sun,
   Workflow,
+  HelpCircle,
   X,
 } from 'lucide-react';
 import { useSimulationStore } from '../../stores/simulationStore';
 import { simulationRegistry } from '../../simulations/registry';
+import { GettingStartedGuide } from './GettingStartedGuide';
 
 const primaryNavigation = [
   { id: 'landing', ar: 'الرئيسية', en: 'Home', icon: Compass },
@@ -38,6 +40,7 @@ export const Header: React.FC = () => {
   const virtualTime = useSimulationStore((state) => state.virtualTime);
   const clockSpeed = useSimulationStore((state) => state.clockSpeed);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const isAr = language === 'ar';
 
@@ -136,6 +139,17 @@ export const Header: React.FC = () => {
         </nav>
 
         <div className="zorg-header-actions">
+          <button
+            type="button"
+            className="zorg-guide-trigger"
+            onClick={() => setGuideOpen(true)}
+            aria-label={isAr ? 'دليل الاستخدام' : 'User guide'}
+            title={isAr ? 'كيف أستخدم ZORG؟' : 'How to use ZORG'}
+            data-testid="zorg-user-guide-btn"
+          >
+            <HelpCircle size={17} />
+            <span>{isAr ? 'دليل الاستخدام' : 'How to use'}</span>
+          </button>
           {isLabActive && (
             <span className="zorg-session-status">
               <i className={clockStatus === 'running' ? 'is-running' : ''} />
@@ -178,6 +192,8 @@ export const Header: React.FC = () => {
             <button
               type="button"
               className="zorg-return-learning"
+              aria-label={isAr ? 'العودة إلى الدرس' : 'Back to lesson'}
+              title={isAr ? 'العودة إلى الدرس' : 'Back to lesson'}
               data-testid="return-to-lesson-btn"
               onClick={() => setActiveSimulation('lesson')}
             >
@@ -226,6 +242,7 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </div>
+      {guideOpen && <GettingStartedGuide onClose={() => setGuideOpen(false)} />}
       {isLabActive && (
         <div className="zorg-mobile-context">
           <span>{currentLabName}</span>
