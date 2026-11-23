@@ -48,10 +48,10 @@ test.describe('ZORG Living Digital Enterprise', () => {
     await page.goto('/#digital_twin');
     await page.waitForLoadState('domcontentloaded');
 
-    const clock = page.getByText('09:12');
+    const clock = page.getByTestId('digital-twin-clock');
     await expect(clock).toBeVisible();
     await page.getByRole('button', { name: /قدّم دقيقة افتراضية/i }).click();
-    await expect(page.getByText('09:13')).toBeVisible();
+    await expect(clock).toHaveText('09:13');
     await expect(page.getByText(/بيئة اصطناعية بالكامل/i)).toBeVisible();
   });
 });
