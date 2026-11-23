@@ -712,3 +712,174 @@ html.light .zorg-hero-visual { background-color: rgba(226, 243, 241, .55); }
   .zorg-firewall-node { justify-content: space-between; }
   .zorg-policy-options button { flex: 1 1 auto; }
 }
+
+
+/* =========================================================================
+   ZORG FIRST-TIME USER EXPERIENCE
+   ========================================================================= */
+.zorg-guide-trigger {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--zorg-border);
+  border-radius: 10px;
+  background: var(--zorg-surface-soft);
+  color: var(--zorg-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.zorg-guide-trigger:hover,
+.zorg-guide-trigger:focus-visible {
+  color: var(--zorg-accent);
+  border-color: var(--zorg-border-strong);
+  background: var(--zorg-accent-soft);
+  outline: none;
+}
+.zorg-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(2, 8, 18, .78);
+  backdrop-filter: blur(9px);
+}
+.zorg-guide-dialog {
+  width: min(840px, 100%);
+  max-height: min(92vh, 900px);
+  overflow-y: auto;
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid var(--zorg-border-strong);
+  border-radius: 24px;
+  background: var(--zorg-surface);
+  color: var(--zorg-text);
+  box-shadow: 0 30px 100px rgba(0,0,0,.45);
+}
+.zorg-guide-header { display: flex; align-items: center; gap: 12px; }
+.zorg-guide-heading-icon {
+  width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 auto;
+  border: 1px solid var(--zorg-border); border-radius: 14px;
+  color: var(--zorg-accent); background: var(--zorg-accent-soft);
+}
+.zorg-guide-heading-copy { min-width: 0; flex: 1; }
+.zorg-guide-heading-copy > span { color: var(--zorg-accent); font: 800 9px/1.2 var(--font-mono); letter-spacing: .12em; }
+.zorg-guide-heading-copy h2 { margin: 4px 0 0; color: var(--zorg-text); font-size: clamp(20px, 3vw, 27px); font-weight: 900; }
+.zorg-guide-close {
+  width: 38px; height: 38px; display: grid; place-items: center; flex: 0 0 auto;
+  border: 1px solid var(--zorg-border); border-radius: 11px;
+  color: var(--zorg-muted); background: var(--zorg-surface-raised); cursor: pointer;
+}
+.zorg-guide-close:hover { color: var(--zorg-text); border-color: var(--zorg-border-strong); }
+.zorg-guide-welcome {
+  margin-top: 21px; padding: 17px 18px;
+  border: 1px solid var(--zorg-border); border-radius: 15px;
+  background: linear-gradient(115deg, var(--zorg-accent-soft), var(--zorg-surface-soft));
+}
+.zorg-guide-welcome strong { display: block; color: var(--zorg-text); font-size: 14px; font-weight: 900; }
+.zorg-guide-welcome p { margin: 6px 0 0; color: var(--zorg-muted); font-size: 12px; line-height: 1.9; }
+.zorg-guide-steps { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-top: 14px; }
+.zorg-guide-step {
+  min-width: 0; display: grid; grid-template-columns: 29px 37px minmax(0,1fr);
+  align-items: start; gap: 10px; padding: 14px;
+  border: 1px solid var(--zorg-border); border-radius: 14px;
+  background: var(--zorg-surface-soft);
+}
+.zorg-guide-step-number { padding-top: 3px; color: var(--zorg-accent); font: 800 10px/1.2 var(--font-mono); }
+.zorg-guide-step-icon { width: 37px; height: 37px; display: grid; place-items: center; border-radius: 11px; color: var(--zorg-accent); background: var(--zorg-accent-soft); }
+.zorg-guide-step h3 { margin: 0; color: var(--zorg-text); font-size: 12px; font-weight: 900; line-height: 1.5; }
+.zorg-guide-step p { margin: 4px 0 0; color: var(--zorg-muted); font-size: 10px; line-height: 1.8; }
+.zorg-guide-destinations { margin-top: 15px; padding: 15px 17px; border: 1px solid var(--zorg-border); border-radius: 14px; background: var(--zorg-canvas); }
+.zorg-guide-destination-copy { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--zorg-accent); font-size: 11px; font-weight: 900; }
+.zorg-guide-destinations p { margin: 5px 0 0; color: var(--zorg-muted); font-size: 10px; line-height: 1.75; }
+.zorg-guide-destinations strong { color: var(--zorg-text); }
+.zorg-guide-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
+.zorg-guide-primary, .zorg-guide-secondary, .zorg-guide-text-action {
+  min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 14px; border-radius: 11px; cursor: pointer; font: inherit; font-size: 10px; font-weight: 900;
+}
+.zorg-guide-primary { border: 1px solid transparent; color: #06201e; background: linear-gradient(135deg,#79e4d5,#4ac4b4); }
+.zorg-guide-secondary { border: 1px solid var(--zorg-border-strong); color: var(--zorg-text); background: var(--zorg-surface-soft); }
+.zorg-guide-text-action { border: 0; color: var(--zorg-muted); background: transparent; }
+.zorg-guide-primary:hover, .zorg-guide-secondary:hover { transform: translateY(-1px); }
+.zorg-guide-text-action:hover { color: var(--zorg-accent); }
+
+.zorg-first-steps {
+  margin-top: 25px; padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--zorg-border-strong); border-radius: 20px;
+  background: linear-gradient(125deg, var(--zorg-surface-soft), color-mix(in srgb, var(--zorg-accent-soft) 55%, var(--zorg-surface)));
+  box-shadow: var(--zorg-shadow);
+}
+.zorg-first-steps-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.zorg-first-steps-heading h2 { margin: 7px 0 0; color: var(--zorg-text); font-size: clamp(19px,2.2vw,24px); font-weight: 900; line-height: 1.35; }
+.zorg-first-steps-heading p { margin: 6px 0 0; color: var(--zorg-muted); font-size: 11px; line-height: 1.8; }
+.zorg-first-steps-start {
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 8px;
+  padding: 0 14px; border: 1px solid transparent; border-radius: 11px;
+  color: #06201e; background: linear-gradient(135deg,#79e4d5,#4ac4b4);
+  cursor: pointer; font: inherit; font-size: 10px; font-weight: 900; white-space: nowrap;
+}
+.zorg-first-steps-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+.zorg-first-step-card { min-width: 0; position: relative; padding: 16px; border: 1px solid var(--zorg-border); border-radius: 14px; background: var(--zorg-surface); }
+.zorg-first-step-number { display: block; color: var(--zorg-accent); font: 800 9px/1 var(--font-mono); letter-spacing: .1em; }
+.zorg-first-step-icon { width: 37px; height: 37px; display: grid; place-items: center; margin-top: 10px; border-radius: 11px; color: var(--zorg-accent); background: var(--zorg-accent-soft); }
+.zorg-first-step-card h3 { margin: 10px 0 4px; color: var(--zorg-text); font-size: 12px; font-weight: 900; }
+.zorg-first-step-card p { margin: 0; color: var(--zorg-muted); font-size: 10px; line-height: 1.8; }
+
+.zorg-lesson-help {
+  display: flex; align-items: flex-start; gap: 12px; padding: 15px 17px;
+  border: 1px solid rgba(89,213,193,.22); border-radius: 15px;
+  background: linear-gradient(110deg, rgba(89,213,193,.09), var(--zorg-surface-soft));
+}
+.zorg-lesson-help-icon { width: 36px; height: 36px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 11px; color: var(--zorg-accent); background: var(--zorg-accent-soft); }
+.zorg-lesson-help-copy { min-width: 0; }
+.zorg-lesson-help-copy strong { color: var(--zorg-text); font-size: 12px; font-weight: 900; }
+.zorg-lesson-help-copy p { margin: 5px 0 0; color: var(--zorg-muted); font-size: 10px; line-height: 1.85; }
+.zorg-lesson-help-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.zorg-lesson-help-tags span { padding: 5px 8px; border: 1px solid var(--zorg-border); border-radius: 7px; color: var(--zorg-accent); background: var(--zorg-surface); font-size: 9px; font-weight: 900; }
+
+.zorg-explorer-guide {
+  display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 18px; padding: 14px 16px;
+  border: 1px solid var(--zorg-border-strong); border-radius: 14px; background: var(--zorg-surface-soft);
+}
+.zorg-explorer-guide-title { display: flex; align-items: flex-start; gap: 10px; min-width: 0; color: var(--zorg-accent); }
+.zorg-explorer-guide-title > svg { flex: 0 0 auto; margin-top: 2px; }
+.zorg-explorer-guide-title strong { color: var(--zorg-text); font-size: 11px; font-weight: 900; }
+.zorg-explorer-guide-title p { margin: 4px 0 0; color: var(--zorg-muted); font-size: 10px; line-height: 1.8; }
+.zorg-explorer-guide button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 auto; padding: 0 11px; border: 1px solid var(--zorg-border); border-radius: 9px; color: var(--zorg-accent); background: var(--zorg-accent-soft); cursor: pointer; font: inherit; font-size: 9px; font-weight: 900; }
+
+@media (max-width: 860px) {
+  .zorg-guide-trigger { width: 35px; min-width: 35px; padding: 0; }
+  .zorg-guide-trigger span { display: none; }
+  .zorg-first-steps-heading { align-items: flex-start; flex-direction: column; }
+  .zorg-first-steps-start { width: 100%; }
+  .zorg-first-steps-grid { grid-template-columns: 1fr; }
+  .zorg-explorer-guide { align-items: stretch; flex-direction: column; }
+  .zorg-explorer-guide button { width: 100%; }
+}
+@media (max-width: 560px) {
+  .zorg-guide-backdrop { padding: 8px; align-items: flex-end; }
+  .zorg-guide-dialog { max-height: 94vh; padding: 16px; border-radius: 20px 20px 14px 14px; }
+  .zorg-guide-steps { grid-template-columns: 1fr; gap: 8px; }
+  .zorg-guide-step { padding: 11px; }
+  .zorg-guide-welcome { padding: 13px; }
+  .zorg-guide-welcome p { font-size: 11px; }
+  .zorg-guide-actions { display: grid; grid-template-columns: 1fr; }
+  .zorg-guide-primary, .zorg-guide-secondary, .zorg-guide-text-action { width: 100%; }
+  .zorg-first-steps { margin-top: 17px; padding: 16px; }
+  .zorg-first-steps-grid { gap: 8px; margin-top: 13px; }
+  .zorg-first-step-card { display: grid; grid-template-columns: 25px 36px minmax(0,1fr); align-items: center; gap: 4px 9px; padding: 12px; }
+  .zorg-first-step-number { grid-row: 1 / span 2; }
+  .zorg-first-step-icon { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
+  .zorg-first-step-card h3 { grid-column: 3; margin: 0; }
+  .zorg-first-step-card p { grid-column: 3; }
+  .zorg-lesson-help { padding: 12px; }
+  .zorg-lesson-help-copy p { font-size: 9px; }
+}
