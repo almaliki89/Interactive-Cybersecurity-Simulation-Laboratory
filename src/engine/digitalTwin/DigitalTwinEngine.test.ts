@@ -61,6 +61,17 @@ describe('ZORG digital twin incident engine', () => {
     expect(next.events[0].level).toBe('warning');
   });
 
+  it('reconciles containment when the precise block is applied before isolation', () => {
+    let world = inspectDigitalTwinNode(createInitialDigitalTwinWorld(), 'hr-ws-04');
+    world = blockDigitalTwinEgress(world);
+    expect(world.incidentStatus).toBe('investigating');
+
+    world = isolateDigitalTwinEndpoint(world);
+    expect(world.incidentStatus).toBe('contained');
+    expect(world.alerts[0].status).toBe('contained');
+    expect(world.events.some((event) => event.type === 'INCIDENT_CONTAINED')).toBe(true);
+  });
+
   it('does not allow incident closure before containment requirements are met', () => {
     const initial = createInitialDigitalTwinWorld();
     const attempted = resolveDigitalTwinIncident(initial);
