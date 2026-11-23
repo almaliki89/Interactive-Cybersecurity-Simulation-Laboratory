@@ -40,6 +40,16 @@ export const Header: React.FC = () => {
   const isAr = language === 'ar';
 
   const registration = simulationRegistry[activeSimulationId];
+  const legacyLabLabels: Record<string, { ar: string; en: string }> = {
+    soc: { ar: 'مركز العمليات SOC وهندسة الكشف', en: 'SOC Operations & Detection Engineering' },
+    forensics: { ar: 'التحقيق الجنائي الرقمي', en: 'Digital Forensics World' },
+    devsecops: { ar: 'أمن سلاسل التوريد والـ DevSecOps', en: 'Software Supply Chain & DevSecOps' },
+    cloud: { ar: 'أمن الحوسبة السحابية', en: 'Cloud Security World' },
+    containers: { ar: 'أمن الحاويات وكوبرنيتيس', en: 'Container & K8s Security' },
+  };
+  const currentLabName = legacyLabLabels[activeSimulationId]
+    ? (isAr ? legacyLabLabels[activeSimulationId].ar : legacyLabLabels[activeSimulationId].en)
+    : (isAr ? registration.nameAr : registration.nameEn);
   const isLabActive = registration?.category === 'lab' ||
     ['devsecops', 'forensics', 'soc', 'cloud', 'containers'].includes(activeSimulationId);
 
@@ -80,7 +90,7 @@ export const Header: React.FC = () => {
               className="zorg-header-back"
               onClick={() => setActiveSimulation('explorer')}
               aria-label={isAr ? 'العودة إلى المختبرات' : 'Back to laboratories'}
-              title={isAr ? 'العودة إلى المختبرات' : 'Back to laboratories'}
+              title={isAr ? 'العودة للكون' : 'Back to Universe'}
             >
               <ArrowLeft size={17} className={isAr ? 'zorg-arrow-rtl' : ''} />
             </button>
@@ -97,7 +107,7 @@ export const Header: React.FC = () => {
               <span className="zorg-header-divider" />
               <div className="zorg-header-context">
                 <span>{isAr ? 'المختبر الحالي' : 'CURRENT LAB'}</span>
-                <strong>{isAr ? registration.nameAr : registration.nameEn}</strong>
+                <strong>{currentLabName}</strong>
               </div>
             </>
           )}
@@ -213,7 +223,7 @@ export const Header: React.FC = () => {
       </div>
       {isLabActive && (
         <div className="zorg-mobile-context">
-          <span>{isAr ? registration.nameAr : registration.nameEn}</span>
+          <span>{currentLabName}</span>
           <button type="button" onClick={() => setActiveSimulation('explorer')}>
             {isAr ? 'كل المختبرات' : 'All labs'} <ArrowUpRight size={13} />
           </button>
