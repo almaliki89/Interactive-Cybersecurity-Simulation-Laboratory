@@ -97,6 +97,26 @@ function updateAlertStatus(state: DigitalTwinWorldState, status: DigitalTwinAler
   return state.alerts.map((alert) => alert.id === 'alert-egress-01' ? { ...alert, status } : alert);
 }
 
+function markContainedIfReady(state: DigitalTwinWorldState): DigitalTwinWorldState {
+  if (!state.progress.endpointIsolated || !state.progress.egressBlocked || state.incidentStatus !== 'investigating') {
+    return state;
+  }
+  const contained: DigitalTwinWorldState = {
+    ...state,
+    incidentStatus: 'contained',
+    alerts: updateAlertStatus(state, 'contained'),
+    score: 90,
+  };
+  return pushEvent(contained, {
+    level: 'success',
+    type: 'INCIDENT_CONTAINED',
+    titleAr: 'تم احتواء الحادث',
+    titleEn: 'Incident contained',
+    detailAr: 'اكتمل العزل وقاعدة الحظر الدقيقة مع استمرار الخدمات الأساسية.',
+    detailEn: 'Isolation and precise blocking are complete while core services remain available.',
+  });
+}
+
 export function createInitialDigitalTwinWorld(): DigitalTwinWorldState {
   return {
     schemaVersion: 1,
@@ -185,14 +205,14 @@ export function isolateDigitalTwinEndpoint(state: DigitalTwinWorldState): Digita
     progress: { ...state.progress, endpointIsolated: true },
     alerts: updateAlertStatus(state, 'investigating'),
   };
-  return pushEvent(next, {
+  return markContainedIfReady(pushEvent(next, {
     level: 'success',
     type: 'HOST_ISOLATED',
     titleAr: 'عزل محطة HR-04 افتراضياً',
     titleEn: 'HR-04 isolated in the simulation',
     detailAr: 'انقطعت روابط المحطة في الخريطة الافتراضية وبقيت خدمات المؤسسة الأخرى متاحة.',
     detailEn: 'The workstation links were isolated on the virtual map while the other enterprise services remain available.',
-  });
+  }));
 }
 
 export function blockDigitalTwinEgress(state: DigitalTwinWorldState): DigitalTwinWorldState {
@@ -236,18 +256,7 @@ export function blockDigitalTwinEgress(state: DigitalTwinWorldState): DigitalTwi
     detailAr: 'تم منع المسار المشبوه دون حظر خدمات بوابة الموظفين.',
     detailEn: 'The suspicious path was blocked without denying employee portal services.',
   });
-  if (next.progress.endpointIsolated) {
-    next = { ...next, incidentStatus: 'contained', alerts: updateAlertStatus(next, 'contained'), score: 90 };
-    next = pushEvent(next, {
-      level: 'success',
-      type: 'INCIDENT_CONTAINED',
-      titleAr: 'تم احتواء الحادث',
-      titleEn: 'Incident contained',
-      detailAr: 'اكتمل العزل وقاعدة الحظر الدقيقة مع استمرار الخدمات الأساسية.',
-      detailEn: 'Isolation and precise blocking are complete while core services remain available.',
-    });
-  }
-  return next;
+  return markContainedIfReady(next);
 }
 
 export function advanceDigitalTwinMinute(state: DigitalTwinWorldState): DigitalTwinWorldState {
