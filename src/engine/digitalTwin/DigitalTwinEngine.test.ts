@@ -72,6 +72,19 @@ describe('ZORG digital twin incident engine', () => {
     expect(world.events.some((event) => event.type === 'INCIDENT_CONTAINED')).toBe(true);
   });
 
+  it('keeps the clock moving without generating new activity after closure', () => {
+    let world = inspectDigitalTwinNode(createInitialDigitalTwinWorld(), 'hr-ws-04');
+    world = isolateDigitalTwinEndpoint(world);
+    world = blockDigitalTwinEgress(world);
+    world = resolveDigitalTwinIncident(world);
+    const flowCount = world.generatedFlowCount;
+
+    world = advanceDigitalTwinMinute(world);
+    expect(world.virtualMinutes).toBe(9 * 60 + 13);
+    expect(world.generatedFlowCount).toBe(flowCount);
+    expect(world.events[0].detailEn).toContain('no new connection attempts');
+  });
+
   it('does not allow incident closure before containment requirements are met', () => {
     const initial = createInitialDigitalTwinWorld();
     const attempted = resolveDigitalTwinIncident(initial);
