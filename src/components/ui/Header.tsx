@@ -20,7 +20,7 @@ import { simulationRegistry } from '../../simulations/registry';
 
 const primaryNavigation = [
   { id: 'landing', ar: 'الرئيسية', en: 'Home', icon: Compass },
-  { id: 'lesson', ar: 'التعلّم', en: 'Learning', icon: BookOpen },
+  { id: 'lesson', ar: 'ابدأ هنا (المبتدئون)', en: 'Start Here', icon: BookOpen },
   { id: 'explorer', ar: 'المختبرات', en: 'Laboratories', icon: Layers3 },
   { id: 'range', ar: 'الميدان', en: 'Cyber Range', icon: Activity },
   { id: 'paths', ar: 'المسارات', en: 'Paths', icon: Workflow },
