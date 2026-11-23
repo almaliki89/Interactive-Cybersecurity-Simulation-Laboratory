@@ -192,6 +192,8 @@ export const Header: React.FC = () => {
             <button
               type="button"
               className="zorg-return-learning"
+              aria-label={isAr ? 'العودة إلى الدرس' : 'Back to lesson'}
+              title={isAr ? 'العودة إلى الدرس' : 'Back to lesson'}
               data-testid="return-to-lesson-btn"
               onClick={() => setActiveSimulation('lesson')}
             >
