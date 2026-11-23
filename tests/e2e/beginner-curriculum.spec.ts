@@ -17,6 +17,27 @@ test.describe('Beginner-First Curriculum E2E Journey', () => {
     await page.reload();
   });
 
+  test('new visitors can open the usage guide and follow the recommended route', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByText(/مستخدم جديد؟ اتبع هذه الخطوات الثلاث/i)).toBeVisible();
+
+    const guideButton = page.getByTestId('zorg-user-guide-btn');
+    await expect(guideButton).toBeVisible();
+    await guideButton.click();
+
+    const guideDialog = page.getByRole('dialog', { name: /كيف تستخدم ZORG؟/i });
+    await expect(guideDialog).toBeVisible();
+    await expect(guideDialog.getByText(/ابدأ بالدرس الأول فقط/i)).toBeVisible();
+    await expect(guideDialog.getByText(/ارجع وأكمل الدرس/i)).toBeVisible();
+
+    await guideDialog.getByRole('button', { name: /ابدأ الدرس الأول الآن/i }).click();
+    await expect(page.getByText(/كيف تكمل هذا الدرس؟/i)).toBeVisible();
+    await expect(page.getByTestId('lesson-launch-sim-btn')).toBeVisible();
+
+    await page.getByRole('button', { name: /المختبرات/i }).first().click();
+    await expect(page.getByText(/كيف تختار مختبراً؟/i)).toBeVisible();
+  });
+
   test('complete beginner journey from landing hero to milestone completion and reload persistence', async ({ page }) => {
     // 1. Visit Homepage & Verify Beginner Primary CTA
     await page.goto('/');
