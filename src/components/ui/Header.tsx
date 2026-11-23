@@ -35,6 +35,8 @@ export const Header: React.FC = () => {
   const setActiveSimulation = useSimulationStore((state) => state.setActiveSimulation);
   const setIsSearchOpen = useSimulationStore((state) => state.setIsSearchOpen);
   const clockStatus = useSimulationStore((state) => state.clockStatus);
+  const virtualTime = useSimulationStore((state) => state.virtualTime);
+  const clockSpeed = useSimulationStore((state) => state.clockSpeed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const isAr = language === 'ar';
@@ -138,6 +140,9 @@ export const Header: React.FC = () => {
             <span className="zorg-session-status">
               <i className={clockStatus === 'running' ? 'is-running' : ''} />
               <span>{isAr ? 'المحاكاة' : 'SIMULATION'}</span>
+              <span className="zorg-session-telemetry" dir="ltr" aria-label={`Simulation time T plus ${virtualTime || 0} milliseconds, speed ${clockSpeed} times`}>
+                T+{(virtualTime || 0).toFixed(0)}ms <span aria-hidden="true">·</span> {clockSpeed}x
+              </span>
             </span>
           )}
           <button
