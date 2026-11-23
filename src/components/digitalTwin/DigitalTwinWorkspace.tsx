@@ -157,7 +157,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
             <div className="flex items-center gap-2 text-[11px] text-slate-400"><ShieldCheck size={14} />{actionText('حالة الحادث', 'INCIDENT STATUS')}</div>
-            <div className="mt-2 text-lg font-bold text-white">{statusLabel(world.incidentStatus)}</div>
+            <div data-testid="digital-twin-incident-state" className="mt-2 text-lg font-bold text-white">{statusLabel(world.incidentStatus)}</div>
             <div className="mt-1 text-[10px] text-slate-500">NEXORA-IR-01</div>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
@@ -167,7 +167,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
             <div className="flex items-center gap-2 text-[11px] text-slate-400"><Zap size={14} />{actionText('نتيجة الاستجابة', 'RESPONSE SCORE')}</div>
-            <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-white">{world.score}<span className="text-base text-slate-500">/100</span></div>
+            <div data-testid="digital-twin-score" className="mt-2 font-mono text-2xl font-bold tabular-nums text-white">{world.score}<span className="text-base text-slate-500">/100</span></div>
             <div className="mt-1 text-[10px] text-slate-500">{actionText('تُحتسب بعد الاحتواء والإغلاق', 'Awarded after containment and closure')}</div>
           </div>
         </section>
