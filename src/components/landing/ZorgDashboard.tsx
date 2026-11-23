@@ -111,6 +111,7 @@ const workspaces: Workspace[] = [
 ];
 
 const quickLinks = [
+  { id: 'digital_twin' as SimulationId, ar: 'ادخل المؤسسة الرقمية الحية', en: 'Enter the living digital enterprise', icon: Network },
   { id: 'explorer' as SimulationId, ar: 'استكشف العوالم الستين', en: 'Explore 60 worlds', icon: Compass },
   { id: 'range' as SimulationId, ar: 'ادخل الميدان السيبراني', en: 'Enter the Cyber Range', icon: Layers3 },
   { id: 'paths' as SimulationId, ar: 'اختر مسارك المهني', en: 'Choose a career path', icon: Workflow },
@@ -203,6 +204,15 @@ export const ZorgDashboard: React.FC = () => {
               >
                 <Compass size={17} />
                 <span>{text('استكشف المختبرات', 'Explore laboratories')}</span>
+              </button>
+              <button
+                type="button"
+                className="zorg-button-secondary"
+                onClick={() => setActiveSimulation('digital_twin')}
+                data-testid="open-digital-twin-btn"
+              >
+                <Network size={17} />
+                <span>{text('ادخل المؤسسة الرقمية الحية', 'Enter the living digital enterprise')}</span>
               </button>
             </div>
 

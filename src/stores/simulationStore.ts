@@ -15,6 +15,7 @@ import type { LessonProgressState } from '../types/curriculum';
 import { CURRICULUM_LEVELS, CURRICULUM_LESSONS } from '../data/curriculumData';
 
 export type SimulationId =
+  | 'digital_twin'
   | 'landing'
   | 'lesson'
   | 'tcp'

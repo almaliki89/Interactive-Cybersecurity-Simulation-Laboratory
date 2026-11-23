@@ -152,7 +152,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
             <div className="flex items-center gap-2 text-[11px] text-slate-400"><Clock3 size={14} />{actionText('الوقت الافتراضي', 'VIRTUAL TIME')}</div>
-            <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-white">{timeLabel(world.virtualMinutes)}</div>
+            <div data-testid="digital-twin-clock" className="mt-2 font-mono text-2xl font-bold tabular-nums text-white">{timeLabel(world.virtualMinutes)}</div>
             <div className="mt-1 text-[10px] text-slate-500">{actionText('توقيت المؤسسة التجريبية', 'Simulated enterprise clock')}</div>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
@@ -348,8 +348,8 @@ export const DigitalTwinWorkspace: React.FC = () => {
                 <div key={rule.id} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-[9px] text-slate-500">{rule.id}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${rule.enabled ? 'bg-rose-400/10 text-rose-300' : 'bg-slate-700/50 text-slate-400'}`}>
-                      {rule.enabled ? actionText('حظر مفعّل', 'DENY · ACTIVE') : actionText('غير مفعّل', 'DISABLED')}
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${rule.enabled ? (rule.action === 'DENY' ? 'bg-rose-400/10 text-rose-300' : 'bg-emerald-400/10 text-emerald-300') : 'bg-slate-700/50 text-slate-400'}`}>
+                      {rule.enabled ? (rule.action === 'DENY' ? actionText('حظر مفعّل', 'DENY · ACTIVE') : actionText('سماح مفعّل', 'ALLOW · ACTIVE')) : actionText('غير مفعّل', 'DISABLED')}
                     </span>
                   </div>
                   <div className="mt-2 text-[11px] font-semibold text-slate-200">{isAr ? rule.nameAr : rule.nameEn}</div>

@@ -2,6 +2,9 @@ import React from 'react';
 import { SimulationId } from '../stores/simulationStore';
 
 // Main Views (Lazy Loaded)
+const DigitalTwinWorkspace = React.lazy(() =>
+  import('../components/digitalTwin/DigitalTwinWorkspace').then((m) => ({ default: m.DigitalTwinWorkspace }))
+);
 const ZorgDashboard = React.lazy(() =>
   import('../components/landing/ZorgDashboard').then((m) => ({ default: m.ZorgDashboard }))
 );
@@ -140,6 +143,14 @@ export interface SimulationRegistration {
 }
 
 export const simulationRegistry: Record<SimulationId, SimulationRegistration> = {
+  digital_twin: {
+    id: 'digital_twin',
+    nameAr: 'المؤسسة الرقمية الحية — محاكاة مترابطة',
+    nameEn: 'Living Digital Enterprise — Connected Simulation',
+    domain: 'digital-twin',
+    component: DigitalTwinWorkspace,
+    category: 'core',
+  },
   landing: {
     id: 'landing',
     nameAr: 'الرئيسية والمؤسسة الحية',
