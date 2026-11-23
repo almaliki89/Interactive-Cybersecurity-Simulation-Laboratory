@@ -152,7 +152,7 @@ export const DigitalTwinWorkspace: React.FC = () => {
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
             <div className="flex items-center gap-2 text-[11px] text-slate-400"><Clock3 size={14} />{actionText('الوقت الافتراضي', 'VIRTUAL TIME')}</div>
-            <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-white">{timeLabel(world.virtualMinutes)}</div>
+            <div data-testid="digital-twin-clock" className="mt-2 font-mono text-2xl font-bold tabular-nums text-white">{timeLabel(world.virtualMinutes)}</div>
             <div className="mt-1 text-[10px] text-slate-500">{actionText('توقيت المؤسسة التجريبية', 'Simulated enterprise clock')}</div>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4">
