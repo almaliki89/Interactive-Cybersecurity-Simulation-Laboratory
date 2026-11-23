@@ -173,7 +173,7 @@ export function createInitialDigitalTwinWorld(): DigitalTwinWorldState {
 export function inspectDigitalTwinNode(state: DigitalTwinWorldState, nodeId: string): DigitalTwinWorldState {
   const node = state.nodes.find((item) => item.id === nodeId);
   if (!node) return state;
-  let next = { ...state, selectedNodeId: nodeId };
+  let next: DigitalTwinWorldState = { ...state, selectedNodeId: nodeId };
   if (nodeId === 'hr-ws-04' && !state.progress.alertInspected) {
     next = { ...next, progress: { ...next.progress, alertInspected: true }, alerts: updateAlertStatus(next, 'investigating') };
     next = pushEvent(next, {
