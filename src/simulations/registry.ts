@@ -2,8 +2,8 @@ import React from 'react';
 import { SimulationId } from '../stores/simulationStore';
 
 // Main Views (Lazy Loaded)
-const InteractiveEnterpriseHero = React.lazy(() =>
-  import('../components/landing/InteractiveEnterpriseHero').then((m) => ({ default: m.InteractiveEnterpriseHero }))
+const ZorgDashboard = React.lazy(() =>
+  import('../components/landing/ZorgDashboard').then((m) => ({ default: m.ZorgDashboard }))
 );
 const UniverseExplorer = React.lazy(() =>
   import('../components/universe/UniverseExplorer').then((m) => ({ default: m.UniverseExplorer }))
@@ -145,7 +145,7 @@ export const simulationRegistry: Record<SimulationId, SimulationRegistration> = 
     nameAr: 'الرئيسية والمؤسسة الحية',
     nameEn: 'Living Digital Mesh',
     domain: 'overview',
-    component: InteractiveEnterpriseHero,
+    component: ZorgDashboard,
     category: 'view',
   },
   lesson: {
