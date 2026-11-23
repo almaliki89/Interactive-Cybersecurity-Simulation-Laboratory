@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const firestoreRules = readFileSync(
-  new URL('../../../firestore.rules', import.meta.url),
+  join(process.cwd(), 'firestore.rules'),
   'utf8'
 );
 const progressBlock = firestoreRules.match(
