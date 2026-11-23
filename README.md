@@ -1,4 +1,4 @@
-# OMEGA — Interactive Cybersecurity Simulation Laboratory
+# ZORG — Interactive Cybersecurity Simulation Laboratory
 
 A deterministic, event-driven cybersecurity learning platform. It simulates enterprise infrastructure, protocol behavior, and defensive/offensive security concepts across multiple cyber domains. All cyber exercises are educational simulations and operate on synthetic lab state.
 
