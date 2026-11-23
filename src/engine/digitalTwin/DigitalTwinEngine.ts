@@ -170,6 +170,12 @@ export function inspectDigitalTwinNode(state: DigitalTwinWorldState, nodeId: str
 
 export function isolateDigitalTwinEndpoint(state: DigitalTwinWorldState): DigitalTwinWorldState {
   if (state.progress.endpointIsolated) return state;
+  if (!state.progress.alertInspected) return pushEvent(state, {
+    level: 'warning', type: 'ACTION_REQUIRES_INSPECTION',
+    titleAr: 'افحص التنبيه أولاً', titleEn: 'Inspect the alert first',
+    detailAr: 'اقرأ تفاصيل HR-04 واربطها بالتنبيه قبل تنفيذ العزل.',
+    detailEn: 'Inspect HR-04 and correlate it with the alert before isolating the host.',
+  });
   const next: DigitalTwinWorldState = {
     ...state,
     nodes: state.nodes.map((node) => node.id === 'hr-ws-04' ? { ...node, status: 'isolated' } : node),
@@ -191,6 +197,12 @@ export function isolateDigitalTwinEndpoint(state: DigitalTwinWorldState): Digita
 
 export function blockDigitalTwinEgress(state: DigitalTwinWorldState): DigitalTwinWorldState {
   if (state.progress.egressBlocked) return state;
+  if (!state.progress.alertInspected) return pushEvent(state, {
+    level: 'warning', type: 'ACTION_REQUIRES_INSPECTION',
+    titleAr: 'افحص التنبيه أولاً', titleEn: 'Inspect the alert first',
+    detailAr: 'افحص مصدر النشاط قبل إضافة قاعدة الجدار الناري.',
+    detailEn: 'Inspect the activity source before adding a firewall rule.',
+  });
   const rule: DigitalTwinFirewallRule = {
     id: 'FW-019',
     nameAr: 'حظر الوجهة التجريبية المشبوهة',
@@ -240,19 +252,27 @@ export function blockDigitalTwinEgress(state: DigitalTwinWorldState): DigitalTwi
 
 export function advanceDigitalTwinMinute(state: DigitalTwinWorldState): DigitalTwinWorldState {
   const nextMinute = state.virtualMinutes + 1;
-  const base: DigitalTwinWorldState = { ...state, virtualMinutes: nextMinute, generatedFlowCount: state.generatedFlowCount + 1 };
+  const rules = state.progress.egressBlocked
+    ? state.firewallRules.map((rule) => rule.id === 'FW-019' ? { ...rule, hitCount: rule.hitCount + 1 } : rule)
+    : state.firewallRules;
+  const base: DigitalTwinWorldState = {
+    ...state,
+    virtualMinutes: nextMinute,
+    generatedFlowCount: state.generatedFlowCount + 1,
+    firewallRules: rules,
+  };
   if (state.incidentStatus === 'resolved' || state.progress.endpointIsolated || state.progress.egressBlocked) {
     return pushEvent(base, {
       level: 'info',
-      type: 'VIRTUAL_CLOCK_TICK',
-      titleAr: 'تقدّم الوقت الافتراضي دقيقة واحدة',
-      titleEn: 'Virtual clock advanced by one minute',
+      type: state.progress.egressBlocked ? 'SIMULATED_FLOW_BLOCKED' : 'VIRTUAL_CLOCK_TICK',
+      titleAr: state.progress.endpointIsolated ? 'المحطة المعزولة خارج مسار الاتصال' : 'حظرت القاعدة المحاولة الجديدة',
+      titleEn: state.progress.endpointIsolated ? 'Isolated workstation is off the traffic path' : 'The rule blocked the new request',
       detailAr: state.progress.endpointIsolated
         ? 'المحطة المعزولة لا تستطيع إنشاء حركة صادرة في هذا السيناريو.'
-        : 'تُظهر القاعدة الدقيقة حظر المحاولة التجريبية الجديدة.',
+        : 'سُجلت ضربة جديدة على قاعدة FW-019 وبقيت الخدمات الأساسية متاحة.',
       detailEn: state.progress.endpointIsolated
         ? 'The isolated workstation cannot generate outbound traffic in this scenario.'
-        : 'The precise rule blocks the new simulated request.',
+        : 'A new hit was recorded on FW-019 while core services remain available.',
     });
   }
   return pushEvent(base, {
