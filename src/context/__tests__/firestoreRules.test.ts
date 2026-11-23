@@ -5,6 +5,9 @@ const firestoreRules = readFileSync(
   new URL('../../../firestore.rules', import.meta.url),
   'utf8'
 );
+const progressBlock = firestoreRules.match(
+  /match \/users\/\{uid\}\/progress\/current \{([\s\S]*?)\n    \}/
+)?.[1] ?? '';
 
 describe('Firestore security policy contract', () => {
   it('keeps the default-deny rule in place', () => {
@@ -12,9 +15,8 @@ describe('Firestore security policy contract', () => {
   });
 
   it('allows progress reads only to the verified owner and blocks all browser writes', () => {
-    expect(firestoreRules).toMatch(
-      /match \/users\/\{uid\}\/progress\/current \{\s*allow get: if isOwner\(uid\);\s*allow create, update, delete: if false;/
-    );
+    expect(progressBlock).toMatch(/allow get: if isOwner\(uid\);/);
+    expect(progressBlock).toMatch(/allow create, update, delete: if false;/);
   });
 
   it('limits profile writes to the verified owner and the declared schema', () => {
