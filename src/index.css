@@ -667,3 +667,48 @@ html.light .zorg-hero-visual { background-color: rgba(226, 243, 241, .55); }
   .zorg-quick-link { min-height: 58px; }
   .zorg-dashboard-footer { align-items: start; flex-direction: column; margin-top: 30px; }
 }
+
+.zorg-onboarding-section {
+  display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 26px;
+  align-items: center; margin-top: 46px; padding: 27px;
+  border: 1px solid var(--zorg-border); border-radius: 19px;
+  background: linear-gradient(115deg, var(--zorg-surface-soft), color-mix(in srgb, var(--zorg-accent-soft) 40%, var(--zorg-surface)));
+}
+.zorg-onboarding-copy h2 { margin: 8px 0 8px; color: var(--zorg-text); font-size: 20px; font-weight: 850; line-height: 1.45; }
+.zorg-onboarding-copy p { max-width: 430px; margin: 0; color: var(--zorg-muted); font-size: 11px; line-height: 1.9; }
+.zorg-onboarding-steps { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
+.zorg-onboarding-steps span:not(.zorg-step-connector) { display: inline-flex; align-items: center; gap: 7px; color: var(--zorg-subtle); font-size: 10px; font-weight: 800; }
+.zorg-onboarding-steps i { width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--zorg-border-strong); color: inherit; font: 800 9px/1 var(--font-mono); font-style: normal; }
+.zorg-onboarding-steps .is-current { color: var(--zorg-accent) !important; }
+.zorg-onboarding-steps .is-current i, .zorg-onboarding-steps .is-complete i { color: #06201e; border-color: transparent; background: var(--zorg-accent); }
+.zorg-step-connector { width: 32px; height: 1px; background: var(--zorg-border-strong); }
+.zorg-onboarding-card { min-width: 0; padding: 17px; border: 1px solid var(--zorg-border); border-radius: 15px; background: var(--zorg-surface); }
+.zorg-onboarding-prompt { display: grid; grid-template-columns: 31px minmax(0,1fr); align-items: center; gap: 2px 10px; margin-bottom: 15px; }
+.zorg-prompt-number { grid-row: 1 / span 2; width: 31px; height: 31px; display: grid; place-items: center; border-radius: 10px; color: var(--zorg-accent); background: var(--zorg-accent-soft); font: 800 10px/1 var(--font-mono); }
+.zorg-onboarding-prompt strong { color: var(--zorg-text); font-size: 12px; line-height: 1.5; }
+.zorg-onboarding-prompt small { color: var(--zorg-muted); font-size: 9px; line-height: 1.6; }
+.zorg-onboarding-prompt.is-success .zorg-prompt-number { color: #08231e; background: #75ddc5; }
+.zorg-firewall-controls { display: flex; align-items: center; gap: 10px; }
+.zorg-firewall-node { min-height: 51px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid var(--zorg-border-strong); border-radius: 11px; background: var(--zorg-surface-raised); color: var(--zorg-text); cursor: pointer; text-align: start; font: inherit; }
+.zorg-firewall-node > svg { flex: 0 0 auto; color: var(--zorg-accent); }
+.zorg-firewall-node span { font-size: 10px; font-weight: 800; white-space: nowrap; }
+.zorg-firewall-node small { color: var(--zorg-subtle); font: 700 7px/1 var(--font-mono); white-space: nowrap; }
+.zorg-firewall-node.is-selected { border-color: var(--zorg-accent); background: var(--zorg-accent-soft); }
+.zorg-policy-options { display: flex; flex: 1; flex-wrap: wrap; gap: 6px; }
+.zorg-policy-options button { min-height: 34px; padding: 0 9px; border: 1px solid var(--zorg-border); border-radius: 9px; background: var(--zorg-surface-raised); color: var(--zorg-muted); cursor: pointer; font: inherit; font-size: 9px; font-weight: 800; white-space: nowrap; }
+.zorg-policy-options button:hover, .zorg-policy-options button.is-selected { border-color: var(--zorg-accent); color: var(--zorg-accent); background: var(--zorg-accent-soft); }
+.zorg-firewall-inspector { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 9px 11px; border-radius: 9px; background: var(--zorg-accent-soft); }
+.zorg-firewall-inspector span { color: var(--zorg-subtle); font: 700 8px/1 var(--font-mono); }
+.zorg-firewall-inspector strong { color: var(--zorg-accent); font-size: 9px; }
+.zorg-onboarding-finish { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 9px 11px; border: 1px solid rgba(89,213,193,.28); border-radius: 9px; color: var(--zorg-accent); background: var(--zorg-accent-soft); cursor: pointer; font: inherit; font-size: 10px; font-weight: 800; }
+@media (max-width: 860px) {
+  .zorg-onboarding-section { grid-template-columns: 1fr; gap: 18px; }
+  .zorg-onboarding-copy p { max-width: none; }
+}
+@media (max-width: 560px) {
+  .zorg-onboarding-section { margin-top: 30px; padding: 17px; gap: 15px; }
+  .zorg-onboarding-copy h2 { font-size: 17px; }
+  .zorg-firewall-controls { align-items: stretch; flex-direction: column; }
+  .zorg-firewall-node { justify-content: space-between; }
+  .zorg-policy-options button { flex: 1 1 auto; }
+}
