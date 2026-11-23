@@ -260,28 +260,46 @@ export function blockDigitalTwinEgress(state: DigitalTwinWorldState): DigitalTwi
 }
 
 export function advanceDigitalTwinMinute(state: DigitalTwinWorldState): DigitalTwinWorldState {
+  const resolved = state.incidentStatus === 'resolved';
   const nextMinute = state.virtualMinutes + 1;
-  const rules = state.progress.egressBlocked
+  const rules = !resolved && state.progress.egressBlocked
     ? state.firewallRules.map((rule) => rule.id === 'FW-019' ? { ...rule, hitCount: rule.hitCount + 1 } : rule)
     : state.firewallRules;
   const base: DigitalTwinWorldState = {
     ...state,
     virtualMinutes: nextMinute,
-    generatedFlowCount: state.generatedFlowCount + 1,
+    generatedFlowCount: state.generatedFlowCount + (resolved ? 0 : 1),
     firewallRules: rules,
   };
-  if (state.incidentStatus === 'resolved' || state.progress.endpointIsolated || state.progress.egressBlocked) {
+
+  if (resolved) {
     return pushEvent(base, {
       level: 'info',
-      type: state.progress.egressBlocked ? 'SIMULATED_FLOW_BLOCKED' : 'VIRTUAL_CLOCK_TICK',
-      titleAr: state.progress.endpointIsolated ? 'المحطة المعزولة خارج مسار الاتصال' : 'حظرت القاعدة المحاولة الجديدة',
-      titleEn: state.progress.endpointIsolated ? 'Isolated workstation is off the traffic path' : 'The rule blocked the new request',
-      detailAr: state.progress.endpointIsolated
-        ? 'المحطة المعزولة لا تستطيع إنشاء حركة صادرة في هذا السيناريو.'
-        : 'سُجلت ضربة جديدة على قاعدة FW-019 وبقيت الخدمات الأساسية متاحة.',
-      detailEn: state.progress.endpointIsolated
-        ? 'The isolated workstation cannot generate outbound traffic in this scenario.'
-        : 'A new hit was recorded on FW-019 while core services remain available.',
+      type: 'VIRTUAL_CLOCK_TICK',
+      titleAr: 'استمر الوقت الافتراضي بعد إغلاق الحادث',
+      titleEn: 'Virtual clock continued after incident closure',
+      detailAr: 'الحادث مغلق؛ لم تُنشأ محاولات اتصال أو تنبيهات جديدة.',
+      detailEn: 'The incident is closed; no new connection attempts or alerts were generated.',
+    });
+  }
+  if (state.progress.endpointIsolated) {
+    return pushEvent(base, {
+      level: 'info',
+      type: 'VIRTUAL_CLOCK_TICK',
+      titleAr: 'المحطة المعزولة خارج مسار الاتصال',
+      titleEn: 'Isolated workstation is off the traffic path',
+      detailAr: 'المحطة المعزولة لا تستطيع إنشاء حركة صادرة في هذا السيناريو.',
+      detailEn: 'The isolated workstation cannot generate outbound traffic in this scenario.',
+    });
+  }
+  if (state.progress.egressBlocked) {
+    return pushEvent(base, {
+      level: 'success',
+      type: 'SIMULATED_FLOW_BLOCKED',
+      titleAr: 'حظرت القاعدة المحاولة الجديدة',
+      titleEn: 'The rule blocked the new request',
+      detailAr: 'سُجلت ضربة جديدة على قاعدة FW-019 وبقيت الخدمات الأساسية متاحة.',
+      detailEn: 'A new hit was recorded on FW-019 while core services remain available.',
     });
   }
   return pushEvent(base, {
