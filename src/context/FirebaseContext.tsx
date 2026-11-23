@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, db, signInWithPopup, googleProvider, signOut } from '../lib/firebase';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useSimulationStore } from '../stores/simulationStore';
+import { DEFAULT_LESSON_ID } from '../stores/simulationStore';
+import { sanitizeCloudProgress } from './progressSync';
 
 interface FirebaseContextType {
   user: User | null;
@@ -14,88 +16,90 @@ interface FirebaseContextType {
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
+const resetAccountProgress = () => {
+  useSimulationStore.setState({
+    completedLessons: [],
+    completedChallenges: [],
+    lessonProgress: {},
+    onboardingProgress: { firewallInspected: false, policyAltered: false },
+    activeLessonId: DEFAULT_LESSON_ID,
+  });
+};
+
 export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSynced, setIsSynced] = useState(false);
-  
+
   const reloadFromStorage = useSimulationStore((s) => s.reloadFromStorage);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
+    let activeUid: string | null = null;
+    let unsubscribeProgress: (() => void) | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (nextUser) => {
+      // Detach the previous account listener before handling the new auth state.
+      unsubscribeProgress?.();
+      unsubscribeProgress = undefined;
+
+      activeUid = nextUser?.uid ?? null;
+      setUser(nextUser);
       setLoading(false);
-      
-      if (user) {
-        // Initial sync from Firestore to Zustand
-        await syncUserProgress(user.uid);
-      } else {
-        // Fallback to local storage if not logged in
+      setIsSynced(false);
+
+      if (!nextUser) {
+        // Guest progress remains local to this browser and is never uploaded by this client.
         reloadFromStorage();
+        return;
       }
+
+      // Do not leave the previous account's progress visible while this account loads.
+      resetAccountProgress();
+
+      const progressDocRef = doc(db, 'users', nextUser.uid, 'progress', 'current');
+      unsubscribeProgress = onSnapshot(
+        progressDocRef,
+        { includeMetadataChanges: true },
+        (snapshot) => {
+          // A queued callback from a previous account must never update the active account.
+          if (activeUid !== nextUser.uid) return;
+
+          if (!snapshot.exists()) {
+            resetAccountProgress();
+            setIsSynced(false);
+            return;
+          }
+
+          useSimulationStore.setState(sanitizeCloudProgress(snapshot.data()));
+          // Cached data can be shown, but is only marked synced after a server snapshot.
+          setIsSynced(!snapshot.metadata.fromCache);
+        },
+        (error) => {
+          if (activeUid !== nextUser.uid) return;
+          setIsSynced(false);
+          console.error('[Firebase] Progress subscription failed:', error);
+        }
+      );
     });
 
-    return () => unsubscribe();
+    return () => {
+      activeUid = null;
+      unsubscribeProgress?.();
+      unsubscribeAuth();
+    };
   }, [reloadFromStorage]);
-
-  const syncUserProgress = async (uid: string) => {
-    const progressDocRef = doc(db, 'users', uid, 'progress', 'current');
-    const docSnap = await getDoc(progressDocRef);
-    
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      // Update store with cloud data
-      // Note: We'll add a helper in store to bulk update from cloud
-      useSimulationStore.setState({
-        completedLessons: data.completedLessons || [],
-        completedChallenges: data.completedChallenges || [],
-        lessonProgress: data.lessonProgress || {},
-        onboardingProgress: data.onboardingProgress || { firewallInspected: false, policyAltered: false },
-        activeLessonId: data.activeLessonId || 'lesson-01-cia-triad',
-      });
-      setIsSynced(true);
-    } else {
-      // First time user, push local data to cloud
-      const state = useSimulationStore.getState();
-      await setDoc(progressDocRef, {
-        uid,
-        completedLessons: state.completedLessons,
-        completedChallenges: state.completedChallenges,
-        lessonProgress: state.lessonProgress,
-        onboardingProgress: state.onboardingProgress,
-        activeLessonId: state.activeLessonId,
-        updatedAt: new Date().toISOString()
-      });
-      setIsSynced(true);
-    }
-
-    // Subscribe to cloud changes
-    onSnapshot(progressDocRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        useSimulationStore.setState({
-          completedLessons: data.completedLessons || [],
-          completedChallenges: data.completedChallenges || [],
-          lessonProgress: data.lessonProgress || {},
-          onboardingProgress: data.onboardingProgress || { firewallInspected: false, policyAltered: false },
-          activeLessonId: data.activeLessonId || 'lesson-01-cia-triad',
-        });
-      }
-    });
-  };
 
   const login = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error('Login failed:', error);
     }
   };
 
   const logout = async () => {
+    // The auth-state listener detaches the account subscription and restores guest state.
     await signOut(auth);
-    setIsSynced(false);
-    reloadFromStorage();
   };
 
   return (
