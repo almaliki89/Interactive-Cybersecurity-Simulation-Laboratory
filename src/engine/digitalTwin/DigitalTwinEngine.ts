@@ -44,7 +44,7 @@ export interface DigitalTwinFirewallRule {
   destination: string;
   protocol: 'TCP';
   port: number;
-  action: 'DENY';
+  action: 'ALLOW' | 'DENY';
   enabled: boolean;
   hitCount: number;
 }
@@ -105,13 +105,13 @@ export function createInitialDigitalTwinWorld(): DigitalTwinWorldState {
     incidentStatus: 'investigating',
     score: 0,
     nodes: [
-      { id: 'internet', kind: 'internet', labelAr: 'بوابة الإنترنت', labelEn: 'Internet Gateway', descriptionAr: 'مدخل افتراضي إلى شبكة المؤسسة. لا توجد اتصالات خارجية فعلية.', descriptionEn: 'A simulated entry point. No real external connections exist.', status: 'healthy', x: 9, y: 24 },
-      { id: 'edge-fw', kind: 'firewall', labelAr: 'جدار الحماية', labelEn: 'Edge Firewall', descriptionAr: 'يفحص حركة المرور بين القطاعات وفق قواعد افتراضية.', descriptionEn: 'Evaluates traffic between simulated network segments using virtual rules.', status: 'healthy', x: 34, y: 24 },
-      { id: 'app-server', kind: 'application', labelAr: 'خادم التطبيقات', labelEn: 'Application Server', descriptionAr: 'يستضيف بوابة الموظفين الداخلية وخدمة الموارد البشرية.', descriptionEn: 'Hosts the internal employee portal and HR service.', status: 'healthy', x: 63, y: 24 },
+      { id: 'internet', kind: 'internet', labelAr: 'بوابة الإنترنت', labelEn: 'Internet Gateway', descriptionAr: 'مدخل افتراضي إلى شبكة المؤسسة. لا توجد اتصالات خارجية فعلية.', descriptionEn: 'A simulated entry point. No real external connections exist.', status: 'healthy', x: 12, y: 24 },
+      { id: 'edge-fw', kind: 'firewall', labelAr: 'جدار الحماية', labelEn: 'Edge Firewall', descriptionAr: 'يفحص حركة المرور بين القطاعات وفق قواعد افتراضية.', descriptionEn: 'Evaluates traffic between simulated network segments using virtual rules.', status: 'healthy', x: 38, y: 24 },
+      { id: 'app-server', kind: 'application', labelAr: 'خادم التطبيقات', labelEn: 'Application Server', descriptionAr: 'يستضيف بوابة الموظفين الداخلية وخدمة الموارد البشرية.', descriptionEn: 'Hosts the internal employee portal and HR service.', status: 'healthy', x: 65, y: 24 },
       { id: 'db-server', kind: 'database', labelAr: 'قاعدة البيانات', labelEn: 'Database Server', descriptionAr: 'تخزن بيانات تدريبية اصطناعية لخدمات المؤسسة.', descriptionEn: 'Stores synthetic training records for enterprise services.', status: 'healthy', x: 88, y: 48 },
-      { id: 'hr-ws-04', kind: 'workstation', labelAr: 'محطة HR-04', labelEn: 'HR Workstation 04', descriptionAr: 'محطة موظف ظهرت منها محاولات اتصال صادر غير معتادة داخل السيناريو.', descriptionEn: 'An employee workstation producing unusual simulated outbound requests.', status: 'watch', x: 34, y: 76 },
-      { id: 'sim-endpoint', kind: 'endpoint', labelAr: 'وجهة خارجية تجريبية', labelEn: 'Simulated External Host', descriptionAr: 'وجهة اصطناعية محجوزة للتوثيق والاختبارات، وليست مضيفاً حقيقياً.', descriptionEn: 'A documentation-only synthetic endpoint, not a real host.', status: 'watch', x: 9, y: 76 },
-      { id: 'identity', kind: 'identity', labelAr: 'خدمة الهوية', labelEn: 'Identity Service', descriptionAr: 'تدير هويات المستخدمين وجلسات الدخول داخل المؤسسة الافتراضية.', descriptionEn: 'Manages user identities and sign-in sessions in the virtual enterprise.', status: 'healthy', x: 63, y: 76 },
+      { id: 'hr-ws-04', kind: 'workstation', labelAr: 'محطة HR-04', labelEn: 'HR Workstation 04', descriptionAr: 'محطة موظف ظهرت منها محاولات اتصال صادر غير معتادة داخل السيناريو.', descriptionEn: 'An employee workstation producing unusual simulated outbound requests.', status: 'watch', x: 38, y: 76 },
+      { id: 'sim-endpoint', kind: 'endpoint', labelAr: 'وجهة خارجية تجريبية', labelEn: 'Simulated External Host', descriptionAr: 'وجهة اصطناعية محجوزة للتوثيق والاختبارات، وليست مضيفاً حقيقياً.', descriptionEn: 'A documentation-only synthetic endpoint, not a real host.', status: 'watch', x: 12, y: 76 },
+      { id: 'identity', kind: 'identity', labelAr: 'خدمة الهوية', labelEn: 'Identity Service', descriptionAr: 'تدير هويات المستخدمين وجلسات الدخول داخل المؤسسة الافتراضية.', descriptionEn: 'Manages user identities and sign-in sessions in the virtual enterprise.', status: 'healthy', x: 65, y: 76 },
       { id: 'soc', kind: 'soc', labelAr: 'مركز العمليات SOC', labelEn: 'SOC Console', descriptionAr: 'يجمع الأحداث والسجلات ويعرض التنبيهات الأمنية المترابطة.', descriptionEn: 'Correlates events and logs and presents linked security alerts.', status: 'healthy', x: 88, y: 82 },
     ],
     connections: [
@@ -136,7 +136,7 @@ export function createInitialDigitalTwinWorld(): DigitalTwinWorldState {
       },
     ],
     firewallRules: [
-      { id: 'FW-001', nameAr: 'السماح بخدمة بوابة الموظفين', nameEn: 'Allow employee portal', destination: 'app-server · TCP/443', protocol: 'TCP', port: 443, action: 'DENY', enabled: false, hitCount: 0 },
+      { id: 'FW-001', nameAr: 'السماح بخدمة بوابة الموظفين', nameEn: 'Allow employee portal', destination: 'app-server · TCP/443', protocol: 'TCP', port: 443, action: 'ALLOW', enabled: true, hitCount: 0 },
     ],
     events: [
       { id: 'evt-004', minute: 9 * 60 + 12, level: 'warning', type: 'ALERT_RAISED', titleAr: 'إنشاء تنبيه عالي الخطورة', titleEn: 'High severity alert raised', detailAr: 'مصدر التنبيه: محطة HR-04 · الوجهة: مضيف تجريبي.', detailEn: 'Source: HR-04 workstation · Destination: simulated external host.' },
