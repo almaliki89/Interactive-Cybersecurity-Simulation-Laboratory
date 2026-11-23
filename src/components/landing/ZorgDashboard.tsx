@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowUpRight,
   BookOpen,
-  Boxes,
   Cloud,
   Compass,
   Cpu,
@@ -14,9 +13,9 @@ import {
   Network,
   Search,
   ShieldCheck,
-  TerminalSquare,
   Workflow,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useSimulationStore, SimulationId } from '../../stores/simulationStore';
 import { CURRICULUM_LESSONS, CURRICULUM_MILESTONES } from '../../data/curriculumData';
 import { MACRO_DOMAINS } from '../../data/universeData';
@@ -30,7 +29,7 @@ type Workspace = {
   simulation: SimulationId;
   labelAr: string;
   labelEn: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
   tone: string;
 };
 
