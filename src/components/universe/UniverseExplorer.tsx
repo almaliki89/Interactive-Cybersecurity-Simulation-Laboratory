@@ -140,6 +140,20 @@ export const UniverseExplorer: React.FC = () => {
           </div>
         </div>
 
+        <section className="zorg-explorer-guide" aria-label={language === 'ar' ? 'طريقة اختيار المختبر' : 'How to choose a lab'}>
+          <div className="zorg-explorer-guide-title">
+            <Compass className="w-5 h-5" />
+            <div>
+              <strong>{language === 'ar' ? 'كيف تختار مختبراً؟' : 'How do I choose a lab?'}</strong>
+              <p>{language === 'ar' ? '1. اختر مجالاً من القائمة. 2. اضغط بطاقة العالم لقراءة تفاصيله. 3. اضغط «بدء المختبر» عندما تكون مستعداً.' : '1. Choose a domain. 2. Select a world card to read its details. 3. Press “Launch Lab” when you are ready.'}</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setActiveSimulation('lesson')}>
+            <BookOpen className="w-4 h-4" />
+            {language === 'ar' ? 'أفضل البدء بالدروس' : 'I would rather start with lessons'}
+          </button>
+        </section>
+
         {/* Macro Domain Navigation Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto py-3 no-scrollbar border-b border-slate-800/60">
           <button
