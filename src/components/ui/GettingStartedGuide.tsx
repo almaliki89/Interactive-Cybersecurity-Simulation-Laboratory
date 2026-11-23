@@ -7,7 +7,6 @@ import {
   Compass,
   GraduationCap,
   HelpCircle,
-  Layers3,
   Play,
   ShieldCheck,
   X,
